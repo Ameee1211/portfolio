@@ -54,27 +54,78 @@ img { display: block; max-width: 100%; }
   align-items: center;
   justify-content: space-between;
 }
+.nav__brand { display: flex; align-items: center; }
 .nav__logo {
-  font-size: 28px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #7eb5ec, #7469b6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  width: 44px;
+  height: 44px;
+  display: block;
 }
 .nav__links { display: flex; align-items: center; gap: 6px; }
+.nav__item { position: relative; }
 .nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   padding: 10px 20px;
   border-radius: 999px;
   font-size: 15px;
   font-weight: 500;
+  font-family: var(--font-en);
   color: var(--navy);
   text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
   transition: background 0.25s, color 0.25s;
 }
 .nav__link:hover { background: rgba(116, 105, 182, 0.1); }
 .nav__link.is-active { background: var(--purple); color: #fff; }
 .nav__link.is-active:hover { background: var(--purple-deep); }
+.nav__caret { transition: transform 0.25s; }
+.has-dropdown.is-open .nav__caret { transform: rotate(180deg); }
+
+/* Projects 下拉菜单 */
+.nav__dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  min-width: 236px;
+  padding: 10px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 14px 44px rgba(51, 61, 109, 0.16);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(8px);
+  transition: opacity 0.25s, transform 0.25s, visibility 0.25s;
+}
+.nav__dropdown::before {
+  content: "";
+  position: absolute;
+  top: -14px;
+  left: 0;
+  right: 0;
+  height: 14px;
+}
+.nav__item:hover .nav__dropdown,
+.has-dropdown.is-open .nav__dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.nav__drop-link {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--navy);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s;
+}
+.nav__drop-link:hover { background: rgba(116, 105, 182, 0.1); }
+.nav__drop-link.is-active { color: var(--purple); font-weight: 600; }
 
 .nav__burger {
   display: none;
@@ -98,29 +149,79 @@ img { display: block; max-width: 100%; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 120px 40px 60px;
+  padding: 92px 0 48px;
 }
-.wordsearch { width: min(920px, 100%); }
-.ws { width: 100%; height: auto; overflow: visible; }
+.wordsearch {
+  width: 94vw;
+  margin: 0 auto;
+}
+.ws {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100vh - 150px);
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
 
+/* 找到的单词高亮：初始隐藏，找到后弹出 */
 .ws__hl {
   fill: var(--orange);
-  fill-opacity: 0.9;
+  fill-opacity: 0.92;
   opacity: 0;
-  animation: hlIn 0.7s ease forwards;
+  transform-box: fill-box;
+  transform-origin: center;
 }
-@keyframes hlIn { to { opacity: 1; } }
+.ws__hl.is-found {
+  animation: hlPop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.5) forwards;
+}
+@keyframes hlPop {
+  0% { opacity: 0; transform: scaleX(0.15) scaleY(0.5); }
+  60% { opacity: 1; transform: scaleX(1.03) scaleY(1); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* 拖拽中的选区 / 提示动画的划痕 */
+.ws__sel {
+  stroke: var(--orange);
+  stroke-width: 64;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.ws__cursor {
+  fill: var(--purple);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+
+/* 格子热区 */
+.ws__hit { fill: transparent; transition: fill 0.15s; }
+.ws__hit.is-hover { fill: rgba(116, 105, 182, 0.09); }
 
 .ws__letter {
   font-family: var(--font-en);
-  font-size: 46px;
+  font-size: 64px;
   font-weight: 500;
   text-anchor: middle;
   dominant-baseline: central;
-  fill: #b0acc0;
-  user-select: none;
+  fill: #b3afc2;
+  pointer-events: none;
+  transition: fill 0.3s;
 }
-.ws__letter.is-found { fill: var(--navy); font-weight: 600; }
+.ws__letter.is-found { fill: var(--navy); font-weight: 700; }
+
+/* 全部找到后：字母依次轻跳庆祝 */
+.ws.is-complete .ws__letter { animation: letterPop 0.55s ease; }
+@keyframes letterPop {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-14px); }
+  100% { transform: translateY(0); }
+}
 
 /* ================= About Me ================= */
 .about { background: var(--cream); padding: 96px 0; }
@@ -135,6 +236,7 @@ img { display: block; max-width: 100%; }
 }
 .about__photo img {
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
   border-radius: 20px;
@@ -206,7 +308,7 @@ img { display: block; max-width: 100%; }
 .projects__title { font-size: 40px; font-weight: 700; color: var(--navy); }
 .projects__rule {
   display: block;
-  width: 84px;
+  width: 100%;
   height: 3px;
   border-radius: 2px;
   background: var(--purple);
@@ -300,6 +402,9 @@ img { display: block; max-width: 100%; }
   color: var(--muted);
 }
 
+/* ================= 空白页（其余 5 个页面占位） ================= */
+.blank-page { min-height: 100vh; }
+
 /* ================= 入场动画 ================= */
 .reveal { opacity: 0; transform: translateY(26px); }
 .reveal.is-in { opacity: 1; transform: none; }
@@ -322,8 +427,24 @@ img { display: block; max-width: 100%; }
     box-shadow: 0 12px 40px rgba(51, 61, 109, 0.15);
   }
   .nav.is-open .nav__links { display: flex; }
+  .nav__item { width: 100%; }
+  .nav__link { width: 100%; justify-content: space-between; }
+  .nav__dropdown {
+    position: static;
+    min-width: 0;
+    padding: 4px 0 6px 12px;
+    background: transparent;
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    display: none;
+  }
+  .nav__dropdown::before { display: none; }
+  .nav__item:hover .nav__dropdown { display: none; }
+  .has-dropdown.is-open .nav__dropdown { display: block; }
 
-  .hero { min-height: 78vh; padding: 110px 24px 40px; }
+  .hero { min-height: 82vh; padding: 100px 0 32px; }
   .about { padding: 64px 0; }
   .about__inner { grid-template-columns: 1fr; gap: 36px; padding: 0 24px; }
   .about__title { font-size: 34px; }

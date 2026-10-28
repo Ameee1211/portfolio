@@ -6,13 +6,23 @@
    ============================================================ */
 
 const SITE = {
-  // ---------- 顶部导航 ----------
+  // ---------- 顶部导航（页面级，不是页内锚点） ----------
+  // href 指向独立页面文件；dropdown 里放 4 个项目页
   nav: {
-    brand: "A",
+    logo: "assets/img/logo.svg",
     links: [
-      { label: "Home", href: "#home", active: true },
-      { label: "About me", href: "#about" },
-      { label: "Projects", href: "#projects" },
+      { label: "Home", href: "index.html" },
+      { label: "About me", href: "about.html" },
+      {
+        label: "Projects",
+        href: "sunlink.html",
+        dropdown: [
+          { label: "SunLink Neighbours", href: "sunlink.html" },
+          { label: "Auto-Signaled Bus Stop", href: "busstop.html" },
+          { label: "SteamTracker", href: "steamtracker.html" },
+          { label: "Chocolate 3D Model", href: "chocolate.html" },
+        ],
+      },
     ],
   },
 
@@ -41,7 +51,7 @@ const SITE = {
   about: {
     photo: "assets/img/amy-portrait.jpg",
     title: "About Me",
-    button: { label: "Explore More", href: "#projects" },
+    button: { label: "Explore More", href: "about.html" },
     info: [
       { label: "Name",      value: "Tong Zhang (Amy)" },
       { label: "Education", value: "University of Sydney" },
@@ -83,7 +93,7 @@ const SITE = {
           "A community platform that solves the imbalance of solar energy usage by enabling neighbors to share surplus power.",
         cover: "assets/img/sunlink-cover.png",
         tint: "#D2FFF1",
-        link: "",
+        link: "sunlink.html",
       },
       {
         title: "SteamTracker",
@@ -92,7 +102,7 @@ const SITE = {
           "A lightweight web app for Steam users that enables custom tracking of game time through active input, ensuring privacy and offline access.",
         cover: "assets/img/steamtracker-cover.jpg",
         tint: "#DBFFD2",
-        link: "",
+        link: "steamtracker.html",
       },
       {
         title: "Auto-Signaled Bus Stop",
@@ -101,7 +111,7 @@ const SITE = {
           "A smart bus stop prototype designed for Sydney's 'wave-to-board' culture, combining schedule info, intent signal, and a social space to improve waiting experience.",
         cover: "",
         tint: "#7EB5EC",
-        link: "",
+        link: "busstop.html",
       },
       {
         title: "Chocolate 3D Model",
@@ -110,7 +120,7 @@ const SITE = {
           "A form exploration project with custom chocolate moulds developed through 3D modelling, 3D printing and hand chocolate crafting.",
         cover: "",
         tint: "#FFE9C7",
-        link: "",
+        link: "chocolate.html",
       },
     ],
   },

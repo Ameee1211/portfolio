@@ -8,14 +8,18 @@ https://Ameee1211.github.io/portfolio/
 
 ## 网站结构（共 6 个页面）
 
-| 页面 | 状态 |
-|---|---|
-| HomePage（首页） | ✅ 已完成 |
-| About me | 待做 |
-| Project 1 — SunLink Neighbours | 待做 |
-| Project 2 — Auto-Signaled Bus Stop | 待做 |
-| Project 3 — SteamTracker | 待做 |
-| Project 4 — Chocolate 3D Model | 待做 |
+| 页面 | 文件 | 状态 |
+|---|---|---|
+| HomePage | `index.html` | ✅ 已完成 |
+| About me | `about.html` | 空白页（待填内容） |
+| Project 1 — SunLink Neighbours | `sunlink.html` | 空白页（待填内容） |
+| Project 2 — Auto-Signaled Bus Stop | `busstop.html` | 空白页（待填内容） |
+| Project 3 — SteamTracker | `steamtracker.html` | 空白页（待填内容） |
+| Project 4 — Chocolate 3D Model | `chocolate.html` | 空白页（待填内容） |
+
+> 后 5 个页面只含顶部导航（与首页完全一致，含 Projects 下拉菜单和当前页高亮），
+> 主体为空白，后续逐个填内容即可。导航由 `js/content.js` 的 `nav` 统一驱动，
+> 改一处、6 个页面同时生效。
 
 ## 本地预览
 
@@ -46,7 +50,10 @@ git push
 ### 改首页文字
 直接改对应字段，例如 `about.intro`、`footer.thanks`。
 
-### 字母迷宫（首屏）
+### 首屏字母迷宫（是个真游戏）
+访客按住鼠标（或手指）划过字母即可找词，找对后橙色高亮弹出、字母变深蓝，
+5 个词全部找到后字母会依次轻跳庆祝。页面空闲时会有一个"手指划过"的演示动画提示玩法，
+全程没有任何文字提示。`wordsearch.letters` 是 6 行字母网格，
 `wordsearch.letters` 是 6 行字母网格，`wordsearch.words` 定义被橙色圈出的单词，
 `cells` 用 `[行号, 列号]` 标记位置（都从 0 开始数）。改这里就能换名字或换单词。
 

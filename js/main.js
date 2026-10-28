@@ -9,86 +9,352 @@ const esc = (s) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])
   );
 
-/* ---------------- 导航 ---------------- */
-function renderNav() {
-  $("navLinks").innerHTML = SITE.nav.links
-    .map(
-      (l) =>
-        `<a class="nav__link${l.active ? " is-active" : ""}" href="${esc(l.href)}">${esc(l.label)}</a>`
-    )
-    .join("");
-  const logo = document.querySelector(".nav__logo");
-  if (logo) logo.textContent = SITE.nav.brand;
+/* ============================================================
+   导航（所有页面共用）
+   ============================================================ */
+const CARET = `<svg class="nav__caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
+
+function currentPage() {
+  const f = location.pathname.split("/").pop();
+  return (f || "index.html").toLowerCase();
 }
 
-/* ---------------- 首屏字母迷宫 ---------------- */
-const CELL = 100;
+function renderNav() {
+  const brandEl = document.querySelector(".nav__brand");
+  if (!brandEl || !$("navLinks")) return;
+  brandEl.innerHTML = `<img class="nav__logo" src="${esc(SITE.nav.logo)}" alt="Amy logo" />`;
 
-function highlightGeom(cells) {
-  const pts = cells.map(([r, c]) => ({ x: c * CELL + CELL / 2, y: r * CELL + CELL / 2 }));
-  const first = pts[0];
-  const last = pts[pts.length - 1];
-  const sameRow = cells.every(([r]) => r === cells[0][0]);
+  const here = currentPage();
+  $("navLinks").innerHTML = SITE.nav.links
+    .map((l) => {
+      const drop = l.dropdown || [];
+      const active =
+        l.href.toLowerCase() === here || drop.some((d) => d.href.toLowerCase() === here);
+
+      if (drop.length) {
+        const items = drop
+          .map(
+            (d) =>
+              `<a class="nav__drop-link${d.href.toLowerCase() === here ? " is-active" : ""}" href="${esc(d.href)}">${esc(d.label)}</a>`
+          )
+          .join("");
+        return `<div class="nav__item has-dropdown">
+          <button class="nav__link${active ? " is-active" : ""}" type="button" aria-haspopup="true" aria-expanded="false">${esc(l.label)}${CARET}</button>
+          <div class="nav__dropdown">${items}</div>
+        </div>`;
+      }
+      return `<div class="nav__item">
+        <a class="nav__link${active ? " is-active" : ""}" href="${esc(l.href)}">${esc(l.label)}</a>
+      </div>`;
+    })
+    .join("");
+}
+
+function initNav() {
+  const nav = document.querySelector(".nav");
+  if (!nav) return;
+
+  nav.addEventListener("click", (e) => {
+    const btn = e.target.closest(".nav__link");
+    if (btn && btn.parentElement.classList.contains("has-dropdown")) {
+      const item = btn.parentElement;
+      const open = item.classList.toggle("is-open");
+      btn.setAttribute("aria-expanded", String(open));
+      return;
+    }
+    if (e.target.closest(".nav__drop-link")) nav.classList.remove("is-open");
+  });
+
+  $("navBurger").addEventListener("click", () => nav.classList.toggle("is-open"));
+
+  const onScroll = () => nav.classList.toggle("is-solid", window.scrollY > 40);
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+}
+
+/* ============================================================
+   首屏：字母迷宫小游戏
+   ============================================================ */
+const CW = 150; // 单元格宽（SVG 单位）
+const CH = 100; // 单元格高
+const BAND = 64; // 高亮条厚度
+
+const center = (r, c) => ({ x: c * CW + CW / 2, y: r * CH + CH / 2 });
+
+function bandGeom(cells) {
+  const first = center(cells[0][0], cells[0][1]);
+  const last = center(cells[cells.length - 1][0], cells[cells.length - 1][1]);
+  const sameRow = cells.every((x) => x[0] === cells[0][0]);
 
   if (sameRow) {
+    const inset = 16;
     return {
-      x: first.x - CELL / 2 + 14,
-      y: first.y - 30,
-      w: pts.length * CELL - 28,
-      h: 60,
+      x: first.x - CW / 2 + inset,
+      y: first.y - BAND / 2,
+      w: cells.length * CW - inset * 2,
+      h: BAND,
       rot: 0,
       cx: 0,
       cy: 0,
     };
   }
-  // 斜向（TONG）
   const dx = last.x - first.x;
   const dy = last.y - first.y;
-  const len = Math.hypot(dx, dy) + CELL - 28;
   const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const rad = Math.atan2(dy, dx);
+  const pad =
+    (CW / 2) * Math.abs(Math.cos(rad)) + (CH / 2) * Math.abs(Math.sin(rad)) - 10;
+  const len = Math.hypot(dx, dy) + 2 * pad;
   const mx = (first.x + last.x) / 2;
   const my = (first.y + last.y) / 2;
-  return { x: mx - len / 2, y: my - 30, w: len, h: 60, rot: ang, cx: mx, cy: my };
+  return { x: mx - len / 2, y: my - BAND / 2, w: len, h: BAND, rot: ang, cx: mx, cy: my };
 }
 
 function renderWordSearch() {
+  const host = $("wordSearch");
+  if (!host) return;
   const { letters, words } = SITE.wordsearch;
   const rows = letters.length;
   const cols = letters[0].length;
 
-  const found = new Set();
-  words.forEach((w) => w.cells.forEach(([r, c]) => found.add(`${r},${c}`)));
-
-  const highlights = words
-    .map((w, i) => {
-      const g = highlightGeom(w.cells);
-      const rot = g.rot ? ` transform="rotate(${g.rot.toFixed(2)} ${g.cx} ${g.cy})"` : "";
-      return `<rect class="ws__hl" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="30"${rot} style="animation-delay:${(0.15 * i + 0.35).toFixed(2)}s"/>`;
+  const foundBands = words
+    .map((w) => {
+      const g = bandGeom(w.cells);
+      const inner = `<rect class="ws__hl" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${BAND / 2}" />`;
+      return g.rot
+        ? `<g transform="rotate(${g.rot.toFixed(2)} ${g.cx} ${g.cy})">${inner}</g>`
+        : inner;
     })
+    .join("");
+
+  const hits = letters
+    .map((row, r) =>
+      row
+        .split("")
+        .map(
+          (_, c) =>
+            `<rect class="ws__hit" x="${c * CW + 6}" y="${r * CH + 6}" width="${CW - 12}" height="${CH - 12}" rx="14" />`
+        )
+        .join("")
+    )
     .join("");
 
   const glyphs = letters
     .map((row, r) =>
       row
         .split("")
-        .map((ch, c) => {
-          const isFound = found.has(`${r},${c}`);
-          return `<text class="ws__letter${isFound ? " is-found" : ""}" x="${c * CELL + CELL / 2}" y="${r * CELL + CELL / 2}">${esc(ch)}</text>`;
-        })
+        .map(
+          (ch, c) =>
+            `<text class="ws__letter" x="${c * CW + CW / 2}" y="${r * CH + CH / 2}">${esc(ch)}</text>`
+        )
         .join("")
     )
     .join("");
 
-  $("wordSearch").innerHTML = `
-    <svg class="ws" viewBox="0 0 ${cols * CELL} ${rows * CELL}" role="img"
-         aria-label="Word search puzzle spelling TONG ZHANG, UI, UX and DESIGN">
-      <g class="ws__highlights">${highlights}</g>
+  host.innerHTML = `
+    <svg class="ws" viewBox="0 0 ${cols * CW} ${rows * CH}" role="img"
+         aria-label="A word search puzzle: drag across the letters to find them">
+      <g class="ws__found">${foundBands}</g>
+      <line class="ws__sel" x1="0" y1="0" x2="0" y2="0" />
+      <g class="ws__hits">${hits}</g>
       <g class="ws__letters">${glyphs}</g>
+      <circle class="ws__cursor" cx="0" cy="0" r="13" />
     </svg>`;
+
+  initWordSearchGame(host, letters, words, rows, cols);
 }
 
-/* ---------------- About Me ---------------- */
+function initWordSearchGame(host, letters, words, rows, cols) {
+  const svg = host.querySelector(".ws");
+  const sel = svg.querySelector(".ws__sel");
+  const cursor = svg.querySelector(".ws__cursor");
+  const hitEls = [...svg.querySelectorAll(".ws__hit")];
+  const letterEls = [...svg.querySelectorAll(".ws__letter")];
+  const bandEls = [...svg.querySelectorAll(".ws__hl")];
+
+  const letterAt = (r, c) => letters[r][c];
+  const idx = (r, c) => r * cols + c;
+
+  const solved = new Set();
+  let dragging = false;
+  let start = null;
+  let currentCells = [];
+  let hintRaf = null;
+  let idleTimer = null;
+
+  const toUser = (evt) => {
+    const m = svg.getScreenCTM();
+    if (!m) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    const p = pt.matrixTransform(m.inverse());
+    const c = Math.floor(p.x / CW);
+    const r = Math.floor(p.y / CH);
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return null;
+    return { r, c };
+  };
+
+  const clearHover = () => hitEls.forEach((el) => el.classList.remove("is-hover"));
+
+  function lineCells(a, b) {
+    const dr = Math.sign(b.r - a.r);
+    const dc = Math.sign(b.c - a.c);
+    const len = Math.max(Math.abs(b.r - a.r), Math.abs(b.c - a.c));
+    const out = [];
+    for (let i = 0; i <= len; i++) out.push({ r: a.r + dr * i, c: a.c + dc * i });
+    return out;
+  }
+
+  const isLine = (a, b) =>
+    a.r === b.r || a.c === b.c || Math.abs(a.r - b.r) === Math.abs(a.c - b.c);
+
+  function drawSelection(cells) {
+    if (!cells.length) {
+      sel.style.opacity = 0;
+      return;
+    }
+    const a = center(cells[0].r, cells[0].c);
+    const b = center(cells[cells.length - 1].r, cells[cells.length - 1].c);
+    sel.setAttribute("x1", a.x);
+    sel.setAttribute("y1", a.y);
+    sel.setAttribute("x2", b.x);
+    sel.setAttribute("y2", b.y);
+    sel.style.opacity = 0.5;
+  }
+
+  const readout = (cells) => cells.map((p) => letterAt(p.r, p.c)).join("");
+
+  function markFound(i) {
+    if (solved.has(i)) return;
+    solved.add(i);
+    bandEls[i].classList.add("is-found");
+    words[i].cells.forEach(([r, c]) => letterEls[idx(r, c)].classList.add("is-found"));
+    if (solved.size === words.length) {
+      svg.classList.add("is-complete");
+      letterEls.forEach((el, i) => {
+        el.style.animationDelay = `${(i % cols) * 0.04 + Math.floor(i / cols) * 0.03}s`;
+      });
+      clearTimeout(idleTimer);
+    }
+  }
+
+  function tryCommit(cells) {
+    if (cells.length < 2) return;
+    const s = readout(cells);
+    const rev = [...s].reverse().join("");
+    for (let i = 0; i < words.length; i++) {
+      if (solved.has(i)) continue;
+      if (words[i].text === s || words[i].text === rev) markFound(i);
+    }
+  }
+
+  /* ---- 提示动画：模拟手指划过一个单词（无任何文字提示） ---- */
+  function playHint() {
+    const rest = words.map((_, i) => i).filter((i) => !solved.has(i));
+    if (!rest.length) return;
+    cancelAnimationFrame(hintRaf);
+    const w = words[rest[Math.floor(Math.random() * rest.length)]];
+    const a = center(w.cells[0][0], w.cells[0][1]);
+    const z = center(w.cells[w.cells.length - 1][0], w.cells[w.cells.length - 1][1]);
+
+    sel.setAttribute("x1", a.x);
+    sel.setAttribute("y1", a.y);
+    sel.setAttribute("x2", a.x);
+    sel.setAttribute("y2", a.y);
+    sel.style.opacity = 0.55;
+    cursor.setAttribute("cx", a.x);
+    cursor.setAttribute("cy", a.y);
+    cursor.style.opacity = 0.9;
+
+    const t0 = performance.now();
+    const dur = 1500;
+    const step = (now) => {
+      let t = (now - t0) / dur;
+      if (t > 1) t = 1;
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const x = a.x + (z.x - a.x) * e;
+      const y = a.y + (z.y - a.y) * e;
+      sel.setAttribute("x2", x);
+      sel.setAttribute("y2", y);
+      cursor.setAttribute("cx", x);
+      cursor.setAttribute("cy", y);
+      if (t < 1) hintRaf = requestAnimationFrame(step);
+      else {
+        sel.style.opacity = 0;
+        cursor.style.opacity = 0;
+      }
+    };
+    hintRaf = requestAnimationFrame(step);
+  }
+
+  function scheduleHint(delay) {
+    clearTimeout(idleTimer);
+    if (solved.size === words.length) return;
+    idleTimer = setTimeout(() => {
+      if (!dragging) playHint();
+      scheduleHint(9000);
+    }, delay);
+  }
+
+  /* ---- 指针交互 ---- */
+  svg.addEventListener("pointerdown", (e) => {
+    const p = toUser(e);
+    if (!p) return;
+    e.preventDefault();
+    cancelAnimationFrame(hintRaf);
+    sel.style.opacity = 0;
+    cursor.style.opacity = 0;
+    dragging = true;
+    start = p;
+    currentCells = [p];
+    clearHover();
+    hitEls[idx(p.r, p.c)].classList.add("is-hover");
+    drawSelection([p]);
+  });
+
+  svg.addEventListener("pointermove", (e) => {
+    const p = toUser(e);
+    if (!dragging) {
+      clearHover();
+      if (p) hitEls[idx(p.r, p.c)].classList.add("is-hover");
+      return;
+    }
+    if (!p || !isLine(start, p)) return;
+    const cells = lineCells(start, p);
+    if (readout(cells) === readout(currentCells)) return;
+    currentCells = cells;
+    clearHover();
+    cells.forEach((q) => hitEls[idx(q.r, q.c)].classList.add("is-hover"));
+    drawSelection(cells);
+  });
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    tryCommit(currentCells);
+    currentCells = [];
+    clearHover();
+    sel.style.opacity = 0;
+    scheduleHint(7000);
+  };
+  window.addEventListener("pointerup", endDrag);
+  window.addEventListener("pointercancel", endDrag);
+  svg.addEventListener("pointerleave", () => {
+    if (!dragging) clearHover();
+  });
+
+  setTimeout(() => {
+    playHint();
+    scheduleHint(9000);
+  }, 1200);
+}
+
+/* ============================================================
+   About Me
+   ============================================================ */
 function renderAbout() {
+  if (!$("aboutPhoto")) return;
   const a = SITE.about;
   $("aboutPhoto").src = a.photo;
   $("aboutTitle").textContent = a.title;
@@ -96,25 +362,44 @@ function renderAbout() {
   $("aboutBtn").href = a.button.href;
 
   $("aboutInfo").innerHTML = a.info
-    .map(
-      (i) =>
-        `<div class="about__row"><dt>${esc(i.label)}</dt><dd>${esc(i.value)}</dd></div>`
-    )
+    .map((i) => `<div class="about__row"><dt>${esc(i.label)}</dt><dd>${esc(i.value)}</dd></div>`)
     .join("");
 
   $("aboutIntro").textContent = a.intro;
-
   $("skillsTitle").textContent = a.skills.title;
   $("skillsRow").innerHTML = a.skills.items
-    .map(
-      (s) =>
-        `<span class="skill" style="--skill-color:${esc(s.color)}">${esc(s.label)}</span>`
-    )
+    .map((s) => `<span class="skill" style="--skill-color:${esc(s.color)}">${esc(s.label)}</span>`)
     .join("");
 }
 
-/* ---------------- Featured Projects ---------------- */
+// 让照片高度与右侧文字区高度接近
+function fitAboutPhoto() {
+  const img = $("aboutPhoto");
+  const right = document.querySelector(".about__right");
+  const left = document.querySelector(".about__left");
+  if (!img || !right || !left) return;
+  img.style.height = "";
+  img.style.width = "";
+  if (window.innerWidth <= 900) return;
+  // 照片高度对齐右侧文字区（保持 3:4 竖构图）
+  const colWidth = img.parentElement.clientWidth;
+  let target = right.offsetHeight;
+  let w = Math.round(target * 0.75);
+  if (w > colWidth) {
+    w = colWidth;
+    target = Math.round((w / 0.75));
+  }
+  if (target > 220) {
+    img.style.height = `${target}px`;
+    img.style.width = `${w}px`;
+  }
+}
+
+/* ============================================================
+   Featured Projects
+   ============================================================ */
 function renderProjects() {
+  if (!$("projectsGrid")) return;
   const p = SITE.projects;
   $("projectsTitle").textContent = p.title;
   $("projectsIntro").innerHTML = p.intro.map((t) => `<p>${esc(t)}</p>`).join("");
@@ -124,7 +409,6 @@ function renderProjects() {
       const media = it.cover
         ? `<img src="${esc(it.cover)}" alt="${esc(it.title)}" loading="lazy" />`
         : `<span class="card__placeholder">${esc(it.title)}</span>`;
-      const href = it.link || "#projects";
       return `
       <article class="card reveal" style="--tint:${esc(it.tint)};transition-delay:${(i * 0.08).toFixed(2)}s">
         <div class="card__body">
@@ -133,7 +417,7 @@ function renderProjects() {
           </div>
           <h3 class="card__title">${esc(it.title)}</h3>
           <p class="card__desc">${esc(it.description)}</p>
-          <a class="btn btn--purple" href="${esc(href)}">Explore More</a>
+          <a class="btn btn--purple" href="${esc(it.link)}">Explore More</a>
         </div>
         <div class="card__media">${media}</div>
       </article>`;
@@ -141,8 +425,11 @@ function renderProjects() {
     .join("");
 }
 
-/* ---------------- 页脚 ---------------- */
+/* ============================================================
+   页脚
+   ============================================================ */
 function renderFooter() {
+  if (!$("footerThanks")) return;
   const f = SITE.footer;
   $("footerThanks").textContent = f.thanks;
   $("footerEmail").textContent = f.email;
@@ -151,33 +438,12 @@ function renderFooter() {
   $("footerCopy").textContent = f.copyright;
 }
 
-/* ---------------- 交互 ---------------- */
-function initInteractions() {
-  const nav = document.querySelector(".nav");
-
-  $("navBurger").addEventListener("click", () => nav.classList.toggle("is-open"));
-  $("navLinks").addEventListener("click", (e) => {
-    if (e.target.classList.contains("nav__link")) nav.classList.remove("is-open");
-  });
-
-  const links = [...document.querySelectorAll(".nav__link")];
-  const targets = links
-    .map((l) => document.querySelector(l.getAttribute("href")))
-    .filter(Boolean);
-
-  const onScroll = () => {
-    nav.classList.toggle("is-solid", window.scrollY > 40);
-    let current = targets[0];
-    targets.forEach((t) => {
-      if (t && t.getBoundingClientRect().top <= 140) current = t;
-    });
-    links.forEach((l) =>
-      l.classList.toggle("is-active", current && l.getAttribute("href") === "#" + current.id)
-    );
-  };
-  window.addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
-
+/* ============================================================
+   滚动入场
+   ============================================================ */
+function initReveal() {
+  const els = document.querySelectorAll(".reveal");
+  if (!els.length) return;
   const io = new IntersectionObserver(
     (entries) => {
       entries.forEach((en) => {
@@ -189,13 +455,19 @@ function initInteractions() {
     },
     { threshold: 0.12 }
   );
-  document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+  els.forEach((el) => io.observe(el));
 }
 
-/* ---------------- 启动 ---------------- */
+/* ============================================================
+   启动
+   ============================================================ */
 renderNav();
+initNav();
 renderWordSearch();
 renderAbout();
 renderProjects();
 renderFooter();
-initInteractions();
+initReveal();
+fitAboutPhoto();
+window.addEventListener("resize", fitAboutPhoto);
+window.addEventListener("load", fitAboutPhoto);
