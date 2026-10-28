@@ -45,6 +45,14 @@ const SITE = {
       { text: "UX",     cells: [[4, 4], [4, 5]] },
       { text: "DESIGN", cells: [[5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [5, 7]] },
     ],
+    // 全部找齐后的庆祝特效：WELCOME 字样 + 小星星 + 小猫，然后滚到 About 板块
+    finale: {
+      text: "WELCOME",
+      stars: 16,
+      cats: 3,
+      holdMs: 1500,
+      scrollTo: "about",
+    },
   },
 
   // ---------- About Me ----------

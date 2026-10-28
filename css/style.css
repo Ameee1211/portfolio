@@ -166,21 +166,57 @@ img { display: block; max-width: 100%; }
   -webkit-user-select: none;
 }
 
-/* 找到的单词高亮：初始隐藏，找到后弹出 */
+/* 答案默认可见：虚线轮廓直接告诉用户单词在哪、往哪个方向连 */
+.ws__band { animation: bandPulse 3.2s ease-in-out infinite; }
+.ws__band.is-urging { animation-duration: 1.15s; }
+.ws__band.is-done { animation: none; opacity: 1; }
+@keyframes bandPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
 .ws__hl {
   fill: var(--orange);
-  fill-opacity: 0.92;
-  opacity: 0;
+  fill-opacity: 0.18;
+  stroke: #efa95c;
+  stroke-width: 3.5;
+  stroke-dasharray: 12 9;
+  stroke-linejoin: round;
   transform-box: fill-box;
   transform-origin: center;
+  transition: fill-opacity 0.3s;
 }
+/* 用户自己连对之后：轮廓变实心橙条并弹出 */
 .ws__hl.is-found {
+  stroke: none;
+  fill-opacity: 0.92;
   animation: hlPop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.5) forwards;
 }
 @keyframes hlPop {
-  0% { opacity: 0; transform: scaleX(0.15) scaleY(0.5); }
-  60% { opacity: 1; transform: scaleX(1.03) scaleY(1); }
-  100% { opacity: 1; transform: none; }
+  0% { fill-opacity: 0.18; transform: scaleX(0.86) scaleY(0.6); }
+  60% { fill-opacity: 1; transform: scaleX(1.04) scaleY(1.12); }
+  100% { fill-opacity: 0.92; transform: none; }
+}
+
+/* 进度圆点 */
+.ws-progress {
+  display: flex;
+  justify-content: center;
+  gap: 11px;
+  margin-top: 30px;
+}
+.ws-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid #cfcbdd;
+  background: transparent;
+  transition: background 0.3s, border-color 0.3s, transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.6);
+}
+.ws-dot.is-found {
+  background: var(--orange);
+  border-color: var(--orange);
+  transform: scale(1.3);
 }
 
 /* 拖拽中的选区 / 提示动画的划痕 */
@@ -222,6 +258,73 @@ img { display: block; max-width: 100%; }
   40% { transform: translateY(-14px); }
   100% { transform: translateY(0); }
 }
+
+/* ================= 全部找齐：庆祝特效 ================= */
+.ws-finale {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  background: rgba(247, 246, 250, 0.86);
+  animation: finaleIn 0.28s ease;
+}
+.ws-finale.is-out { animation: finaleOut 0.5s ease forwards; }
+@keyframes finaleIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes finaleOut { to { opacity: 0; } }
+
+.ws-finale__word {
+  font-family: var(--font-en);
+  font-size: clamp(38px, 9.5vw, 120px);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--purple);
+  animation: wordIn 0.62s cubic-bezier(0.2, 0.9, 0.3, 1.7) 0.35s backwards;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+@keyframes wordIn {
+  0% { transform: scale(0.35) translateY(34px); opacity: 0; letter-spacing: 0.32em; }
+  70% { transform: scale(1.06) translateY(0); opacity: 1; }
+  100% { transform: none; opacity: 1; letter-spacing: 0.05em; }
+}
+.ws-finale.is-out .ws-finale__word { animation: wordOut 0.5s ease forwards; }
+@keyframes wordOut {
+  to { transform: translateY(-46px) scale(1.08); opacity: 0; }
+}
+
+.ws-star {
+  position: absolute;
+  display: block;
+  animation: starPop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.7) backwards;
+}
+.ws-star svg { display: block; width: 100%; height: 100%; }
+@keyframes starPop {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  70% { transform: scale(1.18) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.ws-finale.is-out .ws-star { animation: starOut 0.45s ease forwards; }
+@keyframes starOut { to { transform: scale(0.3) rotate(30deg); opacity: 0; } }
+
+.ws-cat {
+  position: absolute;
+  bottom: 7%;
+  display: block;
+  animation: catUp 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.5) backwards;
+}
+.ws-cat svg { display: block; width: 100%; height: auto; animation: catBob 1.15s ease-in-out 0.9s infinite; }
+@keyframes catUp {
+  0% { transform: translate(-50%, 70px) scale(0.55); opacity: 0; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+@keyframes catBob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-9px) rotate(3deg); }
+}
+.ws-finale.is-out .ws-cat { animation: catOut 0.45s ease forwards; }
+@keyframes catOut { to { transform: translate(-50%, 40px) scale(0.7); opacity: 0; } }
 
 /* ================= About Me ================= */
 .about { background: var(--cream); padding: 96px 0; }
@@ -409,6 +512,9 @@ img { display: block; max-width: 100%; }
 .reveal { opacity: 0; transform: translateY(26px); }
 .reveal.is-in { opacity: 1; transform: none; }
 
+/* 锚点滚动时避开固定导航 */
+section[id] { scroll-margin-top: 92px; }
+
 /* ================= 响应式 ================= */
 @media (max-width: 900px) {
   .nav__inner { padding: 16px 24px; }
@@ -432,8 +538,10 @@ img { display: block; max-width: 100%; }
   .nav__dropdown {
     position: static;
     min-width: 0;
-    padding: 4px 0 6px 12px;
-    background: transparent;
+    margin: 4px 0 6px;
+    padding: 6px;
+    background: rgba(116, 105, 182, 0.07);
+    border-radius: 12px;
     box-shadow: none;
     opacity: 1;
     visibility: visible;
@@ -442,7 +550,13 @@ img { display: block; max-width: 100%; }
   }
   .nav__dropdown::before { display: none; }
   .nav__item:hover .nav__dropdown { display: none; }
-  .has-dropdown.is-open .nav__dropdown { display: block; }
+  /* 必须显式清掉桌面端的 translateX(-50%)，否则面板会被推出白色菜单框 */
+  .has-dropdown.is-open .nav__dropdown {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
 
   .hero { min-height: 82vh; padding: 100px 0 32px; }
   .about { padding: 64px 0; }

@@ -110,6 +110,68 @@ function bandGeom(cells) {
   return { x: mx - len / 2, y: my - BAND / 2, w: len, h: BAND, rot: ang, cx: mx, cy: my };
 }
 
+/* ---- 完成特效用的图形 ---- */
+const STAR_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3 6.6 7.2.7-5.4 4.8 1.5 7.1L12 17.2 5.7 20.8l1.5-7.1L1.8 8.9 9 8.2z" fill="currentColor"/></svg>`;
+
+const CAT_SVG = `<svg viewBox="0 0 72 72" aria-hidden="true">
+  <path d="M12 32 L15 7 L35 21 Z" fill="#FFCF95"/>
+  <path d="M60 32 L57 7 L37 21 Z" fill="#FFCF95"/>
+  <path d="M17 28 L19 13 L30 22 Z" fill="#F3B3C4"/>
+  <path d="M55 28 L53 13 L42 22 Z" fill="#F3B3C4"/>
+  <ellipse cx="36" cy="42" rx="26" ry="22" fill="#FFCF95"/>
+  <ellipse cx="24.5" cy="38" rx="3.4" ry="4.2" fill="#333D6D"/>
+  <ellipse cx="47.5" cy="38" rx="3.4" ry="4.2" fill="#333D6D"/>
+  <circle cx="25.7" cy="36.3" r="1.2" fill="#fff"/>
+  <circle cx="48.7" cy="36.3" r="1.2" fill="#fff"/>
+  <ellipse cx="17" cy="46" rx="4" ry="2.6" fill="#F3B3C4" opacity="0.75"/>
+  <ellipse cx="55" cy="46" rx="4" ry="2.6" fill="#F3B3C4" opacity="0.75"/>
+  <path d="M32.5 47 L39.5 47 L36 51.5 Z" fill="#E8886B"/>
+  <path d="M36 51.5 Q32.5 56.5 28.5 52.5" fill="none" stroke="#333D6D" stroke-width="2" stroke-linecap="round"/>
+  <path d="M36 51.5 Q39.5 56.5 43.5 52.5" fill="none" stroke="#333D6D" stroke-width="2" stroke-linecap="round"/>
+  <g stroke="#333D6D" stroke-width="1.7" stroke-linecap="round" opacity="0.65">
+    <line x1="9" y1="41" x2="24" y2="43.5"/>
+    <line x1="9" y1="48" x2="24" y2="48.5"/>
+    <line x1="63" y1="41" x2="48" y2="43.5"/>
+    <line x1="63" y1="48" x2="48" y2="48.5"/>
+  </g>
+</svg>`;
+
+/* 全部找齐后的庆祝：WELCOME 跳出 → 小星星 + 小猫 → 滚到 About 板块 */
+function playFinale() {
+  const cfg = SITE.wordsearch.finale || {};
+  if ($("wsFinale")) return;
+  const text = cfg.text || "WELCOME";
+
+  const colors = ["#FFCF95", "#7469B6", "#7EB5EC", "#F3B3C4"];
+  const stars = Array.from({ length: cfg.stars ?? 16 }, (_, i) => {
+    const x = 4 + Math.random() * 92;
+    const y = 8 + Math.random() * 62;
+    const s = 14 + Math.random() * 24;
+    return `<span class="ws-star" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;width:${s.toFixed(0)}px;height:${s.toFixed(0)}px;animation-delay:${(Math.random() * 0.75).toFixed(2)}s;color:${colors[i % colors.length]}">${STAR_SVG}</span>`;
+  }).join("");
+
+  const n = cfg.cats ?? 3;
+  const cats = Array.from({ length: n }, (_, i) => {
+    const x = n === 1 ? 50 : 18 + (i * 64) / (n - 1);
+    const s = 58 + (i % 2) * 18;
+    return `<span class="ws-cat" style="left:${x.toFixed(1)}%;width:${s}px;animation-delay:${(0.4 + i * 0.16).toFixed(2)}s">${CAT_SVG}</span>`;
+  }).join("");
+
+  const el = document.createElement("div");
+  el.className = "ws-finale";
+  el.id = "wsFinale";
+  el.innerHTML = `<div class="ws-finale__stars">${stars}</div><div class="ws-finale__word">${esc(text)}</div><div class="ws-finale__cats">${cats}</div>`;
+  document.body.appendChild(el);
+
+  const hold = cfg.holdMs ?? 1500;
+  setTimeout(() => {
+    el.classList.add("is-out");
+    const target = $(cfg.scrollTo || "about");
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 950 + hold);
+  setTimeout(() => el.remove(), 950 + hold + 520);
+}
+
 function renderWordSearch() {
   const host = $("wordSearch");
   if (!host) return;
@@ -117,13 +179,13 @@ function renderWordSearch() {
   const rows = letters.length;
   const cols = letters[0].length;
 
+  // 答案直接可见：每个单词一开始就画出虚线轮廓，未找到时轮流呼吸
   const foundBands = words
-    .map((w) => {
+    .map((w, i) => {
       const g = bandGeom(w.cells);
-      const inner = `<rect class="ws__hl" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${BAND / 2}" />`;
-      return g.rot
-        ? `<g transform="rotate(${g.rot.toFixed(2)} ${g.cx} ${g.cy})">${inner}</g>`
-        : inner;
+      const rect = `<rect class="ws__hl" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${BAND / 2}" />`;
+      const rot = g.rot ? ` transform="rotate(${g.rot.toFixed(2)} ${g.cx} ${g.cy})"` : "";
+      return `<g class="ws__band" style="animation-delay:${(i * 0.55).toFixed(2)}s"${rot}>${rect}</g>`;
     })
     .join("");
 
@@ -182,6 +244,14 @@ function initWordSearchGame(host, letters, words, rows, cols) {
   let hintRaf = null;
   let idleTimer = null;
 
+  // 进度圆点：找对一个点亮一个
+  const dots = (() => {
+    const host = $("wsProgress");
+    if (!host) return [];
+    host.innerHTML = words.map(() => `<span class="ws-dot"></span>`).join("");
+    return [...host.children];
+  })();
+
   const toUser = (evt) => {
     const m = svg.getScreenCTM();
     if (!m) return null;
@@ -229,13 +299,24 @@ function initWordSearchGame(host, letters, words, rows, cols) {
     if (solved.has(i)) return;
     solved.add(i);
     bandEls[i].classList.add("is-found");
+    bandEls[i].parentElement.classList.add("is-done");
     words[i].cells.forEach(([r, c]) => letterEls[idx(r, c)].classList.add("is-found"));
+    if (dots[i]) dots[i].classList.add("is-found");
     if (solved.size === words.length) {
       svg.classList.add("is-complete");
       letterEls.forEach((el, i) => {
         el.style.animationDelay = `${(i % cols) * 0.04 + Math.floor(i / cols) * 0.03}s`;
       });
       clearTimeout(idleTimer);
+      cancelAnimationFrame(hintRaf);
+      setTimeout(playFinale, 620);
+      return;
+    }
+    // 只剩最后两个时，剩下的答案加快呼吸，推一把让用户做完
+    if (solved.size >= words.length - 2) {
+      bandEls.forEach((el, i) => {
+        if (!solved.has(i)) el.parentElement.classList.add("is-urging");
+      });
     }
   }
 
