@@ -50,6 +50,16 @@ function renderNav() {
     .join("");
 }
 
+// 收起所有展开的项目下拉（except 用来保留刚点开的那个）
+function closeDropdowns(except) {
+  document.querySelectorAll(".has-dropdown.is-open").forEach((item) => {
+    if (item === except) return;
+    item.classList.remove("is-open");
+    const btn = item.querySelector(".nav__link");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  });
+}
+
 function initNav() {
   const nav = document.querySelector(".nav");
   if (!nav) return;
@@ -58,18 +68,49 @@ function initNav() {
     const btn = e.target.closest(".nav__link");
     if (btn && btn.parentElement.classList.contains("has-dropdown")) {
       const item = btn.parentElement;
+      closeDropdowns(item); // 同时只允许展开一个
       const open = item.classList.toggle("is-open");
       btn.setAttribute("aria-expanded", String(open));
       return;
     }
-    if (e.target.closest(".nav__drop-link")) nav.classList.remove("is-open");
+    if (e.target.closest(".nav__drop-link")) {
+      nav.classList.remove("is-open");
+      closeDropdowns();
+    }
   });
 
   $("navBurger").addEventListener("click", () => nav.classList.toggle("is-open"));
 
-  const onScroll = () => nav.classList.toggle("is-solid", window.scrollY > 40);
+  // 点击页面其他地方：收起下拉，手机端连整个菜单一起收起
+  document.addEventListener("click", (e) => {
+    if (!nav.contains(e.target)) nav.classList.remove("is-open");
+    closeDropdowns(e.target.closest(".has-dropdown"));
+  });
+
+  const onScroll = () => {
+    nav.classList.toggle("is-solid", window.scrollY > 40);
+    // 手机端：上下滑动时收起菜单和下拉
+    if (window.innerWidth <= 900 && nav.classList.contains("is-open")) {
+      nav.classList.remove("is-open");
+      closeDropdowns();
+    }
+  };
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    nav.classList.remove("is-open");
+    closeDropdowns();
+  });
+
+  // 窗口变宽回到桌面布局时清理残留状态
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 900) {
+      nav.classList.remove("is-open");
+      closeDropdowns();
+    }
+  });
 }
 
 /* ============================================================
