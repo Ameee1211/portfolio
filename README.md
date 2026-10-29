@@ -108,11 +108,15 @@ git push
 
 | 文件 | 用在哪 |
 |---|---|
-| `int-crochet.jpg` | 钩织卡主图（帽子 / 围巾 / 包 三图拼贴） |
-| `work-hat.jpg` `work-scarf.jpg` `work-bag.jpg` | 钩织卡展开后的三张作品图 |
-| `int-games.jpg` | 游戏卡主图（生成的废弃高架场景，无水印） |
+| `int-crochet.jpg` | 钩织卡主图（用三张实拍做参考生成的棚拍静物，不含人物） |
+| `work-hat.jpg` `work-scarf.jpg` `work-bag.jpg` | 钩织卡展开后的三张作品图（同样由实拍生成的单品棚拍） |
+| `int-games.jpg` | 游戏卡主图（HTML 搭的商店页 1600×1200 截图） |
+| `int-games-open.jpg` | 游戏卡展开态用的竖版商店页（`imageOpen` 字段，避免窄列裁断文字） |
 | `int-diving.jpg` | 游泳潜水卡主图（用户提供的潜水照，4:3 裁切） |
 | `int-underwater.jpg` | 游泳卡展开后的水下配图（从视频抽帧提亮 + 转蓝） |
+
+> 兴趣卡片支持 `imageOpen`：填了就在展开态换图（游戏卡用的就是竖版截图）。
+> 生成图（AI）**右下角自带水印**，处理时一律裁掉底部 92px 或裁掉右侧，别直接贴。
 
 > 想换照片：把文件放进 `assets/img/`，然后把对应条目的 `image` 改成
 > `"assets/img/文件名.jpg"`，占位图标会自动换掉。

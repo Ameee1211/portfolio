@@ -272,7 +272,7 @@ const SITE = {
           kicker: "Hats, scarves, bags",
           text:
             "I make things I can actually wear out of the house: hats, scarves, bags. Practical objects are unforgiving — yarn weight, gauge, the size of a head — so you commit to the rules first, then break exactly one on purpose. That is how I treat a design system.",
-          image: "assets/img/int-crochet.jpg",
+          image: "assets/img/int-crochet.jpg?v=2",
           tint: "#FFE9C7",
           icon: "yarn",
           more: {
@@ -281,9 +281,9 @@ const SITE = {
               "If it doesn't get worn, it doesn't get finished. All three of these started on one hook and a single ball of yarn.",
             type: "gallery",
             items: [
-              { label: "My hat", meta: "Cat-ear beanie · mohair", image: "assets/img/work-hat.jpg", tint: "#FFE9C7", icon: "yarn" },
-              { label: "My scarf", meta: "Chunky knit · variegated wool", image: "assets/img/work-scarf.jpg", tint: "#D2FFF1", icon: "yarn" },
-              { label: "My bag", meta: "Granny-square tote · cotton", image: "assets/img/work-bag.jpg", tint: "#DCE9FB", icon: "yarn" },
+              { label: "My hat", meta: "Cat-ear beanie · mohair", image: "assets/img/work-hat.jpg?v=2", tint: "#FFE9C7", icon: "yarn" },
+              { label: "My scarf", meta: "Chunky knit · variegated wool", image: "assets/img/work-scarf.jpg?v=2", tint: "#D2FFF1", icon: "yarn" },
+              { label: "My bag", meta: "Granny-square tote · cotton", image: "assets/img/work-bag.jpg?v=2", tint: "#DCE9FB", icon: "yarn" },
             ],
           },
         },
@@ -292,7 +292,9 @@ const SITE = {
           kicker: "Worlds I get lost in",
           text:
             "Games are interaction design turned up loud. A space that tells you where to go without a marker, a resource so scarce you check your inventory twice, a silence that does the emotional work a soundtrack usually does — I borrow that restraint for interfaces.",
-          image: "assets/img/int-games.jpg",
+          image: "assets/img/int-games.jpg?v=2",
+          // 展开后窄列改用竖版商店页，避免把界面文字裁断
+          imageOpen: "assets/img/int-games-open.jpg?v=2",
           tint: "#D2FFF1",
           icon: "gamepad",
           more: {

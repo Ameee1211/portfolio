@@ -374,10 +374,21 @@ function abRenderInterests() {
   const cards = s.items
     .map((it, i) => {
       const media = it.image
-        ? `<img src="${esc(it.image)}" alt="${esc(it.title)}" loading="lazy" />`
+        ? `<img class="ab-int__img" src="${esc(it.image)}" alt="${esc(it.title)}" loading="lazy" />${
+            it.imageOpen
+              ? `<img class="ab-int__img ab-int__img--open" src="${esc(it.imageOpen)}" alt="" loading="lazy" />`
+              : ""
+          }`
         : INT_ICONS[it.icon] || "";
+      const cardVars = [
+        `--tint:${esc(it.tint)}`,
+        it.fit ? `--open-fit:${esc(it.fit)}` : "",
+        it.bg ? `--open-bg:${esc(it.bg)}` : "",
+        it.pad ? `--open-pad:${esc(it.pad)}` : "",
+        it.pos ? `--open-pos:${esc(it.pos)}` : "",
+      ].filter(Boolean).join(";");
       return `
-      <article class="ab-int__card reveal" data-int="${i}" style="--tint:${esc(it.tint)}">
+      <article class="ab-int__card reveal" data-int="${i}" style="${cardVars}">
         <div class="ab-int__media">${media}</div>
         <div class="ab-int__right">
           <div class="ab-int__body">
