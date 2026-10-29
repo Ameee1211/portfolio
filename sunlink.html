@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=32" />
-  <link rel="stylesheet" href="css/sunlink.css?v=32" />
+  <link rel="stylesheet" href="css/style.css?v=33" />
+  <link rel="stylesheet" href="css/sunlink.css?v=33" />
 </head>
 <body class="sl-page">
 
@@ -25,49 +25,61 @@
     </div>
   </header>
 
-  <main>
+  <main id="slMain">
 
     <!-- ================= 首屏 ================= -->
-    <section class="sl-hero">
-      <div class="sl-wrap">
-        <p class="sl-hero__kicker">Project 01 · Product &amp; interface design</p>
-        <h1 class="sl-hero__title">SunLink<br />Neighbours</h1>
-        <p class="sl-hero__lede">
-          A wall-mounted hub that lets a suburban street share surplus solar —
-          designed for <em>the moment your battery reaches 100%</em>.
-        </p>
+    <section class="sl-hero" id="top">
+      <div class="sl-wrap sl-hero__grid">
 
-        <div class="sl-meta">
-          <div>
-            <div class="sl-meta__k">Role</div>
-            <div class="sl-meta__v">Interface design<br /><span>3D modelling &amp; physical prototype</span></div>
-          </div>
-          <div>
-            <div class="sl-meta__k">Team of four</div>
-            <div class="sl-meta__v">Tong Zhang<br /><span>Team Member One, Two &amp; Three — interviews and usability testing</span></div>
-          </div>
-          <div>
-            <div class="sl-meta__k">Course</div>
-            <div class="sl-meta__v">Interactive Design<br /><span>The University of Sydney, 2023</span></div>
-          </div>
-          <div>
-            <div class="sl-meta__k">Tools</div>
-            <div class="sl-meta__v">Adobe XD<br /><span>Rhino · Ultimaker · paper &amp; cardboard</span></div>
+        <div class="sl-hero__copy">
+          <p class="sl-hero__kicker">Project 01 · Product &amp; interface design</p>
+          <h1 class="sl-hero__title">SunLink<br />Neighbours</h1>
+          <p class="sl-hero__lede">
+            A wall-mounted hub that lets a street move surplus solar from the houses
+            that have <em>more than they can store</em> to the houses that are
+            <em>running short</em>.
+          </p>
+
+          <p class="sl-hero__spec">11-inch · 1080p · multi-touch · wall-mounted</p>
+
+          <div class="sl-meta">
+            <div>
+              <div class="sl-meta__k">Role</div>
+              <div class="sl-meta__v">Interface design<br /><span>3D modelling &amp; physical prototype</span></div>
+            </div>
+            <div>
+              <div class="sl-meta__k">Team</div>
+              <div class="sl-meta__v">Tong Zhang<br /><span>Y Tang · N Yang · K Luo</span></div>
+            </div>
+            <div>
+              <div class="sl-meta__k">Course</div>
+              <div class="sl-meta__v">Interactive Design Studio<br /><span>The University of Sydney, 2023</span></div>
+            </div>
+            <div>
+              <div class="sl-meta__k">Tools</div>
+              <div class="sl-meta__v">Adobe XD<br /><span>Fusion 360 · 3D printing</span></div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="sl-wide">
-        <div class="sl-shot sl-hero__shot">
-          <img src="assets/img/sl-panel-green.webp" width="1600" height="1029"
-               alt="The SunLink Neighbours wall display in its full-battery state: a battery ring at 100%, a sharing panel, a community map of six households and a power request from a neighbour." />
+        <div class="sl-hero__stage">
+          <div class="sl-stage">
+            <div class="sl-device sl-device--panel">
+              <img src="assets/img/sl-panel-green.webp" width="1600" height="1029"
+                   alt="The SunLink Neighbours control panel: battery ring at 100%, sharing status, generation forecast, a community map of six households and a power request from a neighbour." />
+            </div>
+            <div class="sl-device sl-device--model">
+              <img src="assets/img/sl-model-green.webp" width="1600" height="1029"
+                   alt="The model page: a 3D house with a green battery panel reading 100% and 12 kWh." />
+            </div>
+          </div>
         </div>
+
       </div>
-      <div class="sl-hero__spacer"></div>
     </section>
 
     <!-- ================= 01 概要 ================= -->
-    <section class="sl-sec">
+    <section class="sl-sec" id="overview">
       <div class="sl-wrap">
         <p class="sl-eyebrow">01 — The short version</p>
         <h2 class="sl-h2">A full battery is a small, daily, avoidable waste.</h2>
@@ -105,36 +117,42 @@
     </section>
 
     <!-- ================= 02 问题 ================= -->
-    <section class="sl-sec sl-sec--sky">
+    <section class="sl-sec sl-sec--sky" id="problem">
       <div class="sl-wrap">
         <p class="sl-eyebrow">02 — Why this exists</p>
-        <h2 class="sl-h2">One in four rooftops makes power nobody is home to use.</h2>
+        <h2 class="sl-h2">Energy consumption in residential areas is not optimised in Australia.</h2>
         <p class="sl-p">
-          In 2020 roughly <strong>27% of residential properties in New South Wales</strong> had
-          solar installed, and the number keeps climbing. The generation curve peaks at midday,
-          when the house is empty and the car is at work. Storage fills by mid-afternoon. After
-          that the inverter throttles the panels, and the resource that was supposed to pay for
-          itself quietly leaks away.
+          At the end of 2025 about <strong>39% of dwellings in New South Wales</strong> had
+          rooftop solar — one of the highest rates in the world. Generation peaks at midday, when
+          the house is empty and the car is at work. Storage fills by mid-afternoon. After that the
+          inverter caps output and the surplus is exported for a feed-in tariff worth a fraction of
+          the retail price paid that evening.
+        </p>
+        <p class="sl-p">
+          Batteries are arriving fast — 43,788 were installed in NSW in the five months after the
+          federal rebate began — but a battery does not remove the problem. It only moves the moment
+          when a house runs out of somewhere to put the power.
         </p>
 
         <div class="sl-stats">
           <div class="sl-stat">
-            <div class="sl-stat__n">27<small>%</small></div>
-            <div class="sl-stat__l">of NSW homes had rooftop solar in 2020</div>
+            <div class="sl-stat__n">39<small>%</small></div>
+            <div class="sl-stat__l">of NSW dwellings had rooftop solar at the end of 2025</div>
+          </div>
+          <div class="sl-stat">
+            <div class="sl-stat__n">43,788</div>
+            <div class="sl-stat__l">home batteries installed in NSW, July–November 2025</div>
           </div>
           <div class="sl-stat">
             <div class="sl-stat__n">12<small>kWh</small></div>
-            <div class="sl-stat__l">the battery capacity this design is built around</div>
+            <div class="sl-stat__l">the battery capacity this interface is designed around</div>
           </div>
           <div class="sl-stat">
             <div class="sl-stat__n">6</div>
             <div class="sl-stat__l">households in the street we modelled</div>
           </div>
-          <div class="sl-stat">
-            <div class="sl-stat__n">0</div>
-            <div class="sl-stat__l">ways a neighbour could ask you for power, before this</div>
-          </div>
         </div>
+        <p class="sl-src">Sources: Australian PV Institute / SolarQuotes (Nov 2025); Clean Energy Regulator.</p>
 
         <!-- 余电去向示意 -->
         <div class="sl-surplus">
@@ -164,7 +182,7 @@
     </section>
 
     <!-- ================= 03 概念选择 ================= -->
-    <section class="sl-sec">
+    <section class="sl-sec" id="concepts">
       <div class="sl-wrap">
         <p class="sl-eyebrow">03 — Choosing a direction</p>
         <h2 class="sl-h2">Three concepts, put in front of users before anything was designed.</h2>
@@ -221,15 +239,15 @@
     </section>
 
     <!-- ================= 04 三个状态 ================= -->
-    <section class="sl-sec sl-sec--sky">
+    <section class="sl-sec sl-sec--sky" id="states">
       <div class="sl-wrap">
         <p class="sl-eyebrow">04 — The logic under the interface</p>
         <h2 class="sl-h2">One rule decides everything: how much charge is left.</h2>
         <p class="sl-p">
           The entire product hangs on three states. Colour is not styling here — it is
           <strong>permission</strong>. A green battery means you may give power away. A blue one
-          means you may neither give nor ask. A red one is the only state in which you are allowed
-          to ask someone else. Switch between them below.
+          means you may neither give nor ask. A red one is the only state in which you may ask
+          someone else. Switch between them below.
         </p>
 
         <div class="sl-tabs" role="tablist" aria-label="Battery states">
@@ -256,16 +274,16 @@
               </ul>
             </div>
             <div class="sl-state__shots">
-              <figure class="sl-figure">
-                <img src="assets/img/sl-model-green.webp" width="1600" height="1029" loading="lazy"
-                     alt="Model page, full state: a 3D house with a green battery panel reading 100% and 12 kWh." />
-                <figcaption>Model page — the house itself is the battery indicator</figcaption>
-              </figure>
-              <figure class="sl-figure">
-                <img src="assets/img/sl-panel-green.webp" width="1600" height="1029" loading="lazy"
-                     alt="Control panel, full state: battery ring at 100%, generation forecast, community map and a pending request from Amanda." />
-                <figcaption>Control panel — battery, sharing, forecast, community, monthly data</figcaption>
-              </figure>
+              <div class="sl-stage sl-stage--state">
+                <div class="sl-device sl-device--panel">
+                  <img src="assets/img/sl-panel-green.webp" width="1600" height="1029" loading="lazy"
+                       alt="Control panel, full state: battery ring at 100%, forecast, community map and a pending request from Amanda." />
+                </div>
+                <div class="sl-device sl-device--model">
+                  <img src="assets/img/sl-model-green.webp" width="1600" height="1029" loading="lazy"
+                       alt="Model page, full state: a 3D house with a green battery panel reading 100% and 12 kWh." />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -288,16 +306,16 @@
               </ul>
             </div>
             <div class="sl-state__shots">
-              <figure class="sl-figure">
-                <img src="assets/img/sl-model-blue.webp" width="1600" height="1029" loading="lazy"
-                     alt="Model page, balanced state: the battery panel is blue at 72% and 8.6 kWh." />
-                <figcaption>Model page — the same house, blue battery</figcaption>
-              </figure>
-              <figure class="sl-figure">
-                <img src="assets/img/sl-panel-blue.webp" width="1600" height="1029" loading="lazy"
-                     alt="Control panel, balanced state: battery ring at 72% in blue, sharing panel greyed out." />
-                <figcaption>Control panel — sharing greyed out for the rest of the afternoon</figcaption>
-              </figure>
+              <div class="sl-stage sl-stage--state">
+                <div class="sl-device sl-device--panel">
+                  <img src="assets/img/sl-panel-blue.webp" width="1600" height="1029" loading="lazy"
+                       alt="Control panel, balanced state: battery ring at 72% in blue, sharing panel greyed out." />
+                </div>
+                <div class="sl-device sl-device--model">
+                  <img src="assets/img/sl-model-blue.webp" width="1600" height="1029" loading="lazy"
+                       alt="Model page, balanced state: the battery panel is blue at 72% and 8.6 kWh." />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -320,30 +338,35 @@
               </ul>
             </div>
             <div class="sl-state__shots">
-              <figure class="sl-figure">
-                <img src="assets/img/sl-model-red.webp" width="1600" height="1029" loading="lazy"
-                     alt="Model page, insufficient state: the battery panel is red at 16% and 1.8 kWh." />
-                <figcaption>Model page — red battery, the visual alarm</figcaption>
-              </figure>
-              <figure class="sl-figure">
-                <img src="assets/img/sl-panel-red.webp" width="1600" height="1029" loading="lazy"
-                     alt="Control panel, insufficient state: battery ring at 16% in red and a Send a power request prompt." />
-                <figcaption>Control panel — the request prompt replaces incoming requests</figcaption>
-              </figure>
+              <div class="sl-stage sl-stage--state">
+                <div class="sl-device sl-device--panel">
+                  <img src="assets/img/sl-panel-red.webp" width="1600" height="1029" loading="lazy"
+                       alt="Control panel, insufficient state: battery ring at 16% in red and a Send a power request prompt." />
+                </div>
+                <div class="sl-device sl-device--model">
+                  <img src="assets/img/sl-model-red.webp" width="1600" height="1029" loading="lazy"
+                       alt="Model page, insufficient state: the battery panel is red at 16% and 1.8 kWh." />
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="sl-lawbox">
           <div class="sl-law">
+            <b>Share only at 100%</b>
+            Nothing leaves your battery until it is completely full. Being generous is never
+            allowed to cost you the power you already have.
+          </div>
+          <div class="sl-law">
+            <b>Ask only below 20%</b>
+            Under 20% the button changes direction: you are the one asking the street for help,
+            and only houses marked green can answer.
+          </div>
+          <div class="sl-law">
             <b>Ceiling at 80%</b>
             Sharing stops automatically once the receiving house reaches 80%, before it becomes
             dependent on you.
-          </div>
-          <div class="sl-law">
-            <b>Floor at 20%</b>
-            Your own battery is never drained below 20% to help someone else. The system refuses
-            on your behalf.
           </div>
           <div class="sl-law">
             <b>Auto-Share</b>
@@ -355,7 +378,7 @@
     </section>
 
     <!-- ================= 05 怎么用 ================= -->
-    <section class="sl-sec">
+    <section class="sl-sec" id="usage">
       <div class="sl-wrap">
         <p class="sl-eyebrow">05 — Four seconds, once a day</p>
         <h2 class="sl-h2">What actually happens, from the wall to the neighbour's meter.</h2>
@@ -417,7 +440,7 @@
     </section>
 
     <!-- ================= 06 可玩原型 ================= -->
-    <section class="sl-sec sl-sec--ink">
+    <section class="sl-sec sl-sec--ink" id="prototype">
       <div class="sl-wrap">
         <p class="sl-eyebrow">06 — The prototype is the argument</p>
         <h2 class="sl-h2" style="color:#fff">Don't take the screenshots' word for it. Click it.</h2>
@@ -429,9 +452,9 @@
         </p>
 
         <div class="sl-tabs" role="tablist" aria-label="Prototype states">
-          <button class="sl-tab" role="tab" data-proto="green" aria-selected="true"><i></i>Full · green</button>
-          <button class="sl-tab" role="tab" data-proto="blue" aria-selected="false"><i></i>Balanced · blue</button>
-          <button class="sl-tab" role="tab" data-proto="red" aria-selected="false"><i></i>Insufficient · red</button>
+          <button class="sl-tab" data-proto="green" role="tab" aria-selected="true"><i></i>Full · green</button>
+          <button class="sl-tab" data-proto="blue" role="tab" aria-selected="false"><i></i>Balanced · blue</button>
+          <button class="sl-tab" data-proto="red" role="tab" aria-selected="false"><i></i>Insufficient · red</button>
         </div>
 
         <div class="sl-embed" id="slEmbed">
@@ -455,7 +478,7 @@
     </section>
 
     <!-- ================= 07 电路 ================= -->
-    <section class="sl-sec">
+    <section class="sl-sec" id="circuit">
       <div class="sl-wrap">
         <p class="sl-eyebrow">07 — Why it is a device and not a feature</p>
         <h2 class="sl-h2">Sharing power is a switch, not a button.</h2>
@@ -556,7 +579,7 @@
     </section>
 
     <!-- ================= 08 3D 社区 ================= -->
-    <section class="sl-sec sl-sec--ink">
+    <section class="sl-sec sl-sec--ink" id="model">
       <div class="sl-wrap">
         <p class="sl-eyebrow">08 — The street you can turn around</p>
         <h2 class="sl-h2" style="color:#fff">Six houses, one shared cable, and a hub in the middle.</h2>
@@ -573,7 +596,7 @@
             <span class="sl-3d__title">SunLink Neighbours · street model</span>
             <div class="sl-3d__states" role="group" aria-label="Model state">
               <button class="sl-3d__btn" data-mode="share" aria-pressed="true">Sharing</button>
-              <button class="sl-3d__btn" data-mode="idle" aria-pressed="false">Idle</button>
+              <button class="sl-3d__btn" data-mode="balanced" aria-pressed="false">Balanced</button>
               <button class="sl-3d__btn" data-mode="receive" aria-pressed="false">Receiving</button>
             </div>
           </div>
@@ -589,7 +612,7 @@
         <div class="sl-lawbox" style="margin-top:26px">
           <div class="sl-law" style="background:rgba(255,255,255,.06);border-left-color:#8fc4f2;color:#b9c8db">
             <b style="color:#fff">6 households</b>
-            Printed in PLA on an Ultimaker, one house per group member, all the same model.
+            Printed in PLA, one house per group member, all the same model.
           </div>
           <div class="sl-law" style="background:rgba(255,255,255,.06);border-left-color:#8fc4f2;color:#b9c8db">
             <b style="color:#fff">The black cable</b>
@@ -606,7 +629,7 @@
     </section>
 
     <!-- ================= 09 实物 ================= -->
-    <section class="sl-sec">
+    <section class="sl-sec" id="physical">
       <div class="sl-wrap">
         <p class="sl-eyebrow">09 — It existed outside the screen</p>
         <h2 class="sl-h2">We built the street twice: once in cardboard, once in plastic.</h2>
@@ -614,10 +637,18 @@
           The first street was six paper houses on a cardboard board, wired with red and green
           tape — red for the parallel circuit, green for the two houses actually exchanging power.
           It was fast, cheap and good enough to test whether the idea made sense at all. The second
-          was the printed version above, made once the concept had earned the effort.
+          was the printed version on the right, made once the concept had earned the effort.
         </p>
 
         <div class="sl-gallery">
+          <figure>
+            <img src="assets/img/sl-model-cardboard.jpg" width="636" height="477" loading="lazy"
+                 alt="The cardboard model: five black paper houses and one copper-coloured house connected with red and green tape on a board." />
+            <figcaption>
+              The cardboard model: copper is the person being tested, red is the parallel circuit,
+              green is the power actually moving.
+            </figcaption>
+          </figure>
           <figure>
             <img src="assets/img/sl-model-print.jpg" width="1035" height="771" loading="lazy"
                  alt="The 3D-printed model: six white houses arranged in a ring on cardboard, each connected by twisted black cord to a dark cylindrical hub in the centre." />
@@ -626,20 +657,12 @@
               arrangement as the community map on screen.
             </figcaption>
           </figure>
-          <figure>
-            <img src="assets/img/sl-model-cardboard.jpg" width="636" height="477" loading="lazy"
-                 alt="The earlier cardboard model: five black paper houses and one copper-coloured house connected with red and green tape lines on a board." />
-            <figcaption>
-              The cardboard model: copper is the person being tested, red is the parallel circuit,
-              green is the power actually moving.
-            </figcaption>
-          </figure>
         </div>
       </div>
     </section>
 
     <!-- ================= 10 迭代 ================= -->
-    <section class="sl-sec sl-sec--sky">
+    <section class="sl-sec sl-sec--sky" id="iterations">
       <div class="sl-wrap">
         <p class="sl-eyebrow">10 — Five rounds</p>
         <h2 class="sl-h2">The useful part was not the version that worked.</h2>
@@ -721,67 +744,126 @@
       </div>
     </section>
 
-    <!-- ================= 11 反思 ================= -->
-    <section class="sl-sec">
+    <!-- ================= 11 已知问题与未来版本 ================= -->
+    <section class="sl-sec" id="issues">
       <div class="sl-wrap">
-        <p class="sl-eyebrow">11 — What I would take to the next one</p>
-        <h2 class="sl-h2">Three things this project taught me, in order of how much they hurt.</h2>
+        <p class="sl-eyebrow">11 — Known issues &amp; future versions</p>
+        <h2 class="sl-h2">What this build cannot do yet.</h2>
+        <p class="sl-p">
+          This was a course prototype: the interface and the physical model were built and tested,
+          but the service behind them — accounts, servers, inverters talking to each other — was
+          never built. So the honest list of what would break first is short, and none of it is
+          cosmetic. These are the four the team identified before handover, and what a later version
+          would have to do about each.
+        </p>
 
-        <div class="sl-reflect">
-          <div class="sl-reflect__i">
-            <p class="sl-reflect__q">We designed the screen before we decided where it lived.</p>
-            <p class="sl-reflect__a">
-              Six screens of a phone app were thrown away because nobody had asked what object this
-              should be. The device decides the layout, the viewing distance, the type size and the
-              input — everything downstream. Decide the object first.
+        <div class="sl-issues">
+          <article class="sl-issue">
+            <div class="sl-issue__n">01</div>
+            <h3 class="sl-issue__t">Security</h3>
+            <p class="sl-issue__d">
+              There is no real authentication. Anyone who reaches the device can read a household's
+              consumption history, or answer a request as that household.
+            </p>
+            <p class="sl-issue__fix">
+              <b>Next version:</b> role-based access, multi-factor sign-in for the owner, a separate
+              installer role, and encryption for anything in transit or stored.
+            </p>
+          </article>
+
+          <article class="sl-issue">
+            <div class="sl-issue__n">02</div>
+            <h3 class="sl-issue__t">Connectivity</h3>
+            <p class="sl-issue__d">
+              Sharing depends on a live connection. A weak or insecure network stalls the handshake,
+              and a request that arrives late is a request that was never answered.
+            </p>
+            <p class="sl-issue__fix">
+              <b>Next version:</b> a signal check at installation, a repeater where the wall is far
+              from the router, and a local fallback so the battery still reads correctly offline.
+            </p>
+          </article>
+
+          <article class="sl-issue">
+            <div class="sl-issue__n">03</div>
+            <h3 class="sl-issue__t">Hardware compatibility</h3>
+            <p class="sl-issue__d">
+              Panels, batteries and inverters come from different manufacturers. Anything outside
+              the standards we tested against simply would not appear on the screen.
+            </p>
+            <p class="sl-issue__fix">
+              <b>Next version:</b> a published compatibility list, testing against the common
+              inverter protocols, and a clear installation guide instead of a support ticket.
+            </p>
+          </article>
+
+          <article class="sl-issue">
+            <div class="sl-issue__n">04</div>
+            <h3 class="sl-issue__t">Accessibility</h3>
+            <p class="sl-issue__d">
+              The interface assumes sight, touch precision and colour recognition — three
+              assumptions that exclude people the street would otherwise include.
+            </p>
+            <p class="sl-issue__fix">
+              <b>Next version:</b> state labels in words as well as colour, larger touch targets, a
+              screen-reader pass, and testing with people who use assistive technology.
+            </p>
+          </article>
+        </div>
+
+        <div class="sl-outlook">
+          <div class="sl-outlook__main">
+            <div class="sl-outlook__k">Future versions</div>
+            <h3 class="sl-outlook__t">From one street to any street</h3>
+            <p class="sl-outlook__d">
+              The version we tested only works because every house runs the same hardware. The
+              longer-term direction is interoperability: a layer that keeps the three rules — give
+              at 100%, ask below 20%, stop at 80% — while the equipment underneath changes.
             </p>
           </div>
-          <div class="sl-reflect__i">
-            <p class="sl-reflect__q">A colour that needs explaining is not doing its job.</p>
-            <p class="sl-reflect__a">
-              Green, blue and red carried the entire permission model, and testing showed they
-              carried nothing. Label the state in words, then let the colour agree with it. The
-              drop from 74 to 66.6 was mostly this.
-            </p>
-          </div>
-          <div class="sl-reflect__i">
-            <p class="sl-reflect__q">Five rounds beat one round of polish.</p>
-            <p class="sl-reflect__a">
-              Every real improvement came from watching someone use a rough version, not from
-              making a rough version look better. The cardboard model taught more about the product
-              than any screen did.
-            </p>
-          </div>
+          <ul class="sl-outlook__list">
+            <li>Battery and inverter protocol coverage</li>
+            <li>Grouping several streets together</li>
+            <li>Offline-first caching of the last known state</li>
+            <li>A setup app for the installer</li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <!-- ================= 下一个 ================= -->
-    <section class="sl-sec sl-sec--tight">
+    <!-- ================= 页脚：小字 + 下一个项目 ================= -->
+    <div class="sl-endnote">
       <div class="sl-wrap">
-        <div class="sl-next">
-          <div>
-            <div class="sl-next__k">Next project</div>
-            <a class="sl-next__t" href="busstop.html">
-              Auto-Signaled Bus Stop
-              <svg width="30" height="16" viewBox="0 0 30 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 8h26M20 1l7 7-7 7"/></svg>
-            </a>
-          </div>
-          <div class="sl-next__k" style="margin:0">Project 02 of 04</div>
-        </div>
+        <span>Interactive Design Studio · The University of Sydney · 2023 · team of four</span>
+        <span>Teammates' names abbreviated at their request</span>
+      </div>
+    </div>
 
-        <div class="sl-foot">
-          <span>Interactive Design · The University of Sydney · 2023 · team of four</span>
-          <span>Teammates' names withheld at their request</span>
-        </div>
+    <section class="sl-nextwrap">
+      <div class="sl-wrap">
+        <a class="sl-nextcard" href="busstop.html">
+          <div class="sl-nextcard__now">
+            <div class="sl-nextcard__k">You are here</div>
+            <div class="sl-nextcard__now-t">SunLink Neighbours</div>
+            <div class="sl-nextcard__now-d">Project 01 of 04 · Interface design, 3D &amp; physical prototype</div>
+          </div>
+          <div class="sl-nextcard__next">
+            <div class="sl-nextcard__k">Next project</div>
+            <div class="sl-nextcard__next-t">
+              Auto-Signaled Bus Stop
+              <svg width="26" height="14" viewBox="0 0 30 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 8h26M20 1l7 7-7 7"/></svg>
+            </div>
+            <div class="sl-nextcard__now-d">Project 02 of 04</div>
+          </div>
+        </a>
       </div>
     </section>
 
   </main>
 
-  <script src="js/content.js?v=32"></script>
-  <script src="js/main.js?v=32"></script>
+  <script src="js/content.js?v=33"></script>
+  <script src="js/main.js?v=33"></script>
   <script src="assets/vendor/three.min.js"></script>
-  <script src="js/sunlink.js?v=32"></script>
+  <script src="js/sunlink.js?v=33"></script>
 </body>
 </html>

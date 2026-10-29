@@ -218,16 +218,28 @@ git push
 这个页面**没有走 `content.js`**，文案直接写在 `sunlink.html` 里，因为它是一篇长文，
 每段文字都紧贴自己的版式，拆到数据文件反而更难改。
 
+- 首屏是**左文右图**：左边标题/一句话/元信息，右边两块中控（大的 Control Panel + 小的 Model 叠在左下角）。
+  机身是纯 CSS 画的"银色 3D 外壳"（`css/sunlink.css` 的 `.sl-device`），换图只改 `<img src>`。
+  两栏一直保持到 900px 才堆叠，保证桌面端一屏能看完。
+- 11 个板块（`#overview` … `#issues`）都带左侧索引 + 分页滚动，规则和 About me 页完全一样：
+  一次滚轮 = 一个板块；**板块必须先滚到底（底部留白完整露出），再滚一次才翻页**。
+  索引数据在 `js/sunlink.js` 顶部的 `SL_SECTIONS`，加板块要同时加到那里和 HTML 的 `id`。
 - `css/sunlink.css` 只作用于这一页（所有类名以 `sl-` 开头，不会影响其他页面）
-- `js/sunlink.js` 负责 4 个交互：
+- `js/sunlink.js` 负责这些交互：
   1. **三状态切换**（`04` 节）：按钮 `data-state` → 面板 `data-panel`
   2. **XD 原型懒加载**（`06` 节）：点一下才插 iframe；三个 tab 换 `embed/<id>`；截图先当封面
   3. **电路开关**（`07` 节）：`data-mode="battery|inverter"` 控制虚线走哪条支路 + 拨杆动画
   4. **六户 3D 社区**（`08` 节）：three.js 手写建模（不加载外部模型文件），
      滚到该区域才初始化，可拖拽旋转，三个状态改变电流方向
+     名字标签是 HTML 覆盖层，每帧用 `camera.project()` 定位 —— 投影前**不要**再乘一次
+     `world.matrixWorld`（anchor 里已经含了），否则名字会和房子转速对不上；
+     标签旁的小圆点颜色在 `paint()` 里跟房子的电池灯同色
+  5. **左侧索引 + 分页**（`slInitIndex()` / `slInitPager()`），从 `js/about.js` 移植
 - `assets/vendor/three.min.js` 是本地内嵌的 three.js r160（UMD，650KB）。
   **故意不用 CDN**：国内加载 jsdelivr 可能很慢；也故意不用 ES module，
   这样直接双击 `sunlink.html` 用 `file://` 打开也能跑。
+- 第 11 节「Known Issues & Future Versions」的内容直接来自 DECO3200 最终文档第 78–79 页，
+  第 2 节的数据来自 APVI / Clean Energy Regulator（页面上标了来源），**不要凭印象改数字**。
 - 图片：`sl-panel-{green,blue,red}.webp`（控制面板）、`sl-model-{green,blue,red}.webp`（房屋页）、
   `sl-confirm.webp` / `sl-sharing.webp`（分享流程）、`sl-model-print.jpg` / `sl-model-cardboard.jpg`（实物照片）、
   `sl-iter-1..5.webp`（五代迭代缩略图）。

@@ -129,8 +129,8 @@
   const COPY = {
     share:
       "<b>Sharing.</b> Your house is full, Amanda's is empty — the current leaves your roof, passes through the shared bus in the middle, and arrives at her battery.",
-    idle:
-      "<b>Idle.</b> Nobody is giving and nobody is asking, so the street is quiet — every house is sitting between 21% and 99%, the state the street is in for most of the day.",
+    balanced:
+      "<b>Balanced.</b> Nobody is giving and nobody is asking: every house sits between 21% and 99%, which is where a street spends most of its day.",
     receive:
       "<b>Receiving.</b> Your battery is below 20% and Brady's is full. The current runs the other way along the same cable — the street is symmetric, anyone can be either end of it.",
   };
@@ -298,7 +298,7 @@
       // 太阳能板（贴在 +x 坡面）
       const slope = Math.atan2(ROOF_H, ROOF_W / 2);
       const panel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.028, ROOF_D * 0.6),
+        new THREE.BoxGeometry(0.42, 0.026, ROOF_D * 0.5),
         new THREE.MeshStandardMaterial({
           color: 0x1b2c46,
           roughness: 0.32,
@@ -307,8 +307,13 @@
           emissiveIntensity: 0.4,
         })
       );
-      const nx = Math.sin(slope) * 0.016;
-      panel.position.set(ROOF_W / 4 + nx, HOUSE_H + ROOF_H / 2 + Math.cos(slope) * 0.016, 0);
+      // 沿坡面从屋脊往下 46% 处放，四周留出屋面的边，像真的打印模型
+      const t = 0.46;
+      const cx = (ROOF_W / 2) * t;
+      const cy = ROOF_H * (1 - t);
+      const nx = Math.sin(slope) * 0.015;
+      const ny = Math.cos(slope) * 0.015;
+      panel.position.set(cx + nx, HOUSE_H + cy + ny, 0);
       panel.rotation.z = -slope;
       panel.castShadow = true;
       g.add(panel);
@@ -422,22 +427,25 @@
     });
 
     /* --- 名字标签 --- */
+    const hex = (n) => "#" + n.toString(16).padStart(6, "0");
     const labels = houses.map((h) => {
       const el = document.createElement("span");
       el.className = "sl-label" + (h.data.status === "you" ? " is-you" : "");
-      el.innerHTML = `<i style="background:#${COLORS[h.data.status === "you" ? "you" : h.data.status]
-        .toString(16)
-        .padStart(6, "0")}"></i>${h.data.name}`;
+      el.innerHTML = `<i></i>${h.data.name}`;
       host.appendChild(el);
+      const dot = el.querySelector("i");
+      dot.style.background = hex(COLORS[h.data.status === "you" ? "balanced" : h.data.status]);
+      h.dot = dot;                 // 让 paint() 能同步改小圆点颜色
+      h.hex = hex;
       return { el, house: h };
     });
 
     /* --- 状态 --- */
     const state = { mode: "share", t: 0 };
     const flow = {
-      share: [0, 3],
-      receive: [5, 0],
-      idle: null,
+      share: [0, 3],     // 你家 → Amanda
+      receive: [5, 0],   // Brady → 你家
+      balanced: null,
     };
 
     function paint() {
@@ -451,6 +459,8 @@
         h.screenMat.color.setHex(c);
         h.screenMat.emissive.setHex(c);
         h.screenMat.emissiveIntensity = 0.75;
+        // 名字旁的小圆点必须和房子上的电池灯同色
+        if (h.dot) h.dot.style.background = h.hex(c);
 
         const lit = f && (i === f[0] || i === f[1]);
         h.panelMat.emissive.setHex(lit ? 0x14442d : 0x0a1524);
@@ -526,7 +536,9 @@
     let last = performance.now();
 
     function project(v) {
-      tmp.copy(v).applyMatrix4(world.matrixWorld).project(camera);
+      // v 必须是已经转换到世界坐标的点；再乘 world.matrixWorld 会叠加一次旋转，
+      // 名字就会和房子转速对不上（旧 bug）
+      tmp.copy(v).project(camera);
       return {
         x: (tmp.x * 0.5 + 0.5) * host.clientWidth,
         y: (-tmp.y * 0.5 + 0.5) * host.clientHeight,
@@ -567,7 +579,8 @@
         });
       });
 
-      // 标签跟随
+      // 标签跟随：先确保矩阵是最新的，再投影
+      world.updateMatrixWorld(true);
       labels.forEach(({ el, house }) => {
         const p = project(house.anchor.clone().applyMatrix4(house.group.matrixWorld));
         el.style.left = p.x + "px";
@@ -587,11 +600,291 @@
     requestAnimationFrame(frame);
   }
 
+  /* ---------- 5. 左侧索引 ---------- */
+  const SL_SECTIONS = [
+    { id: "overview", label: "Short version" },
+    { id: "problem", label: "Why this exists" },
+    { id: "concepts", label: "Direction" },
+    { id: "states", label: "Three states" },
+    { id: "usage", label: "How it's used" },
+    { id: "prototype", label: "Prototype" },
+    { id: "circuit", label: "The circuit" },
+    { id: "model", label: "Street model" },
+    { id: "physical", label: "Physical build" },
+    { id: "iterations", label: "Five rounds" },
+    { id: "issues", label: "Known issues" },
+  ];
+
+  function slRenderIndex() {
+    const rail = document.createElement("nav");
+    rail.className = "sl-index";
+    rail.setAttribute("aria-label", "Section index");
+    rail.innerHTML = SL_SECTIONS.map(
+      (sec, i) => `
+      <a class="sl-index__item" href="#${sec.id}" data-target="${sec.id}" aria-label="${sec.label}">
+        <span class="sl-index__num">${String(i + 1).padStart(2, "0")}</span>
+        <span class="sl-index__dot" aria-hidden="true"></span>
+        <span class="sl-index__label">${sec.label}</span>
+      </a>`
+    ).join("");
+    document.body.appendChild(rail);
+    return rail;
+  }
+
+  function slInitIndex(rail) {
+    if (!rail) return;
+    const hero = document.querySelector(".sl-hero");
+    const items = [...rail.querySelectorAll(".sl-index__item")];
+    const sections = SL_SECTIONS.map((sec) => document.getElementById(sec.id)).filter(Boolean);
+    if (!sections.length) return;
+
+    let raf = null;
+
+    const place = () => {
+      if (window.innerWidth < 1180) {
+        rail.style.left = "";
+        return;
+      }
+      const wraps = [...document.querySelectorAll(".sl-sec .sl-wrap")];
+      if (!wraps.length) return;
+      const contentLeft = Math.min(
+        ...wraps.map(
+          (w) => w.getBoundingClientRect().left + (parseFloat(getComputedStyle(w).paddingLeft) || 0)
+        )
+      );
+      const railW = rail.offsetWidth || 120;
+      const gap = Math.min(78, Math.max(24, contentLeft - railW - 24));
+      rail.style.left = Math.max(8, Math.round(contentLeft - gap - railW)) + "px";
+    };
+
+    const sync = () => {
+      raf = null;
+      const y = window.scrollY;
+      const vh = window.innerHeight;
+      const heroH = hero ? hero.offsetHeight : 0;
+      rail.classList.toggle("is-visible", y > heroH - vh * 0.55);
+
+      const probe = y + vh * 0.42;
+      let active = -1;
+      sections.forEach((sec, i) => {
+        if (sec.offsetTop <= probe) active = i;
+      });
+      items.forEach((it, i) => it.classList.toggle("is-active", i === active));
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(sync);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", place);
+    window.addEventListener("load", place);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+    place();
+    sync();
+
+    items.forEach((it) => {
+      it.addEventListener("click", (e) => {
+        const el = document.getElementById(it.dataset.target);
+        if (!el) return;
+        e.preventDefault();
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        history.replaceState(null, "", "#" + it.dataset.target);
+      });
+    });
+  }
+
+  /* ---------- 6. 分页滚动：一次滚轮 = 下一个板块 ----------
+     规则与 about 页一致：板块必须先滚到底（底部留白完整露出），再滚一次才翻页 */
+  function slInitPager() {
+    const main = document.getElementById("slMain");
+    if (!main) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const nav = document.querySelector(".nav");
+    const hero = main.querySelector(".sl-hero");
+    const sections = SL_SECTIONS.map((sec) => document.getElementById(sec.id)).filter(Boolean);
+    if (sections.length < 2) return;
+
+    const THRESHOLD = 8;
+    const LOCK_MS = 760;
+    const GESTURE_GAP = 90;
+    const SETTLE_MS = 240;
+    const EDGE = 2;
+
+    let lockUntil = 0;
+    let lockDir = 0;
+    let lockTo = -1;
+    let settleUntil = 0;
+    let acc = 0;
+    let accTimer = 0;
+    let lastWheelAt = 0;
+
+    const navH = () => (nav ? nav.offsetHeight : 0);
+    const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
+    const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const clampY = (v) => Math.max(0, Math.min(v, maxScroll()));
+
+    const indexAt = () => {
+      const probe = window.scrollY + navH() + 4;
+      let idx = -1;
+      sections.forEach((sec, i) => {
+        if (topOf(sec) <= probe) idx = i;
+      });
+      return idx;
+    };
+
+    const go = (top, dir) => {
+      const target = clampY(top);
+      lockUntil = performance.now() + LOCK_MS;
+      lockDir = dir;
+      lockTo = target;
+      window.scrollTo({ top: target, behavior: "smooth" });
+    };
+
+    const jump = (top) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      window.scrollTo(0, clampY(top));
+      root.style.scrollBehavior = prev;
+    };
+
+    const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
+
+    const step = (dir, delta, now, sinceLast) => {
+      const y = window.scrollY;
+      const idx = indexAt();
+      const cur = idx >= 0 ? sections[idx] : null;
+
+      if (dir > 0) {
+        if (cur) {
+          const endY = endOf(cur);
+          if (y < endY - EDGE) {
+            const target = Math.min(y + delta, endY);
+            jump(target);
+            if (target >= endY - 1) settleUntil = now + SETTLE_MS;
+            return true;
+          }
+          if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+        }
+        const next = sections[idx + 1];
+        if (!next) return false;
+        const target = topOf(next);
+        if (Math.abs(target - y) < 4) return false;
+        go(target, 1);
+        return true;
+      }
+
+      if (cur) {
+        const curTop = topOf(cur);
+        if (y > curTop + EDGE) {
+          const target = Math.max(y - delta, curTop);
+          jump(target);
+          if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
+          return true;
+        }
+        if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+      }
+      const prev = idx > 0 ? sections[idx - 1] : hero;
+      if (!prev) return false;
+      const prevTop = topOf(prev);
+      const prevEnd = endOf(prev);
+      const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
+      if (Math.abs(target - y) < 4) return false;
+      go(target, -1);
+      return true;
+    };
+
+    const inScroller = (el) => {
+      while (el && el !== document.body && el !== document.documentElement) {
+        const oy = getComputedStyle(el).overflowY;
+        if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 4) return true;
+        el = el.parentElement;
+      }
+      return false;
+    };
+
+    const onWheel = (e) => {
+      if (e.ctrlKey) return;
+      if (e.target instanceof Element && inScroller(e.target)) return;
+
+      const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      if (!d) return;
+
+      const now = performance.now();
+      const sinceLast = lastWheelAt ? now - lastWheelAt : 1e9;
+      lastWheelAt = now;
+
+      if (now < lockUntil) {
+        if (Math.sign(d) !== lockDir) {
+          lockUntil = 0;
+          acc = 0;
+          return;
+        }
+        if (Math.abs(window.scrollY - lockTo) > 2) {
+          e.preventDefault();
+          return;
+        }
+        lockUntil = 0;
+      }
+
+      acc += d;
+      clearTimeout(accTimer);
+      accTimer = setTimeout(() => (acc = 0), 200);
+
+      if (Math.abs(acc) < THRESHOLD) {
+        e.preventDefault();
+        return;
+      }
+
+      const delta = Math.abs(acc);
+      const dir = acc > 0 ? 1 : -1;
+      acc = 0;
+      if (step(dir, delta, now, sinceLast)) e.preventDefault();
+    };
+
+    const onKey = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target && e.target.tagName) || "";
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+
+      let dir = 0;
+      if (e.key === "PageDown" || e.key === " " || e.key === "ArrowDown") dir = 1;
+      else if (e.key === "PageUp" || e.key === "ArrowUp") dir = -1;
+      else if (e.key === "Home") {
+        e.preventDefault();
+        go(0, -1);
+        return;
+      } else if (e.key === "End") {
+        e.preventDefault();
+        go(maxScroll(), 1);
+        return;
+      }
+      if (!dir) return;
+      if (performance.now() < lockUntil) {
+        if (Math.abs(window.scrollY - lockTo) > 2) {
+          e.preventDefault();
+          return;
+        }
+        lockUntil = 0;
+      }
+      if (step(dir, window.innerHeight * 0.85, performance.now(), 1e9)) e.preventDefault();
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keydown", onKey);
+  }
+
   /* ---------- 启动 ---------- */
   function boot() {
     initStateTabs();
     initPrototype();
     initCircuit();
+    slInitIndex(slRenderIndex());
+    slInitPager();
 
     const el = document.getElementById("sl3dCanvas");
     if (!el) return;
