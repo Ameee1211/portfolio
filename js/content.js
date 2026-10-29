@@ -74,12 +74,12 @@ const SITE = {
         { text: "DESIGN", cells: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]] },
       ],
     },
-    // 全部找齐后的庆祝特效：WELCOME 字样 + 小星星 + 小猫，然后滚到 About 板块
+    // 连对任意一个词就算全部完成：放 WELCOME 字样 + 小星星 + 小猫，然后滚到 About 板块
     finale: {
       text: "WELCOME",
       stars: 16,
       cats: 3,
-      holdMs: 1500,
+      holdMs: 650,
       scrollTo: "about",
     },
   },

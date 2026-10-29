@@ -169,7 +169,6 @@ img { display: block; max-width: 100%; }
 
 /* 答案默认可见：虚线轮廓直接告诉用户单词在哪、往哪个方向连 */
 .ws__band { animation: bandPulse 3.2s ease-in-out infinite; }
-.ws__band.is-urging { animation-duration: 1.15s; }
 .ws__band.is-done { animation: none; opacity: 1; }
 @keyframes bandPulse {
   0%, 100% { opacity: 0.45; }
@@ -259,6 +258,11 @@ img { display: block; max-width: 100%; }
   40% { transform: translateY(-14px); }
   100% { transform: translateY(0); }
 }
+
+/* 玩过之后再回到首页：直接是完成态（不做动画、不自动跳页） */
+.hero.is-ws-done .ws { cursor: default; }
+.hero.is-ws-done .ws__hl { animation: none; }
+.hero.is-ws-done .ws__hit.is-hover { fill: transparent; }
 
 /* ================= 全部找齐：庆祝特效 ================= */
 .ws-finale {

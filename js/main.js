@@ -158,6 +158,25 @@ function wsBand(g, cells) {
   return { x: mx - len / 2, y: my - g.band / 2, w: len, h: g.band, rx: r, rot, cx: mx, cy: my };
 }
 
+/* ---- 完成状态本地记忆 ----
+   玩过之后写一个标记，之后不管去 About 还是别的页面再回来，
+   首屏都直接是「全部连好」的样子，不会再放一次 WELCOME、也不会自动跳页。 */
+const WS_DONE_KEY = "portfolio:wordsearch-done";
+
+const wsPlayerDone = () => {
+  try {
+    return localStorage.getItem(WS_DONE_KEY) === "1";
+  } catch (e) {
+    return false;
+  }
+};
+
+const wsRememberDone = () => {
+  try {
+    localStorage.setItem(WS_DONE_KEY, "1");
+  } catch (e) {}
+};
+
 /* ---- 完成特效用的图形 ---- */
 const STAR_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3 6.6 7.2.7-5.4 4.8 1.5 7.1L12 17.2 5.7 20.8l1.5-7.1L1.8 8.9 9 8.2z" fill="currentColor"/></svg>`;
 
@@ -276,7 +295,41 @@ function renderWordSearch() {
       <circle class="ws__cursor" cx="0" cy="0" r="13" />
     </svg>`;
 
+  // 玩过就直接呈现完成态，不再让人玩第二遍
+  if (wsPlayerDone()) {
+    wsPaintSolved(host, cfg);
+    return;
+  }
+
   initWordSearchGame(host, letters, words, rows, cols, g);
+}
+
+/* 把所有单词一次性画成「已连好」：实心橙条 + 深蓝字母 + 全亮圆点 */
+function wsPaintSolved(host, cfg) {
+  const cols = cfg.letters[0].length;
+  const bandEls = [...host.querySelectorAll(".ws__hl")];
+  const letterEls = [...host.querySelectorAll(".ws__letter")];
+
+  cfg.words.forEach((w, i) => {
+    if (bandEls[i]) {
+      bandEls[i].classList.add("is-found");
+      bandEls[i].parentElement.classList.add("is-done");
+    }
+    w.cells.forEach(([r, c]) => {
+      const el = letterEls[r * cols + c];
+      if (el) el.classList.add("is-found");
+    });
+  });
+
+  const dots = $("wsProgress");
+  if (dots) {
+    dots.innerHTML = cfg.words.map(() => `<span class="ws-dot is-found"></span>`).join("");
+  }
+
+  const hero = host.closest(".hero");
+  if (hero) hero.classList.add("is-ws-done");
+  const svg = host.querySelector(".ws");
+  if (svg) svg.setAttribute("aria-label", "Word search puzzle, all words found");
 }
 
 function initWordSearchGame(host, letters, words, rows, cols, g) {
@@ -290,14 +343,13 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
   const letterAt = (r, c) => letters[r][c];
   const idx = (r, c) => r * cols + c;
 
-  const solved = new Set();
   let dragging = false;
   let start = null;
   let currentCells = [];
   let hintRaf = null;
   let idleTimer = null;
 
-  // 进度圆点：找对一个点亮一个
+  // 进度圆点：连对一个，五个一起点亮（进度条只是装饰）
   const dots = (() => {
     const host = $("wsProgress");
     if (!host) return [];
@@ -348,47 +400,48 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
 
   const readout = (cells) => cells.map((p) => letterAt(p.r, p.c)).join("");
 
-  function markFound(i) {
-    if (solved.has(i)) return;
-    solved.add(i);
+  let completed = false;
+
+  function paintFound(i) {
     bandEls[i].classList.add("is-found");
     bandEls[i].parentElement.classList.add("is-done");
     words[i].cells.forEach(([r, c]) => letterEls[idx(r, c)].classList.add("is-found"));
     if (dots[i]) dots[i].classList.add("is-found");
-    if (solved.size === words.length) {
-      svg.classList.add("is-complete");
-      letterEls.forEach((el, i) => {
-        el.style.animationDelay = `${(i % cols) * 0.04 + Math.floor(i / cols) * 0.03}s`;
-      });
-      clearTimeout(idleTimer);
-      cancelAnimationFrame(hintRaf);
-      setTimeout(playFinale, 620);
-      return;
-    }
-    // 只剩最后两个时，剩下的答案加快呼吸，推一把让用户做完
-    if (solved.size >= words.length - 2) {
-      bandEls.forEach((el, i) => {
-        if (!solved.has(i)) el.parentElement.classList.add("is-urging");
-      });
-    }
+  }
+
+  /* 连对任意一个单词 = 全部完成。
+     剩下的四个词立刻一起点亮（不再需要一个个连），然后放 WELCOME、
+     滑到下一屏 —— 首屏停留时间越短越好。 */
+  function completeAll() {
+    if (completed) return;
+    completed = true;
+    clearTimeout(idleTimer);
+    cancelAnimationFrame(hintRaf);
+    sel.style.opacity = 0;
+    cursor.style.opacity = 0;
+
+    words.forEach((_, i) => paintFound(i));
+    svg.classList.add("is-complete");
+    letterEls.forEach((el, i) => {
+      el.style.animationDelay = `${((i % cols) * 0.03 + Math.floor(i / cols) * 0.02).toFixed(2)}s`;
+    });
+
+    wsRememberDone();
+    setTimeout(playFinale, 420);
   }
 
   function tryCommit(cells) {
-    if (cells.length < 2) return;
+    if (cells.length < 2 || completed) return;
     const s = readout(cells);
     const rev = [...s].reverse().join("");
-    for (let i = 0; i < words.length; i++) {
-      if (solved.has(i)) continue;
-      if (words[i].text === s || words[i].text === rev) markFound(i);
-    }
+    if (words.some((w) => w.text === s || w.text === rev)) completeAll();
   }
 
   /* ---- 提示动画：模拟手指划过一个单词（无任何文字提示） ---- */
   function playHint() {
-    const rest = words.map((_, i) => i).filter((i) => !solved.has(i));
-    if (!rest.length) return;
+    if (completed) return;
     cancelAnimationFrame(hintRaf);
-    const w = words[rest[Math.floor(Math.random() * rest.length)]];
+    const w = words[Math.floor(Math.random() * words.length)];
     const a = wsCenter(g, w.cells[0][0], w.cells[0][1]);
     const z = wsCenter(g, w.cells[w.cells.length - 1][0], w.cells[w.cells.length - 1][1]);
 
@@ -424,7 +477,7 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
 
   function scheduleHint(delay) {
     clearTimeout(idleTimer);
-    if (solved.size === words.length) return;
+    if (completed) return;
     idleTimer = setTimeout(() => {
       if (!dragging) playHint();
       scheduleHint(9000);
@@ -433,6 +486,7 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
 
   /* ---- 指针交互 ---- */
   svg.addEventListener("pointerdown", (e) => {
+    if (completed) return;
     const p = toUser(e);
     if (!p) return;
     e.preventDefault();
@@ -448,6 +502,7 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
   });
 
   svg.addEventListener("pointermove", (e) => {
+    if (completed) return;
     const p = toUser(e);
     if (!dragging) {
       clearHover();
