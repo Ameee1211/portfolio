@@ -292,7 +292,7 @@
       if (frame.querySelector("iframe")) return;
       const f = document.createElement("iframe");
       f.title = "SteamTracker — the app itself";
-      f.src = "apps/steamtracker/index.html";
+      f.src = "apps/steamtracker/index.html?v=39";
       f.loading = "lazy";
       frame.appendChild(f);
       gate.remove();
