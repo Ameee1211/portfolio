@@ -327,58 +327,216 @@ img { display: block; max-width: 100%; }
 @keyframes catOut { to { transform: translate(-50%, 40px) scale(0.7); opacity: 0; } }
 
 /* ================= About Me ================= */
-.about { background: var(--cream); padding: 96px 0; }
+.about {
+  background: var(--cream);
+  padding: 110px 0;
+  overflow: hidden;
+}
 .about__inner {
   max-width: var(--maxw);
   margin: 0 auto;
   padding: 0 40px;
   display: grid;
-  grid-template-columns: 0.85fr 1.15fr;
-  gap: 64px;
-  align-items: start;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
 }
-.about__photo img {
+
+/* ---- 左：照片舞台（多层构图 + 鼠标视差） ---- */
+.about__left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.about__stage {
+  position: relative;
   width: 100%;
-  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 0;
+  perspective: 900px;
+}
+
+/* 背后的柔和色块：缓慢变形呼吸 */
+.about__blob {
+  position: absolute;
+  width: min(84%, 360px);
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(140deg, rgba(116, 105, 182, 0.26), rgba(255, 207, 149, 0.4));
+  animation: blobMorph 16s ease-in-out infinite;
+}
+@keyframes blobMorph {
+  0%, 100% { border-radius: 46% 54% 58% 42% / 48% 44% 56% 52%; transform: rotate(0deg) scale(1); }
+  50% { border-radius: 58% 42% 44% 56% / 52% 56% 44% 48%; transform: rotate(10deg) scale(1.05); }
+}
+
+/* 虚线圆环：慢慢自转，鼠标移入时加速 */
+.about__ring {
+  position: absolute;
+  width: min(94%, 408px);
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 2px dashed rgba(116, 105, 182, 0.34);
+  animation: ringSpin 30s linear infinite;
+}
+.about__stage:hover .about__ring { animation-duration: 9s; }
+@keyframes ringSpin { to { transform: rotate(360deg); } }
+
+/* 照片：白色相框 + 微倾斜，鼠标移入跟随倾斜并高光扫过 */
+.about__photo {
+  position: relative;
+  width: min(70%, 262px);
+  padding: 9px 9px 9px;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 26px 60px rgba(51, 61, 109, 0.18);
+  transform: rotate(-2deg);
+  transition: transform 0.18s ease-out, box-shadow 0.45s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.about__stage:hover .about__photo { box-shadow: 0 34px 76px rgba(51, 61, 109, 0.26); }
+.about__photo img {
+  display: block;
+  width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  border-radius: 20px;
+  border-radius: 15px;
 }
+
+/* 跟随鼠标的高光 */
+.about__glare {
+  position: absolute;
+  inset: 9px;
+  border-radius: 15px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--gx, 32%) var(--gy, 22%),
+    rgba(255, 255, 255, 0.62),
+    rgba(255, 255, 255, 0) 58%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.about__stage:hover .about__glare { opacity: 1; }
+
+/* 点缀的小圆点 */
+.about__spark {
+  position: absolute;
+  border-radius: 50%;
+  animation: sparkFloat 5.5s ease-in-out infinite;
+}
+.about__spark--1 {
+  width: 15px;
+  height: 15px;
+  top: 13%;
+  right: 13%;
+  background: var(--orange);
+}
+.about__spark--2 {
+  width: 10px;
+  height: 10px;
+  bottom: 15%;
+  left: 15%;
+  background: var(--purple);
+  animation-delay: -2.4s;
+}
+@keyframes sparkFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-9px) scale(1.12); }
+}
+
 .about__title {
-  margin: 30px 0 22px;
+  margin: 34px 0 20px;
   font-size: 44px;
   font-weight: 700;
   color: var(--navy);
   line-height: 1.15;
+  text-align: center;
 }
+.about__btn { align-self: center; }
+
+/* 入场节奏：照片旋起 → 标题 → 按钮 */
+.about__left.is-in .about__photo {
+  animation: photoIn 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.4) 0.08s backwards;
+}
+@keyframes photoIn {
+  0% { transform: rotate(-11deg) scale(0.86); opacity: 0; }
+  100% { transform: rotate(-2deg) scale(1); opacity: 1; }
+}
+.about__title,
+.about__btn {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.about__left.is-in .about__title { opacity: 1; transform: none; transition-delay: 0.3s; }
+.about__left.is-in .about__btn { opacity: 1; transform: none; transition-delay: 0.42s; }
+
+/* ---- 右：索引式信息行 ---- */
+.about__info { display: flex; flex-direction: column; }
 .about__row {
+  position: relative;
   display: flex;
   gap: 18px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 17px 16px 17px 20px;
+  border-radius: 12px;
+  transition: background 0.32s ease, transform 0.32s ease;
 }
+.about__row + .about__row { box-shadow: 0 -1px 0 rgba(51, 61, 109, 0.07); }
+.about__row::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 2px;
+  background: var(--purple);
+  transform: translateY(-50%);
+  transition: height 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
 .about__row dt {
   min-width: 116px;
   font-weight: 600;
   color: var(--purple);
 }
 .about__row dd { color: var(--text); }
-.about__intro { margin-top: 26px; font-size: 15px; line-height: 1.85; }
+
+.about__intro { margin-top: 34px; font-size: 15px; line-height: 2; }
 .skills__title {
-  margin-top: 34px;
+  margin-top: 42px;
   font-size: 18px;
   font-weight: 600;
   color: var(--navy);
 }
-.skills__row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.skills__row { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 16px; }
 .skill {
-  padding: 7px 15px;
+  padding: 9px 17px;
   border: 1px solid var(--skill-color);
-  border-radius: 10px;
+  border-radius: 999px;
   background: #fff;
   color: var(--skill-color);
   font-size: 13px;
   font-weight: 600;
+  transition: background 0.26s ease, color 0.26s ease, transform 0.26s ease, box-shadow 0.26s ease;
+}
+
+/* 只在有真实指针（鼠标）的设备上启用悬停效果 */
+@media (hover: hover) and (pointer: fine) {
+  .about__row:hover {
+    background: rgba(116, 105, 182, 0.14);
+    transform: translateX(5px);
+  }
+  .about__row:hover::before { height: 62%; }
+  .skill:hover {
+    background: var(--skill-color);
+    color: #fff;
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 9px 20px rgba(51, 61, 109, 0.18);
+  }
 }
 
 /* ================= 按钮 ================= */
@@ -559,9 +717,19 @@ section[id] { scroll-margin-top: 92px; }
   }
 
   .hero { min-height: 82vh; padding: 100px 0 32px; }
-  .about { padding: 64px 0; }
-  .about__inner { grid-template-columns: 1fr; gap: 36px; padding: 0 24px; }
-  .about__title { font-size: 34px; }
+  .about { padding: 68px 0; }
+  .about__inner { grid-template-columns: 1fr; gap: 46px; padding: 0 24px; }
+  .about__stage { padding: 20px 0; }
+  .about__photo { width: min(64%, 232px); }
+  .about__blob { width: min(76%, 300px); }
+  .about__ring { width: min(88%, 348px); }
+  .about__spark--1 { width: 12px; height: 12px; right: 10%; }
+  .about__spark--2 { width: 8px; height: 8px; left: 12%; }
+  .about__title { font-size: 34px; margin: 28px 0 16px; }
+  .about__row { padding: 13px 12px 13px 18px; gap: 14px; }
+  .about__row dt { min-width: 98px; }
+  .about__intro { margin-top: 26px; line-height: 1.95; }
+  .skills__title { margin-top: 32px; }
   .projects { padding: 64px 0 72px; }
   .projects__head { padding: 0 24px; margin-bottom: 36px; }
   .projects__title { font-size: 30px; }

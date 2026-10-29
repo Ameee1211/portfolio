@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=2" />
+  <link rel="stylesheet" href="css/style.css?v=3" />
 </head>
 <body>
 
@@ -35,14 +35,21 @@
     <!-- ================= About Me ================= -->
     <section class="about" id="about">
       <div class="about__inner">
-        <div class="about__left">
-          <div class="about__photo">
-            <img id="aboutPhoto" src="" alt="Portrait of Amy" />
+        <div class="about__left reveal">
+          <div class="about__stage" id="aboutStage">
+            <span class="about__blob" aria-hidden="true"></span>
+            <span class="about__ring" aria-hidden="true"></span>
+            <span class="about__spark about__spark--1" aria-hidden="true"></span>
+            <span class="about__spark about__spark--2" aria-hidden="true"></span>
+            <div class="about__photo" id="aboutPhotoWrap">
+              <img id="aboutPhoto" src="" alt="Portrait of Amy" />
+              <span class="about__glare" aria-hidden="true"></span>
+            </div>
           </div>
           <h2 class="about__title" id="aboutTitle"></h2>
-          <a class="btn btn--purple" id="aboutBtn" href="#"></a>
+          <a class="btn btn--purple about__btn" id="aboutBtn" href="#"></a>
         </div>
-        <div class="about__right">
+        <div class="about__right reveal">
           <dl class="about__info" id="aboutInfo"></dl>
           <p class="about__intro" id="aboutIntro"></p>
           <div class="skills">
@@ -76,7 +83,7 @@
     </div>
   </footer>
 
-  <script src="js/content.js?v=2"></script>
-  <script src="js/main.js?v=2"></script>
+  <script src="js/content.js?v=3"></script>
+  <script src="js/main.js?v=3"></script>
 </body>
 </html>

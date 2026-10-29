@@ -494,27 +494,28 @@ function renderAbout() {
     .join("");
 }
 
-// 让照片高度与右侧文字区高度接近
-function fitAboutPhoto() {
-  const img = $("aboutPhoto");
-  const right = document.querySelector(".about__right");
-  const left = document.querySelector(".about__left");
-  if (!img || !right || !left) return;
-  img.style.height = "";
-  img.style.width = "";
-  if (window.innerWidth <= 900) return;
-  // 照片高度对齐右侧文字区（保持 3:4 竖构图）
-  const colWidth = img.parentElement.clientWidth;
-  let target = right.offsetHeight;
-  let w = Math.round(target * 0.75);
-  if (w > colWidth) {
-    w = colWidth;
-    target = Math.round((w / 0.75));
-  }
-  if (target > 220) {
-    img.style.height = `${target}px`;
-    img.style.width = `${w}px`;
-  }
+// 照片随鼠标做 3D 视差 + 高光跟随（仅桌面端有指针的设备）
+function initAboutStage() {
+  const stage = $("aboutStage");
+  const photo = $("aboutPhotoWrap");
+  if (!stage || !photo) return;
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+  const MAX = 9; // 最大倾斜角度
+  stage.addEventListener("pointermove", (e) => {
+    const r = stage.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    const ry = (px - 0.5) * 2 * MAX;
+    const rx = -(py - 0.5) * 2 * MAX;
+    photo.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) rotate(-2deg) scale(1.03)`;
+    photo.style.setProperty("--gx", `${(px * 100).toFixed(1)}%`);
+    photo.style.setProperty("--gy", `${(py * 100).toFixed(1)}%`);
+  });
+
+  stage.addEventListener("pointerleave", () => {
+    photo.style.transform = "";
+  });
 }
 
 /* ============================================================
@@ -590,6 +591,4 @@ renderAbout();
 renderProjects();
 renderFooter();
 initReveal();
-fitAboutPhoto();
-window.addEventListener("resize", fitAboutPhoto);
-window.addEventListener("load", fitAboutPhoto);
+initAboutStage();
