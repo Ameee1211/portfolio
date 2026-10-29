@@ -433,7 +433,7 @@ const SITE = {
   footer: {
     thanks: "Thank you for taking the time to view my portfolio",
     note:
-      "If a project here felt close to something you're working on, I'd love to hear about it — email reaches me fastest.",
+      "If you'd like to work together — or simply say hello — I'd love to hear from you.",
     email: "zhangtong011211@163.com",
     phone: "19700766036",
     copyright: "© 2026 Tong Zhang (Amy). Designed & built with care.",
