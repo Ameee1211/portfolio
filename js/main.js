@@ -304,7 +304,7 @@ function renderWordSearch() {
   initWordSearchGame(host, letters, words, rows, cols, g);
 }
 
-/* 把所有单词一次性画成「已连好」：实心橙条 + 深蓝字母 + 全亮圆点 */
+/* 把所有单词一次性画成「已连好」：实心橙条 + 深蓝字母 */
 function wsPaintSolved(host, cfg) {
   const cols = cfg.letters[0].length;
   const bandEls = [...host.querySelectorAll(".ws__hl")];
@@ -320,11 +320,6 @@ function wsPaintSolved(host, cfg) {
       if (el) el.classList.add("is-found");
     });
   });
-
-  const dots = $("wsProgress");
-  if (dots) {
-    dots.innerHTML = cfg.words.map(() => `<span class="ws-dot is-found"></span>`).join("");
-  }
 
   const hero = host.closest(".hero");
   if (hero) hero.classList.add("is-ws-done");
@@ -348,14 +343,6 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
   let currentCells = [];
   let hintRaf = null;
   let idleTimer = null;
-
-  // 进度圆点：连对一个，五个一起点亮（进度条只是装饰）
-  const dots = (() => {
-    const host = $("wsProgress");
-    if (!host) return [];
-    host.innerHTML = words.map(() => `<span class="ws-dot"></span>`).join("");
-    return [...host.children];
-  })();
 
   const toUser = (evt) => {
     const m = svg.getScreenCTM();
@@ -406,7 +393,6 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
     bandEls[i].classList.add("is-found");
     bandEls[i].parentElement.classList.add("is-done");
     words[i].cells.forEach(([r, c]) => letterEls[idx(r, c)].classList.add("is-found"));
-    if (dots[i]) dots[i].classList.add("is-found");
   }
 
   /* 连对任意一个单词 = 全部完成。
@@ -826,6 +812,28 @@ function initPinPager() {
 }
 
 /* ============================================================
+   滚动引导：往下滚一点就淡出（Home / About / 项目页首屏共用）
+   ============================================================ */
+function initScrollCue() {
+  const cues = document.querySelectorAll(".scrollcue");
+  if (!cues.length) return;
+  let raf = null;
+  const sync = () => {
+    raf = null;
+    const gone = window.scrollY > 60;
+    cues.forEach((c) => c.classList.toggle("is-gone", gone));
+  };
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!raf) raf = requestAnimationFrame(sync);
+    },
+    { passive: true }
+  );
+  sync();
+}
+
+/* ============================================================
    滚动入场
    ============================================================ */
 function initReveal() {
@@ -856,6 +864,7 @@ renderProjects();
 renderFooter();
 initReveal();
 initAboutStage();
+initScrollCue();
 initPinPager();
 
 // 桌面 / 手机切换时换一套迷宫（两套题布局与字数都不同）

@@ -170,6 +170,16 @@
   gap: 12px;
   margin-top: 30px;
 }
+.ab-hero__cue {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 4;
+  transform: translateX(-50%);
+}
+.ab-hero__cue:hover { transform: translateX(-50%) translateY(2px); }
+.ab-hero__cue.is-gone { transform: translateX(-50%) translateY(6px); }
+
 .ab-btn-ghost {
   display: inline-block;
   padding: 13px 26px;
@@ -1169,6 +1179,19 @@
     transition: opacity 0.3s ease, transform 0.3s ease;
   }
   .ab-index__item.is-active::before { opacity: 1; transform: scaleY(1); }
+}
+
+/* 窄屏：首屏内容超过一屏时，引导改为排在内容之后，避免压住文字 */
+@media (max-width: 900px) {
+  .ab-hero { flex-direction: column; }
+  .ab-hero__cue {
+    position: static;
+    transform: none;
+    align-self: center;
+    margin-top: 22px;
+  }
+  .ab-hero__cue:hover,
+  .ab-hero__cue.is-gone { transform: none; }
 }
 
 @media (max-width: 1179px) {

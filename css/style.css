@@ -145,6 +145,7 @@ img { display: block; max-width: 100%; }
 
 /* ================= 首屏字母迷宫 ================= */
 .hero {
+  position: relative;
   min-height: 100vh;
   min-height: 100svh;
   display: flex;
@@ -217,6 +218,58 @@ img { display: block; max-width: 100%; }
   background: var(--orange);
   border-color: var(--orange);
   transform: scale(1.3);
+}
+
+/* ================= 滚动引导（全站统一：Home / About / 项目页 首屏底部） =================
+   结构：.scrollcue > .scrollcue__txt + .scrollcue__line > i
+   动画是一颗小圆点顺着细线往下走，暗示"往下滑还能看到更多" */
+.scrollcue {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity 0.35s, transform 0.35s;
+}
+.scrollcue:hover { transform: translateY(2px); }
+.scrollcue__txt {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8b99ad;
+  white-space: nowrap;
+}
+.scrollcue__line {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(180deg, rgba(51, 61, 109, 0.08), rgba(51, 61, 109, 0.26));
+}
+.scrollcue__line i {
+  position: absolute;
+  left: -1.5px;
+  top: 0;
+  width: 4px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--purple);
+  transform: translateY(-9px);
+  animation: scrollcue 1.9s cubic-bezier(0.55, 0, 0.45, 1) infinite;
+}
+@keyframes scrollcue {
+  0% { transform: translateY(-9px); opacity: 0; }
+  22% { opacity: 1; }
+  72% { opacity: 1; }
+  100% { transform: translateY(32px); opacity: 0; }
+}
+/* 淡出：页面一滚动就收起来，动画不打扰 */
+.scrollcue.is-gone { opacity: 0; pointer-events: none; transform: translateY(6px); }
+@media (prefers-reduced-motion: reduce) {
+  .scrollcue__line i { animation: none; transform: translateY(10px); opacity: 1; }
 }
 
 /* 拖拽中的选区 / 提示动画的划痕 —— 粗细跟高亮条一致（由 JS 写入 --ws-band） */
@@ -330,6 +383,20 @@ img { display: block; max-width: 100%; }
 }
 .ws-finale.is-out .ws-cat { animation: catOut 0.45s ease forwards; }
 @keyframes catOut { to { transform: translate(-50%, 40px) scale(0.7); opacity: 0; } }
+
+/* 首屏底部固定的滚动引导（首屏需要 position: relative） */
+.hero__cue,
+.sl-hero__cue {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 3;
+  transform: translateX(-50%);
+}
+.hero__cue:hover,
+.sl-hero__cue:hover { transform: translateX(-50%) translateY(2px); }
+.hero__cue.is-gone,
+.sl-hero__cue.is-gone { transform: translateX(-50%) translateY(6px); }
 
 /* ================= About Me ================= */
 /* 首页两个板块都按「一屏一块」处理：撑满视口并垂直居中，上下留白完整露出来，
@@ -787,8 +854,6 @@ section[id] { scroll-margin-top: 92px; }
      留一点下一屏露头，用户能看出还可以往下滑（手机端没有翻页接管）。 */
   .hero { min-height: 92vh; min-height: 92svh; padding: 84px 0 34px; }
   .wordsearch { width: 92vw; }
-  .ws-progress { margin-top: 22px; gap: 9px; }
-  .ws-dot { width: 11px; height: 11px; }
   .about { padding: 68px 0; }
   .about__inner { grid-template-columns: 1fr; gap: 46px; padding: 0 24px; }
   .about__stage { padding: 20px 0; }

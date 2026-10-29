@@ -66,12 +66,15 @@ function abRenderHero() {
         <div class="ab-roles" id="abRoles" data-ab-in="3">${roles}</div>
         <p class="ab-hero__lede" data-ab-in="4">${esc(h.lede)}</p>
         <div class="ab-hero__cta" data-ab-in="5">
-          <a class="btn btn--purple" href="${esc(h.ctaPrimary.href)}">${esc(h.ctaPrimary.label)}</a>
-          <a class="ab-btn-ghost" href="${esc(h.ctaSecondary.href)}">${esc(h.ctaSecondary.label)}</a>
+          <a class="ab-btn-ghost" href="${esc(h.cta.href)}">${esc(h.cta.label)}</a>
         </div>
         <div class="ab-hero__meta" data-ab-in="6">${stats}</div>
       </div>
     </div>
+    <a class="scrollcue ab-hero__cue" href="#philosophy" aria-label="Scroll down to explore more">
+      <span class="scrollcue__txt">Scroll down to explore more</span>
+      <span class="scrollcue__line" aria-hidden="true"><i></i></span>
+    </a>
   </section>`;
 }
 

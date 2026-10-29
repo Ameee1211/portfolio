@@ -123,8 +123,8 @@ const SITE = {
       roles: ["UI/UX Designer", "Web Designer", "3D Modeller", "Product Designer"],
       lede:
         "I design interfaces, websites and 3D objects from Hangzhou, China. I studied Design Computing at the University of Sydney, and I like problems that arrive messy: too many stakeholders, too many screens, no obvious next step.",
-      ctaPrimary: { label: "View my work", href: "index.html#projects" },
-      ctaSecondary: { label: "Get in touch", href: "#contact" },
+      // 首屏只保留一个按钮：导航栏里已经有 Projects，这里的 "View my work" 是重复入口
+      cta: { label: "Get in touch", href: "#contact" },
       photo: "assets/img/amy-portrait.jpg",
       floats: ["Figma", "Rhino 7", "Blender", "Adobe CC"],
       stats: [
@@ -392,7 +392,7 @@ const SITE = {
     items: [
       {
         title: "SunLink Neighbours",
-        tags: ["UI", "UX", "Dashboard"],
+        tags: ["UI-focused UX Dashboard", "Product Design"],
         description:
           "A community platform that solves the imbalance of solar energy usage by enabling neighbors to share surplus power.",
         cover: "assets/img/sunlink-cover.png",

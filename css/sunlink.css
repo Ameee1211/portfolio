@@ -1228,9 +1228,21 @@
 /* 首屏尽量保持左右两栏，直到真的放不下才堆叠 */
 @media (max-width: 900px) {
   .sl-hero__grid { grid-template-columns: 1fr; gap: 34px; }
-  .sl-hero { min-height: 0; padding: 100px 0 56px; }
+  .sl-hero {
+    min-height: 0;
+    padding: 100px 0 56px;
+    flex-direction: column;   /* 首屏堆叠后，引导改为在文档流里排在最后 */
+  }
   .sl-hero__stage { max-width: 640px; }
   .sl-hero__lede { max-width: none; }
+  .sl-hero__cue {
+    position: static;
+    transform: none;
+    align-self: center;
+    margin-top: 26px;
+  }
+  .sl-hero__cue:hover,
+  .sl-hero__cue.is-gone { transform: none; }
 }
 
 @media (max-width: 860px) {
