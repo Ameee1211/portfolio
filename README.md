@@ -97,11 +97,24 @@ git push
 
 | `type` | 版式 | 每条需要的字段 |
 |---|---|---|
-| `gallery` | 四宫格作品图集 | `label`、`meta`、`image`、`tint`、`icon` |
+| `gallery` | 作品图集（自适应等分，3 张时一行三格） | `label`、`meta`、`image`、`tint`、`icon` |
 | `list` | 编号条目清单 | `title`、`meta`、`note` |
 | `awards` | 奖项列表 + 右侧配图 | `k`（左侧小标题）、`v`（内容）；`image` + `imageCaption` |
 
-> 想放真实照片：把文件放进 `assets/img/`，然后把对应条目的 `image` 改成
+> 展开后 **关闭按钮固定在卡片右上角**（`.ab-int__card.is-open .ab-int__toggle`），
+> 桌面端正文右侧留 124px 避让；窄屏（≤1100px）媒体区移到顶部，按钮浮在图上。
+
+兴趣卡片现有配图（都是真实照片，钩织卡不出现本人）：
+
+| 文件 | 用在哪 |
+|---|---|
+| `int-crochet.jpg` | 钩织卡主图（帽子 / 围巾 / 包 三图拼贴） |
+| `work-hat.jpg` `work-scarf.jpg` `work-bag.jpg` | 钩织卡展开后的三张作品图 |
+| `int-games.jpg` | 游戏卡主图（生成的废弃高架场景，无水印） |
+| `int-diving.jpg` | 游泳潜水卡主图（用户提供的潜水照，4:3 裁切） |
+| `int-underwater.jpg` | 游泳卡展开后的水下配图（从视频抽帧提亮 + 转蓝） |
+
+> 想换照片：把文件放进 `assets/img/`，然后把对应条目的 `image` 改成
 > `"assets/img/文件名.jpg"`，占位图标会自动换掉。
 
 ### 视觉规范：按钮 vs 标签（全站统一，别混）

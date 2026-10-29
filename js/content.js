@@ -91,7 +91,6 @@ const SITE = {
     hero: {
       name: "Tong",
       nameAccent: "Zhang",
-      alias: "Amy · 张彤",
       roles: ["UI/UX Designer", "Web Designer", "3D Modeller", "Product Designer"],
       lede:
         "I design interfaces, websites and 3D objects from Hangzhou, China. I studied Design Computing at the University of Sydney, and I like problems that arrive messy: too many stakeholders, too many screens, no obvious next step.",
@@ -270,31 +269,30 @@ const SITE = {
       items: [
         {
           title: "Crochet",
-          kicker: "Hook and yarn",
+          kicker: "Hats, scarves, bags",
           text:
-            "Amigurumi is structural design with one hook. Every piece starts as a grid of stitches, you work inside that constraint for hours, then break it on purpose in exactly one place. I treat design systems the same way.",
-          image: "",
+            "I make things I can actually wear out of the house: hats, scarves, bags. Practical objects are unforgiving — yarn weight, gauge, the size of a head — so you commit to the rules first, then break exactly one on purpose. That is how I treat a design system.",
+          image: "assets/img/int-crochet.jpg",
           tint: "#FFE9C7",
           icon: "yarn",
           more: {
-            heading: "Things I made with one hook",
+            heading: "Three things I made and still use",
             lead:
-              "Mostly small creatures. Each one starts as a spiral of single crochet and ends up with a face, which is the part I care about most.",
+              "If it doesn't get worn, it doesn't get finished. All three of these started on one hook and a single ball of yarn.",
             type: "gallery",
             items: [
-              { label: "Amigurumi fox", meta: "Cotton yarn · 2025", image: "", tint: "#FFE9C7", icon: "yarn" },
-              { label: "Granny-square tote", meta: "Cotton · 2024", image: "", tint: "#D2FFF1", icon: "yarn" },
-              { label: "Chunky cardigan", meta: "Wool · 2024", image: "", tint: "#DCE9FB", icon: "yarn" },
-              { label: "Jellyfish mobile", meta: "Cotton · 2023", image: "", tint: "#F1E7FF", icon: "yarn" },
+              { label: "My hat", meta: "Cat-ear beanie · mohair", image: "assets/img/work-hat.jpg", tint: "#FFE9C7", icon: "yarn" },
+              { label: "My scarf", meta: "Chunky knit · variegated wool", image: "assets/img/work-scarf.jpg", tint: "#D2FFF1", icon: "yarn" },
+              { label: "My bag", meta: "Granny-square tote · cotton", image: "assets/img/work-bag.jpg", tint: "#DCE9FB", icon: "yarn" },
             ],
           },
         },
         {
-          title: "Indie games",
-          kicker: "Small studios, big feelings",
+          title: "Games",
+          kicker: "Worlds I get lost in",
           text:
-            "Small games taught me that systems create feeling, not screens. A feedback loop, a nudge, a reward that lands two seconds late: those are interaction decisions long before they become visual ones.",
-          image: "",
+            "Games are interaction design turned up loud. A space that tells you where to go without a marker, a resource so scarce you check your inventory twice, a silence that does the emotional work a soundtrack usually does — I borrow that restraint for interfaces.",
+          image: "assets/img/int-games.jpg",
           tint: "#D2FFF1",
           icon: "gamepad",
           more: {
@@ -309,10 +307,10 @@ const SITE = {
                   "Every room explains who lived in it without a line of exposition. That is information architecture doing emotional work — I steal the idea of revealing structure through objects instead of menus.",
               },
               {
-                title: "Outer Wilds",
-                meta: "Mobius Digital · 2019",
+                title: "The Last of Us",
+                meta: "Naughty Dog · 2013",
                 note:
-                  "Nothing is unlocked by items, only by understanding. It convinced me that good onboarding hands over knowledge, never a tour.",
+                  "Almost no HUD, no quest markers: you read the rooms instead of the map. Crafting is deliberately slow and scarce, so every item you pick up becomes a decision. Tension built out of interaction, never explained by a cutscene.",
               },
               {
                 title: "Florence",
@@ -325,10 +323,10 @@ const SITE = {
         },
         {
           title: "Swimming & diving",
-          kicker: "25 m, back and forth",
+          kicker: "Laps and one long breath",
           text:
-            "Laps are the only place I think in straight lines. Most of my information architecture decisions get made somewhere around the eight-hundred-metre mark.",
-          image: "",
+            "Pool laps and open-water dives teach the same lesson at different depths: breathe, relax, stop fighting the water. Most of my layout decisions get settled somewhere around the eight-hundred-metre mark; the rest get settled underwater.",
+          image: "assets/img/int-diving.jpg",
           tint: "#DCE9FB",
           icon: "wave",
           more: {
@@ -336,13 +334,13 @@ const SITE = {
             lead: "I raced as a kid, taught it later, and still spend weekends underneath it.",
             type: "awards",
             items: [
-              { k: "2nd place", v: "National Youth Swimming Championship, China" },
+              { k: "Won", v: "2nd place, National Youth Swimming Championship, China" },
               { k: "Certified", v: "Swimming Instructor Certificate, Australia" },
               { k: "Freediver", v: "Open-water dives on weekends, chasing the quiet" },
             ],
             // 潜水照片：把文件放进 assets/img/ 后把路径填在这里
-            image: "",
-            imageCaption: "Under the surface, somewhere off the coast",
+            image: "assets/img/int-underwater.jpg",
+            imageCaption: "Under the surface, off the coast",
             tint: "#CFE6FF",
           },
         },

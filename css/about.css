@@ -103,16 +103,6 @@
 }
 .ab-hero__name em { font-style: normal; color: var(--purple); }
 
-.ab-hero__alias {
-  display: block;
-  margin-top: 18px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--purple);
-}
-
 .ab-roles {
   display: flex;
   flex-wrap: wrap;
@@ -796,6 +786,7 @@
   gap: 22px;
 }
 .ab-int__card {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--white);
@@ -886,8 +877,31 @@
 }
 .ab-int__card.is-open:hover { transform: none; }
 .ab-int__card.is-open .ab-int__media { aspect-ratio: auto; height: 100%; }
-.ab-int__card.is-open .ab-int__media img { height: 100%; transform: none; }
+.ab-int__card.is-open .ab-int__media img { height: 100%; object-position: 50% 34%; transform: none; }
 .ab-int__card.is-open .ab-int__icon { width: 150px; height: 150px; opacity: 0.7; }
+
+/* 展开后：关闭按钮浮在卡片右上角 */
+.ab-int__card.is-open .ab-int__toggle {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 5;
+  margin: 0;
+  padding: 8px 15px 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 22px rgba(51, 61, 109, 0.18);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 10px;
+  transition: background 0.25s, box-shadow 0.25s, transform 0.25s;
+}
+.ab-int__card.is-open .ab-int__toggle:hover {
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(51, 61, 109, 0.26);
+  transform: translateY(-1px);
+}
+.ab-int__card.is-open .ab-int__body { padding-right: 124px; }
 .ab-int__card.is-open .ab-int__more {
   display: block;
   border-top: 1px solid var(--line);
@@ -918,7 +932,7 @@
 /* 类型一：作品图集 */
 .ab-more__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   margin-top: 20px;
 }
@@ -1129,6 +1143,7 @@
   /* 展开后：媒体区改到顶部，内容单列 */
   .ab-int__card.is-open { grid-template-columns: 1fr; }
   .ab-int__card.is-open .ab-int__media { height: 200px; }
+  .ab-int__card.is-open .ab-int__body { padding-right: 24px; }
   .ab-more__split { grid-template-columns: 1fr; }
   .ab-more__photo { max-width: 360px; }
 }

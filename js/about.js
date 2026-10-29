@@ -48,7 +48,6 @@ function abRenderHero() {
     <div class="ab-wrap ab-hero__inner">
       <div class="ab-hero__lead">
         <h1 class="ab-hero__name" data-ab-in="1">${esc(h.name)} <em>${esc(h.nameAccent)}</em>
-          <span class="ab-hero__alias">${esc(h.alias)}</span>
         </h1>
       </div>
       <div class="ab-hero__right" data-ab-in="2">
