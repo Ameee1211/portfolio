@@ -11,13 +11,13 @@ https://Ameee1211.github.io/portfolio/
 | 页面 | 文件 | 状态 |
 |---|---|---|
 | HomePage | `index.html` | ✅ 已完成 |
-| About me | `about.html` | 空白页（待填内容） |
+| About me | `about.html` | ✅ 已完成 |
 | Project 1 — SunLink Neighbours | `sunlink.html` | 空白页（待填内容） |
 | Project 2 — Auto-Signaled Bus Stop | `busstop.html` | 空白页（待填内容） |
 | Project 3 — SteamTracker | `steamtracker.html` | 空白页（待填内容） |
 | Project 4 — Chocolate 3D Model | `chocolate.html` | 空白页（待填内容） |
 
-> 后 5 个页面只含顶部导航（与首页完全一致，含 Projects 下拉菜单和当前页高亮），
+> 4 个项目页只含顶部导航（与首页完全一致，含 Projects 下拉菜单和当前页高亮），
 > 主体为空白，后续逐个填内容即可。导航由 `js/content.js` 的 `nav` 统一驱动，
 > 改一处、6 个页面同时生效。
 
@@ -73,6 +73,30 @@ git push
 - 三行信息悬停：淡紫底 + 左侧竖条滑出 + 轻微右移
 - Skills 标签悬停：填充对应品牌色 + 上浮
 - 滚动进入视口时，照片旋转翻起 → 标题 → 按钮依次出现
+
+### About me 页面（about.html）
+独立页面，内容全部来自 `content.js` 的 `aboutPage`，渲染与交互在 `js/about.js`，
+样式在 `css/about.css`。七个区块依次是：
+
+| 区块 | 数据位置 | 说明 |
+|---|---|---|
+| 首屏 | `aboutPage.hero` | 名字、身份标签、简介、照片、三个小浮动标签、底部三条信息 |
+| 设计理念 | `aboutPage.philosophy` | `statement` 是分段数组，`hl: true` 的片段会被橙色马克笔高亮 |
+| 教育背景 | `aboutPage.education` | `gpa` 控制圆环比例，`courses` 的 `score` 决定进度条长度 |
+| 相关经历 | `aboutPage.experience` | `items` 数组，每项含 `points`（要点）和 `tags` |
+| 技能工具 | `aboutPage.skills` | `capabilities` 是能力卡片，`tools` 的颜色决定标签边框与悬停填充色 |
+| 联系方式 | `aboutPage.contact` | 点击整张卡片即可复制；`copy: false` 的那条改成提示语 |
+| 个人兴趣 | `aboutPage.interests` | `image` 留空时显示内置小图标；填了图片路径就自动换成照片 |
+
+交互清单：
+- 首屏身份标签每 2.1 秒自动轮换高亮；照片随鼠标 3D 倾斜、高光跟随
+- 背景铺的是和首页字母迷宫同一套字母，随鼠标轻微漂移（透明度 5%）
+- 滚到理念段落时，三个关键词的橙色底色从左扫过
+- 滚到教育背景时，GPA 圆环填色 + 四条课程分数条依次生长
+- 联系方式点击即复制，底部弹出提示；不支持剪贴板的浏览器自动降级
+
+> 想给兴趣卡片配图：把照片放进 `assets/img/`，然后把 `interests.items[].image`
+> 改成 `"assets/img/你的文件名.jpg"` 即可，占位图标会自动消失。
 
 ### 新增 / 修改项目
 在 `projects.items` 数组里复制一个 `{...}` 块改内容：
