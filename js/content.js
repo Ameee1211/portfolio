@@ -121,8 +121,9 @@ const SITE = {
       name: "Tong",
       nameAccent: "Zhang",
       roles: ["UI/UX Designer", "Web Designer", "3D Modeller", "Product Designer"],
+      // 与下面 01「How I design」同一件事，只是压成两句
       lede:
-        "I design interfaces, websites and 3D objects from Hangzhou, China. I studied Design Computing at the University of Sydney, and I like problems that arrive messy: too many stakeholders, too many screens, no obvious next step.",
+        "I design for the moment someone actually uses the thing — how it feels to use, not how it looks in a frame. So I start with the friction: the point where people hesitate, re-read a label, or quietly give up — and I fix that before anything gets decorated.",
       // 首屏只保留一个按钮：导航栏里已经有 Projects，这里的 "View my work" 是重复入口
       cta: { label: "Get in touch", href: "#contact" },
       photo: "assets/img/amy-portrait.jpg",
@@ -392,7 +393,7 @@ const SITE = {
     items: [
       {
         title: "SunLink Neighbours",
-        tags: ["UI-focused UX Dashboard", "Product Design"],
+        tags: ["UI/UX", "Dashboard", "Product Design"],
         description:
           "A community platform that solves the imbalance of solar energy usage by enabling neighbors to share surplus power.",
         cover: "assets/img/sunlink-cover.png",

@@ -173,9 +173,10 @@
 .sl-meta__v {
   font-size: 13.5px;
   line-height: 1.5;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--sl-ink);
 }
+/* 两行同字重：第一行不再比第二行粗 */
 .sl-meta__v span { display: block; color: var(--sl-ink); font-weight: 400; }
 
 /* ---------- 中控外观（银色 3D 机身 + 两块屏） ---------- */
