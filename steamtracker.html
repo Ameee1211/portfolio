@@ -3,14 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SteamTracker — Tong Zhang (Amy)</title>
+  <title>SteamTracker — a daily log of your Steam hours · Tong Zhang (Amy)</title>
+  <meta name="description" content="A small web app for Steam players: three fields, one preview card, and a history that keeps every session in the browser. Designed and built end to end for Advanced Web Design, 2023." />
   <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=36" />
+  <link rel="stylesheet" href="css/style.css?v=38" />
+  <link rel="stylesheet" href="css/steamtracker.css?v=38" />
 </head>
-<body>
+<body class="st-page">
 
   <!-- ================= 导航（与首页一致） ================= -->
   <header class="nav" id="nav">
@@ -23,9 +25,664 @@
     </div>
   </header>
 
-  <main class="blank-page"></main>
+  <main id="stMain">
 
-  <script src="js/content.js?v=36"></script>
-  <script src="js/main.js?v=36"></script>
+    <!-- ================= 首屏 ================= -->
+    <section class="st-hero" id="top">
+      <div class="st-wrap st-hero__grid">
+
+        <div class="st-hero__copy">
+          <p class="st-hero__kicker">Project 03 · Web app, designed and built</p>
+          <h1 class="st-hero__title">Steam<br />Tracker</h1>
+          <p class="st-hero__lede">
+            Steam will tell you that you have played a game for three hundred hours. It will not
+            tell you that tonight you played two. This app keeps <em>the second number</em>.
+          </p>
+
+          <p class="st-hero__spec">No account · No server · Nothing leaves the browser</p>
+
+          <div class="st-meta">
+            <div>
+              <div class="st-meta__k">Role</div>
+              <div class="st-meta__v">Design &amp; build<br /><span>end to end, on my own</span></div>
+            </div>
+            <div>
+              <div class="st-meta__k">Team</div>
+              <div class="st-meta__v">Solo project<br /><span>one student, nine commits</span></div>
+            </div>
+            <div>
+              <div class="st-meta__k">Course</div>
+              <div class="st-meta__v">Advanced Web Design<br /><span>The University of Sydney, 2023</span></div>
+            </div>
+            <div>
+              <div class="st-meta__k">Tools</div>
+              <div class="st-meta__v">HTML · SCSS · JavaScript<br /><span>Parcel, Express, GitHub</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="st-hero__stage">
+          <div class="st-stage">
+            <div class="st-device st-device--web">
+              <div class="st-browser__bar" aria-hidden="true">
+                <i></i><i></i><i></i>
+                <span class="st-browser__url">steamtracker</span>
+              </div>
+              <img src="assets/img/stk-hero-app.webp" width="1500" height="1010"
+                   alt="The app at desktop width: on the left the game name, playtime and category are filled in; on the right a mint card previews the same entry with its date and running total." />
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <a class="scrollcue st-hero__cue" href="#overview" aria-label="Scroll down to explore more">
+        <span class="scrollcue__txt">Scroll down to explore more</span>
+        <span class="scrollcue__line" aria-hidden="true"><i></i></span>
+      </a>
+    </section>
+
+    <!-- ================= 01 概要 ================= -->
+    <section class="st-sec" id="overview">
+      <div class="st-wrap">
+        <p class="st-eyebrow">01 — The short version</p>
+        <h2 class="st-h2">A number Steam won't give you: how much you played today.</h2>
+        <p class="st-p">
+          Steam counts hours for a lifetime. Nobody counts them for an evening. That gap is the
+          whole project — one page, one form, and a list that keeps the sessions you bothered to
+          write down.
+        </p>
+
+        <div class="st-brief">
+          <div class="st-brief__item">
+            <div class="st-brief__n">The problem</div>
+            <div class="st-brief__t">
+              <b>Lifetime totals don't change behaviour.</b> A number in the hundreds is easy to
+              ignore. The two hours you played tonight is not, and no Steam screen shows it.
+            </div>
+          </div>
+          <div class="st-brief__item">
+            <div class="st-brief__n">The build</div>
+            <div class="st-brief__t">
+              <b>Three fields and a card.</b> Type the game, the hours and the genre, check the
+              card, add it to today. Nothing is saved until you have seen it written out.
+            </div>
+          </div>
+          <div class="st-brief__item">
+            <div class="st-brief__n">The limit</div>
+            <div class="st-brief__t">
+              <b>It only knows what you type.</b> No Steam login, no automatic import, no cover
+              art. The trade was deliberate, and section 03 is about why.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 02 为什么做 ================= -->
+    <section class="st-sec st-sec--sky" id="problem">
+      <div class="st-wrap">
+        <p class="st-eyebrow">02 — Why this exists</p>
+        <h2 class="st-h2">The brief was media consumption. I picked the number that gets noticed.</h2>
+        <p class="st-p">
+          The assignment was a web application about media consumption. I chose games because the
+          tracking already exists there — Steam has counted every hour since before I had an
+          account. What it does with that data is the problem: it adds all of it up, forever, and
+          shows you a figure so large that it stops meaning anything.
+        </p>
+        <p class="st-p">
+          So the app is built around one number, the total for a day. It sits beside the date on
+          every entry, it is the only arithmetic the app performs, and it is the reason to open it
+          again tomorrow.
+        </p>
+
+        <div class="st-stats">
+          <div class="st-stat">
+            <div class="st-stat__n">11</div>
+            <div class="st-stat__l">genres in the dropdown, from Action to Other</div>
+          </div>
+          <div class="st-stat">
+            <div class="st-stat__n">3</div>
+            <div class="st-stat__l">fields to fill: name, playtime, category</div>
+          </div>
+          <div class="st-stat">
+            <div class="st-stat__n">1</div>
+            <div class="st-stat__l">decimal place allowed in the playtime field</div>
+          </div>
+          <div class="st-stat">
+            <div class="st-stat__n">0</div>
+            <div class="st-stat__l">requests sent anywhere while you use it</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 03 方向：不用 API ================= -->
+    <section class="st-sec" id="direction">
+      <div class="st-wrap">
+        <p class="st-eyebrow">03 — Choosing a direction</p>
+        <h2 class="st-h2">The first design needed an API that turned out not to exist.</h2>
+        <p class="st-p">
+          My first mockup pulled names and box art straight from Steam: type a title, see the real
+          cover, add it. Then I went looking for the endpoint. Everything Steam publishes is
+          library-scoped — it needs a user's Steam ID and their permission to read their own games.
+          An index of the whole store, with pictures, is not public.
+        </p>
+
+        <div class="st-concepts">
+          <article class="st-concept">
+            <div class="st-concept__tag">Designed first</div>
+            <h3 class="st-concept__t">Auto-fill from Steam</h3>
+            <p class="st-concept__d">
+              The user types a title; the app fetches the correct name, the cover art and the
+              genre, then fills the card for them. It looked finished in a mockup.
+            </p>
+            <p class="st-concept__verdict">
+              <b>Dropped because:</b> there is no public endpoint to call. Keeping it would have
+              meant hard-coding fake games — a demo that works only on the data I invented.
+            </p>
+          </article>
+
+          <article class="st-concept is-pick">
+            <span class="st-badge">Shipped</span>
+            <div class="st-concept__tag">Rebuilt around</div>
+            <h3 class="st-concept__t">Three fields, typed by hand</h3>
+            <p class="st-concept__d">
+              Name, hours, genre. No pictures, no fetching, and no game the app can't record —
+              including the ones no store listing would return.
+            </p>
+            <p class="st-concept__verdict">
+              <b>Kept because:</b> it works for every game and for nobody's data but the user's.
+              It also made the daily total the only thing left to look at.
+            </p>
+          </article>
+        </div>
+
+        <figure class="st-figure">
+          <img src="assets/img/stk-redesign.webp" width="855" height="1161" loading="lazy"
+               alt="The mockup redrawn after the API was dropped: a form on the left, a mint preview card on the right, and a history list with dates and totals." />
+          <figcaption>
+            The mockup I redrew afterwards. The card on the right is now filled from the form rather
+            than from Steam, and the history has dates and totals where the cover art used to be.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================= 04 表单逻辑 ================= -->
+    <section class="st-sec st-sec--sky" id="logic">
+      <div class="st-wrap">
+        <p class="st-eyebrow">04 — The logic under the interface</p>
+        <h2 class="st-h2">Nothing reaches the history until it has been checked, and nothing gets checked until it is complete.</h2>
+        <p class="st-p">
+          The form has two steps and a gate between them. Check reads the three fields, and if
+          anything is wrong it says so under the field that is wrong. Only a complete, well-formed
+          entry produces a card, and only a card can be added to the history.
+        </p>
+
+        <div class="st-errs">
+          <article class="st-err">
+            <div class="st-err__img"><img src="assets/img/stk-err-empty.webp" width="751" height="672" loading="lazy" alt="Clicking Check with every field empty outlines all three fields in red and prints a message underneath." /></div>
+            <h3 class="st-err__t">Everything empty</h3>
+            <p class="st-err__msg">“Please enter the game information.”</p>
+          </article>
+          <article class="st-err">
+            <div class="st-err__img"><img src="assets/img/stk-err-format.webp" width="726" height="610" loading="lazy" alt="Typing 2.55 into the playtime field outlines it in red and rejects the entry." /></div>
+            <h3 class="st-err__t">Two decimal places</h3>
+            <p class="st-err__msg">“Please enter a numeric value with one decimal place.”</p>
+          </article>
+          <article class="st-err">
+            <div class="st-err__img"><img src="assets/img/stk-err-add.webp" width="748" height="664" loading="lazy" alt="Clicking Add before Check prints a red message on the preview card." /></div>
+            <h3 class="st-err__t">Add before Check</h3>
+            <p class="st-err__msg">“Cannot be added to game history. Please finish step 1 first.”</p>
+          </article>
+        </div>
+
+        <div class="st-lawbox">
+          <div class="st-law"><b>Missing name</b>“Please enter the Game Name.”</div>
+          <div class="st-law"><b>Missing playtime</b>“Please enter the Playtime.”</div>
+          <div class="st-law"><b>No genre</b>“Please select the Category.”</div>
+          <div class="st-law"><b>Words, or two decimals</b>One pattern rejects both: digits, with at most one place after the point.</div>
+        </div>
+
+        <p class="st-p" style="margin-top:20px">
+          Six messages in total, each written in the place the mistake was made. Nothing opens a
+          dialog, and nothing scrolls you somewhere else to tell you off.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 05 使用方式 ================= -->
+    <section class="st-sec" id="usage">
+      <div class="st-wrap">
+        <p class="st-eyebrow">05 — Three fields, once a session</p>
+        <h2 class="st-h2">The whole app, in four screens.</h2>
+        <p class="st-p">
+          There is no menu and there are no settings. The loop is the same every time, and the
+          history only grows when you confirm a card you have already read.
+        </p>
+
+        <div class="st-steps">
+          <article class="st-step">
+            <div class="st-step__img"><img src="assets/img/stk-form.webp" width="806" height="1180" loading="lazy" alt="Step one: the game name, playtime and category fields filled in, with Check and Clear underneath." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">Step 01</div>
+              <h3 class="st-step__t">Fill in three fields</h3>
+              <p class="st-step__d">
+                Name, hours to one decimal place, and one of eleven genres. Clear empties all three
+                at once, which was the tutor's suggestion.
+              </p>
+            </div>
+          </article>
+
+          <article class="st-step">
+            <div class="st-step__img"><img src="assets/img/stk-card.webp" width="806" height="1180" loading="lazy" alt="Step two: the mint preview card showing the game, its genre, its playtime, its running total and today's date." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">Step 02</div>
+              <h3 class="st-step__t">Read it back on the card</h3>
+              <p class="st-step__d">
+                Check writes the entry into a mint card: name, genre, this session, the running
+                total for that game, and the date. Nothing is saved yet.
+              </p>
+            </div>
+          </article>
+
+          <article class="st-step">
+            <div class="st-step__img"><img src="assets/img/stk-history.webp" width="1200" height="900" loading="lazy" alt="Step three: the history list, newest entry on top, each entry under a date header and a total." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">Step 03</div>
+              <h3 class="st-step__t">Add it to the list</h3>
+              <p class="st-step__d">
+                Add puts the entry at the top of the history and resets the card to NA, ready for
+                the next one. The total above the list goes up straight away.
+              </p>
+            </div>
+          </article>
+
+          <article class="st-step">
+            <div class="st-step__img"><img src="assets/img/stk-expanded.webp" width="1200" height="900" loading="lazy" alt="Step four: one history entry opened to show its category, its total playtime across sessions, and a delete button." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">Step 04</div>
+              <h3 class="st-step__t">Open a row, or delete it</h3>
+              <p class="st-step__d">
+                The arrow opens the entry to show its genre and its total across every session of
+                that game. Delete only appears once a row is open, so removing takes two clicks.
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 06 真的能用 ================= -->
+    <section class="st-sec st-sec--ink" id="app">
+      <div class="st-wrap">
+        <p class="st-eyebrow">06 — It is a website, so use it</p>
+        <h2 class="st-h2" style="color:#fff">The build runs below. The repository link does not.</h2>
+        <p class="st-p">
+          This is the real application, not a recording of one. Add a game, watch the total change,
+          refresh the page and it is still there. Your entries live in your own browser and I
+          cannot see them.
+        </p>
+
+        <div class="st-embed" id="stEmbed">
+          <div class="st-embed__frame">
+            <button class="st-embed__gate" id="stEmbedGate" aria-label="Load the app">
+              <div>
+                <span class="st-embed__play">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+                </span>
+                <b>Load the app</b>
+                <span>Runs in this page · nothing is uploaded</span>
+              </div>
+            </button>
+          </div>
+          <div class="st-embed__bar">
+            <span>Try “Hollow Knight”, 2.0, Action — then Check, then Add.</span>
+            <a href="apps/steamtracker/index.html" target="_blank" rel="noopener">Open in a new tab ↗</a>
+          </div>
+        </div>
+
+        <p class="st-p" style="margin-top:26px">
+          <strong>Why the GitHub link never opened on another computer.</strong> Nothing in the code
+          is broken. The repository was simply never publishable, for three reasons that stack up in
+          the order you would meet them.
+        </p>
+
+        <div class="st-diag">
+          <div class="st-diag__row">
+            <div class="st-diag__n">01</div>
+            <div>
+              <div class="st-diag__t">There is no <code>index.html</code> at the root</div>
+              <div class="st-diag__d">
+                The site lives in <code>/public</code>. GitHub Pages serves the repository root, so
+                <code>github.io/&lt;repo&gt;</code> answers with a 404. There is nothing there for it
+                to open.
+              </div>
+            </div>
+          </div>
+          <div class="st-diag__row">
+            <div class="st-diag__n">02</div>
+            <div>
+              <div class="st-diag__t">The built folder is ignored by git</div>
+              <div class="st-diag__d">
+                <code>server.js</code> serves <code>/dist</code>, and <code>dist</code> sits in
+                <code>.gitignore</code>. Even with Node installed there is no compiled site to serve
+                until <code>parcel build</code> has run.
+              </div>
+            </div>
+          </div>
+          <div class="st-diag__row">
+            <div class="st-diag__n">03</div>
+            <div>
+              <div class="st-diag__t">The README's first instruction needs a step before it</div>
+              <div class="st-diag__d">
+                <code>npm run dev</code> needs <code>node_modules</code>, and a fresh clone has none.
+                The lockfile pins Parcel 2.9 and Sass from 2023, so <code>npm install</code> has to
+                succeed before anything runs at all.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="st-p" style="margin-top:22px">
+          The fix was to stop asking people to build it. Once Parcel has done its pass the app is a
+          folder of static files, so I copied that folder into this site. Same code, no install,
+          works on any machine with a browser.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 07 数据层 ================= -->
+    <section class="st-sec st-sec--sky" id="storage">
+      <div class="st-wrap">
+        <p class="st-eyebrow">07 — What happens underneath</p>
+        <h2 class="st-h2">An array in localStorage, and one function that redraws all of it.</h2>
+        <p class="st-p">
+          There is no database and no server-side state. The entire app is one array stored in the
+          browser, and everything on screen — the cards, the dates, the totals, their order — is
+          rebuilt from that array when the page loads and again after every change.
+        </p>
+
+        <div class="st-grid2">
+          <div class="st-card">
+            <h3 class="st-card__t">What one record holds</h3>
+            <ul class="st-card__list">
+              <li><b>name</b> — the game, as typed</li>
+              <li><b>playtime</b> — this session, one decimal place</li>
+              <li><b>category</b> — one of the eleven genres</li>
+              <li><b>totalPlaytime</b> — every session of that game so far</li>
+              <li><b>date</b> — the day it was added</li>
+            </ul>
+            <p class="st-card__note">
+              Nothing else. No Steam ID, no account, no timestamp beyond the day.
+            </p>
+          </div>
+
+          <div class="st-card">
+            <h3 class="st-card__t">The part that was hard</h3>
+            <p class="st-card__d">
+              <code>updateGameHis()</code> — lines 171 to 253 of the 291-line script.js — empties
+              the list, reads the array back out of localStorage, writes a card for each record,
+              then attaches the open and delete handlers to elements that did not exist a moment
+              ago. It is the longest function in the file and the only one I commented line by
+              line, because when it goes wrong the list either doubles or disappears.
+            </p>
+          </div>
+        </div>
+
+        <div class="st-lawbox">
+          <div class="st-law"><b>Read on load</b>The list is rebuilt from localStorage every time the page opens.</div>
+          <div class="st-law"><b>Write on change</b>Add and Delete rewrite the same array, then call the same redraw.</div>
+          <div class="st-law"><b>Newest first</b>Records are pushed to the front, so the last session sits at the top.</div>
+          <div class="st-law"><b>Totals are not per day</b>The number above each card adds up the whole array, which only equals one day while the list is one day long.</div>
+        </div>
+
+        <p class="st-p" style="margin-top:20px">
+          That last point is a real gap between the mockup and the build. The redrawn mockup groups
+          every game under a single date header; the finished code gives each record its own header
+          and repeats the running total on it. It reads fine for two sessions and would need fixing
+          at fifty.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 08 两版稿子 ================= -->
+    <section class="st-sec" id="mockups">
+      <div class="st-wrap">
+        <p class="st-eyebrow">08 — Mockup to mockup</p>
+        <h2 class="st-h2">The first version was bright, full width, and had no way to clear the form.</h2>
+        <p class="st-p">
+          My tutor's feedback on version one was blunt: you cannot read the game information
+          against that background. So I went and looked at sites that are easy to read, and wrote
+          down what they had in common — a white page with a single accent colour, content held
+          inside margins instead of stretched across a wide screen, and instructions placed where
+          the user is about to act.
+        </p>
+
+        <div class="st-mocks">
+          <figure>
+            <img src="assets/img/stk-v1-desktop.webp" width="652" height="1248" loading="lazy"
+                 alt="Version one: a saturated blue page across the full width, a Steam banner on top, the form, and a history list where every game has a circular cover-art thumbnail." />
+            <figcaption><b>Version 1</b> — full width, saturated blue, no clear button, and a history built around cover art that could not be fetched.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/stk-v2-desktop.webp" width="651" height="1230" loading="lazy"
+                 alt="Version two: a white page inside margins, mint green as the only accent, a clear button, step instructions and a divider before each of the four sections." />
+            <figcaption><b>Version 2</b> — white ground, mint as the only accent, margins, a Clear button, step instructions, and a divider before each section.</figcaption>
+          </figure>
+        </div>
+
+        <div class="st-lawbox">
+          <div class="st-law"><b>Mint green</b>Chosen as the single accent because it sits next to Steam without copying it.</div>
+          <div class="st-law"><b>Margins</b>Content pulled into the middle so a wide screen still reads left to right.</div>
+          <div class="st-law"><b>Clear</b>One button to empty all three fields — the tutor's suggestion.</div>
+          <div class="st-law"><b>Dividers</b>Four sections made visible, so the page reads in steps rather than as one column.</div>
+        </div>
+
+        <p class="st-p" style="margin-top:20px">
+          There is no version two for mobile, and that was a decision rather than an omission: the
+          phone layout only has to move the second step underneath the first, so drawing it again
+          would have told me nothing the grid had not already told me.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 09 响应式 ================= -->
+    <section class="st-sec st-sec--sky" id="responsive">
+      <div class="st-wrap">
+        <p class="st-eyebrow">09 — Phone, tablet, desktop</p>
+        <h2 class="st-h2">Three blocks in the SCSS, but only one breakpoint that changes the layout.</h2>
+        <p class="st-p">
+          Above 1024px the two steps sit side by side: you type on the left and read the result on
+          the right without moving your eyes. At 1024px and below that stops being possible, so the
+          grid collapses and the preview card drops underneath the form, in the order you use it.
+        </p>
+
+        <div class="st-widths">
+          <figure>
+            <img src="assets/img/stk-hero-app.webp" width="1500" height="1010" loading="lazy"
+                 alt="Desktop width: the form on the left and the mint preview card on the right." />
+            <figcaption><b>Above 1024px</b>Form and preview side by side.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/stk-phone-column.webp" width="780" height="1886" loading="lazy"
+                 alt="Phone width: the same form, then the same preview card underneath it in a single column." />
+            <figcaption><b>1024px and below</b>One column, the card under the form.</figcaption>
+          </figure>
+        </div>
+
+        <div class="st-lawbox" style="margin-top:28px">
+          <div class="st-law"><b>Above 1024px</b>Two columns — form left, preview card right</div>
+          <div class="st-law"><b>1024px and below</b>One column, the card drops under the form</div>
+          <div class="st-law"><b>601–1024px</b>The same column, held in by 10% margins</div>
+          <div class="st-law"><b>600px and below</b>The same column again, with tighter spacing</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 10 怎么做的 ================= -->
+    <section class="st-sec" id="build">
+      <div class="st-wrap">
+        <p class="st-eyebrow">10 — How it was built</p>
+        <h2 class="st-h2">Week six was the server. Week eight was the bundler.</h2>
+        <p class="st-p">
+          The build followed the course in order. First a Node and Express server serving a static
+          folder, then Parcel and SCSS on top of it, then the form and the history. Nine commits
+          between 28 May and 7 June 2023, one working step in each.
+        </p>
+
+        <div class="st-steps">
+          <article class="st-step st-step--fill">
+            <div class="st-step__img"><img src="assets/img/stk-commits.webp" width="1123" height="842" loading="lazy" alt="The GitHub commit history: nine commits, from an initial commit to finishing the mobile version." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">01</div>
+              <h3 class="st-step__t">Nine commits, named for the change</h3>
+              <p class="st-step__d">
+                From “add the homepage” to “finish mobile version”. Small enough that any one of
+                them could be the version that worked.
+              </p>
+            </div>
+          </article>
+
+          <article class="st-step st-step--fill">
+            <div class="st-step__img"><img src="assets/img/stk-scss.webp" width="715" height="536" loading="lazy" alt="A section of the SCSS file, with nested rules and a loop for the repeated grid areas." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">02</div>
+              <h3 class="st-step__t">SCSS for the repetitive part</h3>
+              <p class="st-step__d">
+                Nested selectors and a loop saved the responsive layer from being written out three
+                times by hand. It is also the least tidy code in the project.
+              </p>
+            </div>
+          </article>
+
+          <article class="st-step st-step--fill">
+            <div class="st-step__img"><img src="assets/img/stk-home.webp" width="1200" height="900" loading="lazy" alt="The finished homepage: a Steam store image across the full width, the title and privacy statement on top of it, and the entry form starting underneath." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">03</div>
+              <h3 class="st-step__t">A background that explains the app</h3>
+              <p class="st-step__d">
+                The homepage is one image from Steam's own store art, so the subject is obvious
+                before a word is read. It still scrolls instead of staying put.
+              </p>
+            </div>
+          </article>
+
+          <article class="st-step st-step--fill">
+            <div class="st-step__img"><img src="assets/img/stk-history.webp" width="1200" height="900" loading="lazy" alt="The finished history list: date headers, totals, and one entry per session." /></div>
+            <div class="st-step__body">
+              <div class="st-step__n">04</div>
+              <h3 class="st-step__t">localStorage, the slow part</h3>
+              <p class="st-step__d">
+                Reading, ordering, summing and redrawing the list on every change is the only piece
+                of the build that genuinely slowed me down.
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 11 已知问题 ================= -->
+    <section class="st-sec" id="issues">
+      <div class="st-wrap">
+        <p class="st-eyebrow">11 — Known issues &amp; future versions</p>
+        <h2 class="st-h2">What it cannot do yet, and the one thing it now can.</h2>
+        <p class="st-p">
+          These are the four I wrote down when the assignment was handed in, in the order I would
+          tackle them. Only the last one is finished, and it was finished here rather than in the
+          repository.
+        </p>
+
+        <div class="st-issues">
+          <article class="st-issue">
+            <div class="st-issue__n">01</div>
+            <h3 class="st-issue__t">The responsive SCSS is longer than it needs to be</h3>
+            <p class="st-issue__d">
+              The tablet and phone blocks repeat rules that differ only by a margin. They work, and
+              they are the least tidy code in the project.
+            </p>
+            <p class="st-issue__fix">
+              <b>Next version:</b> fold both into one mixin that takes the spacing as an argument,
+              instead of writing the block out twice.
+            </p>
+          </article>
+
+          <article class="st-issue">
+            <div class="st-issue__n">02</div>
+            <h3 class="st-issue__t">No Steam integration</h3>
+            <p class="st-issue__d">
+              Every session is typed by hand, so the app can only report what you remembered to
+              record — the one thing a tracker should not depend on.
+            </p>
+            <p class="st-issue__fix">
+              <b>Next version:</b> let the user connect their own library with their permission and
+              fill the history from it. That is the version I drew first, before I found out the API
+              was library-scoped.
+            </p>
+          </article>
+
+          <article class="st-issue">
+            <div class="st-issue__n">03</div>
+            <h3 class="st-issue__t">The homepage background scrolls away</h3>
+            <p class="st-issue__d">
+              The Steam artwork moves with the page instead of staying put, so the one moment that
+              sets the mood is gone as soon as you move.
+            </p>
+            <p class="st-issue__fix">
+              <b>Next version:</b> <code>background-attachment: fixed</code> on desktop and a static
+              crop on mobile, where the fixed version behaves badly.
+            </p>
+          </article>
+
+          <article class="st-issue is-solved">
+            <div class="st-issue__n">04</div>
+            <h3 class="st-issue__t">It only opened on the machine that had the files</h3>
+            <p class="st-issue__d">
+              The app needed Node, a Parcel build and a local server, so the repository was not a
+              link to anything a tutor or a friend could actually use.
+            </p>
+            <p class="st-issue__fix">
+              <b>Done here:</b> the compiled folder is static, so the app now runs in section 06 of
+              this page and in a new tab, on any machine with a browser. No install, no build.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 页脚小字 + 下一个项目 ================= -->
+    <div class="st-endnote">
+      <div class="st-wrap">
+        <span>Advanced Web Design · The University of Sydney · 2023 · solo project</span>
+        <span>HTML, SCSS and JavaScript · bundled with Parcel · served with Express</span>
+      </div>
+    </div>
+
+    <section class="st-nextwrap">
+      <div class="st-wrap">
+        <a class="st-nextcard" href="chocolate.html">
+          <div class="st-nextcard__now">
+            <div class="st-nextcard__k">You are here</div>
+            <div class="st-nextcard__now-t">SteamTracker</div>
+            <div class="st-nextcard__now-d">Project 03 of 04 · a web app, designed and built alone</div>
+          </div>
+          <div class="st-nextcard__next">
+            <div class="st-nextcard__k">Next project</div>
+            <div class="st-nextcard__next-t">
+              Chocolate 3D Model
+              <svg width="26" height="14" viewBox="0 0 30 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 8h26M20 1l7 7-7 7"/></svg>
+            </div>
+            <div class="st-nextcard__now-d">Project 04 of 04</div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/content.js?v=38"></script>
+  <script src="js/main.js?v=38"></script>
+  <script src="js/steamtracker.js?v=38"></script>
 </body>
 </html>

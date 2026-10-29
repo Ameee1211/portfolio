@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SteamTracker — track your Steam game time</title>
+    <!-- <link rel="stylesheet" href="style.css"> -->
+    <link rel="stylesheet" href="scss/main.css">
+
+    <!-- front link of the titles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sedgwick+Ave&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/3c30968787.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    
+
+    <div class="container">
+        <div class="homePage"></div>
+
+        <div class="webTitle">
+            <h1 id="mainTitle">KEEP TRACKING OF YOUR STEAM HISTORY</h1>
+            <h1 id="subTitle">Have a Healthy Gaming Life</h1>
+            <p id="privacyStatement">This website helps you to track your Steam game time. We promise not to display these data publicly.</p>
+        </div>
+
+
+        <div class="beginTrack">
+            <span id="beginTrackLine"></span>
+            <span id="beginTrackText"><strong>Let's Begin Tracking!</strong></span>
+        </div>
+
+
+        <div class="userEnter">
+            <div id="step1">
+                <p><strong>Step 1: Enter the game information.</strong></p>
+            </div>
+            
+            <div class="gameName">
+                <p>Game Name:</p>
+                <input type="text">
+            </div>
+            
+            <div class="playtime">
+                <p>Playtime:</p>
+                <div id="enterPlaytimeSection">
+                    <input type="text"> 
+                    <p id="playtimeUnit">Hours</p>
+                </div>
+            </div>
+            
+            <div class="category">
+                <p>Category:</p>
+                <select  id="selectCategory">
+                    <option id="defaultOption">Click to select</option>
+                    <option>Casual</option>
+                    <option>Sports</option>
+                    <option>Adventure</option>
+                    <option>Action</option>
+                    <option>MMO</option>
+                    <option>Simulation</option>
+                    <option>Indie</option>
+                    <option>Racing</option>
+                    <option>Strategy</option>
+                    <option>RPG</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            
+            <br>
+            <div id="enterErrorMessage"></div>
+            <button id="checkButton">Check</button>
+            <button id="clearButton">Clear</button>
+
+            
+        </div>
+
+
+        <div class="userAdd">
+            <div id="step2">
+                <p><strong>Step 2: Check the information below and add it to your game history.</strong></p>
+            </div>
+
+            <div class="checkCard">
+                <div class="checkGameName">
+                    <p id="gameNameOutput">NA</p>
+                </div>
+                
+                <div class="checkCategory">
+                    <p>Category:</p>
+                    <p id="categoryOutput">NA</p>
+                </div>
+                <div class="checkPlaytime">
+                    <p>Playtime:</p>
+                    <p id="playtimeOutput">NA</p>
+                </div>
+                <div class="checkTotalPlaytime">
+                    <p>Total Playtime:</p>
+                    <p id="totalPlaytimeOutput">NA</p>
+                </div>
+                <div class="checkDate">
+                    <p>Date:</p>
+                    <p id="dateOutput">NA</p>
+                </div>
+                
+                <div class="addButton">
+                    <button id="addButton">Add</button>
+                </div>
+            </div>
+            
+            <div id="checkErrorMessage"></div>
+
+        </div>
+
+
+
+        <div class="gameHisBG">
+            
+            <span id="gameHisLine"></span>
+            <span id="gameHisLineText"><strong>My Game History</strong></span>
+        </div>
+
+        
+
+
+
+        <div class="gameHis">
+            <ul id="gameHisList">
+
+
+
+            </ul>
+            <button id="clearGameHis">Clear All Game History</button>
+            
+            
+        </div>
+    </div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>

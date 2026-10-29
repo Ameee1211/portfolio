@@ -386,7 +386,8 @@ img { display: block; max-width: 100%; }
 
 /* 首屏底部固定的滚动引导（首屏需要 position: relative） */
 .hero__cue,
-.sl-hero__cue {
+.sl-hero__cue,
+.st-hero__cue {
   position: absolute;
   left: 50%;
   bottom: 22px;
@@ -394,9 +395,11 @@ img { display: block; max-width: 100%; }
   transform: translateX(-50%);
 }
 .hero__cue:hover,
-.sl-hero__cue:hover { transform: translateX(-50%) translateY(2px); }
+.sl-hero__cue:hover,
+.st-hero__cue:hover { transform: translateX(-50%) translateY(2px); }
 .hero__cue.is-gone,
-.sl-hero__cue.is-gone { transform: translateX(-50%) translateY(6px); }
+.sl-hero__cue.is-gone,
+.st-hero__cue.is-gone { transform: translateX(-50%) translateY(6px); }
 
 /* ================= About Me ================= */
 /* 首页两个板块都按「一屏一块」处理：撑满视口并垂直居中，上下留白完整露出来，

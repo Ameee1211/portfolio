@@ -1,0 +1,1187 @@
+.container {
+  margin-top: 5%;
+  margin-bottom: 5%;
+  width: auto;
+  margin-left: 20%;
+  margin-right: 20%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-auto-columns: 1fr;
+  gap: 40px 80px;
+  grid-auto-flow: row;
+}
+
+.homePage {
+  grid-area: 1/1/5/7;
+  width: 160%;
+  margin-left: -40%;
+  margin-right: -20%;
+  box-sizing: border-box;
+  background-color: #218b8b;
+  background-image: url("https://cdn.akamai.steamstatic.com/store/home/store_home_share.jpg");
+  background-size: 250% auto;
+  background-repeat: no-repeat;
+  background-position: -900px 0px;
+  background-position: fixed;
+  border-radius: 30pt;
+  box-shadow: 2px 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.webTitle {
+  grid-area: 1/1/5/6;
+  /* border:1px solid rgb(255, 255, 255); */
+  margin-top: 10%;
+  margin-bottom: 10%;
+  /* align vertically in the middle */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.webTitle #mainTitle {
+  font-family: "Sedgwick Ave", cursive;
+  font-size: 50pt;
+  color: rgb(255, 155, 25);
+  text-shadow: 3px 4px 4px rgb(41, 41, 41);
+}
+.webTitle #subTitle {
+  font-family: "Sedgwick Ave", cursive;
+  font-size: 40pt;
+  color: rgb(253, 206, 48);
+  text-shadow: 3px 2px 4px rgb(41, 41, 41);
+}
+.webTitle #privacyStatement {
+  font-size: 15pt;
+  color: rgb(221, 220, 220);
+  text-shadow: 2px 2px 4px rgb(54, 54, 54);
+}
+
+.beginTrack {
+  grid-area: 5/1/8/7;
+  /*border:3px solid rgb(255, 0, 0);*/
+  text-align: center;
+  position: relative;
+}
+.beginTrack #beginTrackLine {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 2px dashed #000;
+}
+.beginTrack #beginTrackText {
+  position: relative;
+  display: inline-block;
+  padding: 0 10px;
+  background-color: #ffffff;
+  font-family: "Sedgwick Ave", cursive;
+  font-size: 30pt;
+}
+
+.userEnter {
+  grid-area: 5/1/9/4;
+  /* border:1px solid black; */
+  z-index: 2;
+  margin-top: 15%;
+}
+.userEnter #step1 p {
+  font-size: 12pt;
+  color: #767676;
+}
+.userEnter .gameName p {
+  font-size: 18pt;
+}
+.userEnter .gameName input {
+  z-index: 1;
+  font-size: 15pt;
+  width: 95%;
+  height: 30px;
+  border: 1px solid black;
+}
+.userEnter .playtime p {
+  font-size: 18pt;
+}
+.userEnter .playtime #enterPlaytimeSection {
+  /* make the playtime input and "Hours" in the same line  */
+  display: flex;
+  margin-top: 0;
+  align-items: center;
+}
+.userEnter .playtime #enterPlaytimeSection input {
+  z-index: 1;
+  font-size: 15pt;
+  width: 95%;
+  height: 30px;
+  border: 1px solid black;
+}
+.userEnter .playtime #enterPlaytimeSection #playtimeUnit {
+  font-size: 15pt;
+  display: flex;
+}
+.userEnter .category p {
+  font-size: 18pt;
+}
+.userEnter .category select {
+  z-index: 1;
+  font-size: 15pt;
+  width: 95%;
+  height: 30px;
+}
+.userEnter .category #defaultOption {
+  color: #767676;
+}
+.userEnter button {
+  margin-top: 20px;
+  margin-right: 5%;
+  font-size: 18pt;
+  width: 30%;
+  height: 50px;
+  border-radius: 10px;
+}
+.userEnter #checkButton {
+  background-color: #46b8b8;
+  color: white;
+  border: 0px;
+}
+.userEnter #checkButton:hover {
+  background-color: #1b9494;
+  color: white;
+  border: 0px;
+  transform: translateY(-2px);
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+}
+.userEnter #clearButton {
+  background-color: white;
+  color: gray;
+  border: 1px solid gray;
+}
+.userEnter #clearButton:hover {
+  background-color: rgb(234, 234, 234);
+  color: gray;
+  border: 1px solid gray;
+  transform: translateY(-2px);
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+}
+.userEnter #enterErrorMessage {
+  color: #cf0000;
+  font-style: bold;
+}
+
+.userAdd {
+  grid-area: 5/4/9/7;
+  /* border:1px solid black; */
+  margin-top: 15%;
+}
+.userAdd #step2 p {
+  font-size: 12pt;
+  color: #767676;
+}
+.userAdd .checkCard {
+  background-color: #BDF1F1;
+  border-radius: 30px;
+  box-shadow: 2px 4px 50px rgba(0, 0, 0, 0.15);
+}
+.userAdd .checkGameName p {
+  display: flex;
+  justify-content: center;
+  padding-top: 5%;
+  font-size: 18pt;
+  color: #bbbbbb;
+}
+.userAdd .checkCategory {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 10%;
+  padding-right: 10%;
+}
+.userAdd .checkCategory p {
+  font-size: 15pt;
+}
+.userAdd .checkCategory #categoryOutput {
+  color: #bbbbbb;
+}
+.userAdd .checkPlaytime {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 10%;
+  padding-right: 10%;
+}
+.userAdd .checkPlaytime p {
+  font-size: 15pt;
+}
+.userAdd .checkPlaytime #playtimeOutput {
+  color: #bbbbbb;
+}
+.userAdd .checkTotalPlaytime {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 10%;
+  padding-right: 10%;
+}
+.userAdd .checkTotalPlaytime p {
+  font-size: 15pt;
+}
+.userAdd .checkTotalPlaytime #totalPlaytimeOutput {
+  color: #bbbbbb;
+}
+.userAdd .checkDate {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 10%;
+  padding-right: 10%;
+}
+.userAdd .checkDate p {
+  font-size: 15pt;
+}
+.userAdd .checkDate #dateOutput {
+  color: #bbbbbb;
+}
+.userAdd .addButton {
+  display: flex;
+  justify-content: center;
+  padding-top: 5%;
+  padding-bottom: 5%;
+}
+.userAdd .addButton #addButton {
+  font-size: 18pt;
+  width: 30%;
+  height: 50px;
+  border-radius: 10px;
+  background-color: #46b8b8;
+  color: white;
+  border: 0px;
+}
+.userAdd .addButton #addButton:hover {
+  background-color: #1b9494;
+  color: white;
+  border: 0px;
+  transform: translateY(-2px);
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+}
+.userAdd #checkErrorMessage {
+  padding-top: 10px;
+  color: #cf0000;
+  font-style: bold;
+}
+
+.gameHisBG {
+  grid-area: 9/1/11/7;
+  /* border:1px solid black; */
+  text-align: center;
+  position: relative;
+}
+.gameHisBG #gameHisLine {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 2px dashed #000;
+}
+.gameHisBG #gameHisLineText {
+  position: relative;
+  display: inline-block;
+  padding: 0 10px;
+  background-color: #ffffff;
+  font-family: "Sedgwick Ave", cursive;
+  font-size: 30pt;
+}
+
+.gameHis {
+  grid-area: 9/1/12/7;
+  /* border: 1px solid black; */
+  margin-top: 5%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gameHis #clearGameHis {
+  font-size: 12pt;
+  width: 20%;
+  height: 40px;
+  border-radius: 10px;
+  background-color: white;
+  color: gray;
+  border: 1px solid gray;
+  margin-top: 10px;
+  margin-left: auto;
+  position: relative;
+  z-index: 5;
+}
+.gameHis #clearGameHis:hover {
+  background-color: rgb(234, 234, 234);
+  color: gray;
+  border: 1px solid gray;
+  transform: translateY(-2px);
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+}
+.gameHis #gameHisList {
+  position: absolute;
+  padding-top: 70px;
+  padding-bottom: 15%;
+  justify-content: center;
+  width: 100%;
+}
+.gameHis #gameHisList li .top {
+  display: none;
+  justify-content: space-between;
+  padding: 20px 20px 10px;
+  color: rgb(0, 0, 0);
+  font-size: 15pt;
+  font-weight: bold;
+}
+.gameHis #gameHisList li:first-child .top {
+  display: flex;
+}
+
+ul {
+  list-style-type: none;
+  left: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.gameCard {
+  font-size: 15pt;
+  grid-row: 9/12;
+  margin-bottom: 20px;
+  /* width: 800px; */
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.gameCard strong {
+  font-weight: normal;
+  color: #666;
+  padding-bottom: 5px;
+  display: inline-block;
+  font-size: 12pt;
+}
+.gameCard #defaultInfo, .gameCard #details, .gameCard #detailInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#detailInfo {
+  border-top: 1px solid #ddd;
+  padding-top: 20px;
+  width: 90%;
+}
+
+#defaultInfo {
+  width: 90%;
+}
+
+.gameCard #defaultInfo #gameName, .gameCard #defaultInfo #category {
+  margin-left: 10%;
+}
+.gameCard #defaultInfo #palytime, .gameCard #defaultInfo #totalPlaytime {
+  margin-right: 10%;
+  width: 150px;
+}
+.gameCard #details #gameName, .gameCard #details #category {
+  margin-left: 10%;
+}
+.gameCard #details #palytime, .gameCard #details #totalPlaytime {
+  margin-right: 10%;
+  width: 150px;
+}
+.gameCard button {
+  margin-left: auto;
+  font-size: 15pt;
+  background-color: white;
+  border: none;
+  padding: 0;
+  margin-left: 92%;
+  position: relative;
+  top: -40px;
+}
+
+.deleteButton {
+  font-size: 10pt;
+  width: -moz-fit-content;
+  width: fit-content;
+  height: 40px;
+  border-radius: 10px;
+  background-color: white;
+  color: gray;
+  border: 1px solid gray;
+  margin-top: 10px;
+  margin-left: auto;
+}
+
+.deleteButton:hover {
+  background-color: rgb(234, 234, 234);
+  color: gray;
+  border: 1px solid gray;
+  transform: translateY(-2px);
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.gameCard .deleteButton {
+  padding: 0 10px;
+  border: 1px solid gray;
+  margin-left: 90%;
+  top: -50px;
+}
+
+/* iPad */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .container {
+    margin-top: 5%;
+    margin-bottom: 5%;
+    width: auto;
+    margin-left: 10%;
+    margin-right: 10%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 0.8fr 0.1fr 0.1fr 0.1fr 0.1fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr;
+    grid-auto-columns: 1fr;
+    gap: 40px 80px;
+    grid-auto-flow: row;
+  }
+  .homePage {
+    grid-area: 1/1/5/7;
+    width: 130%;
+    margin-left: -20%;
+    margin-right: -10%;
+    background-size: 350% auto;
+    background-position: -400px 0px;
+  }
+  .webTitle {
+    grid-area: 1/1/5/7;
+    margin-top: 10%;
+    margin-bottom: 10%;
+  }
+  .webTitle #mainTitle {
+    font-size: 50pt;
+  }
+  .webTitle #subTitle {
+    font-size: 40pt;
+  }
+  .webTitle #privacyStatement {
+    font-size: 15pt;
+  }
+  .beginTrack {
+    grid-area: 5/1/13/7;
+  }
+  .beginTrack #beginTrackLine {
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    border-top: 2px dashed #000;
+  }
+  .beginTrack #beginTrackText {
+    padding: 0 10px;
+    font-size: 30pt;
+  }
+  .userEnter {
+    grid-area: 5/1/9/7;
+  }
+  .userEnter #step1 p {
+    font-size: 12pt;
+  }
+  .userEnter .gameName p {
+    font-size: 18pt;
+  }
+  .userEnter .gameName input {
+    z-index: 1;
+    font-size: 15pt;
+    width: 95%;
+    height: 30px;
+  }
+  .userEnter .playtime p {
+    font-size: 18pt;
+  }
+  .userEnter .playtime #enterPlaytimeSection input {
+    z-index: 1;
+    font-size: 15pt;
+    width: 95%;
+    height: 30px;
+  }
+  .userEnter .playtime #enterPlaytimeSection #playtimeUnit {
+    font-size: 15pt;
+  }
+  .userEnter .category p {
+    font-size: 18pt;
+  }
+  .userEnter .category select {
+    z-index: 1;
+    font-size: 15pt;
+    width: 95%;
+    height: 30px;
+  }
+  .userEnter button {
+    margin-top: 20px;
+    margin-right: 5%;
+    font-size: 18pt;
+    width: 30%;
+    height: 50px;
+    border-radius: 10px;
+  }
+  .userEnter #checkButton {
+    background-color: #46b8b8;
+    color: white;
+    border: 0px;
+  }
+  .userEnter #checkButton:hover {
+    background-color: #1b9494;
+    color: white;
+    border: 0px;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .userEnter #clearButton {
+    background-color: white;
+    color: gray;
+    border: 1px solid gray;
+  }
+  .userEnter #clearButton:hover {
+    background-color: rgb(234, 234, 234);
+    color: gray;
+    border: 1px solid gray;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .userEnter #enterErrorMessage {
+    color: #cf0000;
+    font-style: bold;
+  }
+  .userAdd {
+    grid-area: 9/1/13/7;
+    /* border:1px solid black; */
+    margin-top: 5%;
+    z-index: 5;
+  }
+  .userAdd #step2 p {
+    font-size: 12pt;
+    color: #767676;
+  }
+  .userAdd .checkCard {
+    background-color: #BDF1F1;
+    border-radius: 30px;
+    box-shadow: 2px 4px 50px rgba(0, 0, 0, 0.15);
+  }
+  .userAdd .checkGameName p {
+    display: flex;
+    justify-content: center;
+    padding-top: 5%;
+    font-size: 18pt;
+    color: #bbbbbb;
+  }
+  .userAdd .checkCategory {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkCategory p {
+    font-size: 15pt;
+  }
+  .userAdd .checkCategory #categoryOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .checkPlaytime {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkPlaytime p {
+    font-size: 15pt;
+  }
+  .userAdd .checkPlaytime #playtimeOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .checkTotalPlaytime {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkTotalPlaytime p {
+    font-size: 15pt;
+  }
+  .userAdd .checkTotalPlaytime #totalPlaytimeOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .checkDate {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkDate p {
+    font-size: 15pt;
+  }
+  .userAdd .checkDate #dateOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .addButton {
+    display: flex;
+    justify-content: center;
+    padding-top: 5%;
+    padding-bottom: 5%;
+  }
+  .userAdd .addButton #addButton {
+    font-size: 18pt;
+    width: 30%;
+    height: 50px;
+    border-radius: 10px;
+    background-color: #46b8b8;
+    color: white;
+    border: 0px;
+  }
+  .userAdd .addButton #addButton:hover {
+    background-color: #1b9494;
+    color: white;
+    border: 0px;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .userAdd #checkErrorMessage {
+    padding-top: 10px;
+    color: #cf0000;
+    font-style: bold;
+  }
+  .gameHisBG {
+    grid-area: 13/1/15/7;
+    /* border:1px solid black; */
+    text-align: center;
+    position: relative;
+  }
+  .gameHisBG #gameHisLine {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    border-top: 2px dashed #000;
+  }
+  .gameHisBG #gameHisLineText {
+    position: relative;
+    display: inline-block;
+    padding: 0 10px;
+    background-color: #ffffff;
+    font-family: "Sedgwick Ave", cursive;
+    font-size: 30pt;
+  }
+  .gameHis {
+    grid-area: 13/1/15/7;
+    /* border: 1px solid black; */
+    margin-top: 5%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .gameHis #clearGameHis {
+    font-size: 12pt;
+    width: 20%;
+    height: 40px;
+    border-radius: 10px;
+    background-color: white;
+    color: gray;
+    border: 1px solid gray;
+    margin-top: 10px;
+    margin-left: auto;
+    position: relative;
+    z-index: 5;
+  }
+  .gameHis #clearGameHis:hover {
+    background-color: rgb(234, 234, 234);
+    color: gray;
+    border: 1px solid gray;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .gameHis #gameHisList {
+    position: absolute;
+    padding-top: 70px;
+    padding-bottom: 15%;
+    justify-content: center;
+    width: 100%;
+  }
+  .gameHis #gameHisList li .top {
+    display: none;
+    justify-content: space-between;
+    padding: 20px 20px 10px;
+    color: rgb(0, 0, 0);
+    font-size: 15pt;
+    font-weight: bold;
+  }
+  .gameHis #gameHisList li:first-child .top {
+    display: flex;
+  }
+  ul {
+    list-style-type: none;
+    left: 0;
+    padding: 0;
+    margin: 0;
+  }
+  .gameCard {
+    font-size: 15pt;
+    grid-row: 9/12;
+    margin-bottom: 20px;
+    /* width: 800px; */
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+  }
+  .gameCard strong {
+    font-weight: normal;
+    color: #666;
+    padding-bottom: 5px;
+    display: inline-block;
+    font-size: 12pt;
+  }
+  .gameCard #defaultInfo, .gameCard #details, .gameCard #detailInfo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #detailInfo {
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+    width: 90%;
+  }
+  #defaultInfo {
+    width: 90%;
+  }
+  .gameCard #defaultInfo #gameName, .gameCard #defaultInfo #category {
+    margin-left: 10%;
+  }
+  .gameCard #defaultInfo #palytime, .gameCard #defaultInfo #totalPlaytime {
+    margin-right: 10%;
+    width: 150px;
+  }
+  .gameCard #details #gameName, .gameCard #details #category {
+    margin-left: 10%;
+  }
+  .gameCard #details #palytime, .gameCard #details #totalPlaytime {
+    margin-right: 10%;
+    width: 150px;
+  }
+  .gameCard button {
+    margin-left: auto;
+    font-size: 15pt;
+    background-color: white;
+    border: none;
+    padding: 0;
+    margin-left: 92%;
+    position: relative;
+    top: -40px;
+  }
+  .deleteButton {
+    font-size: 8pt;
+    width: -moz-fit-content;
+    width: fit-content;
+    height: 40px;
+    border-radius: 10px;
+    background-color: white;
+    color: gray;
+    border: 1px solid gray;
+    margin-top: 10px;
+    margin-left: auto;
+  }
+  .deleteButton:hover {
+    background-color: rgb(234, 234, 234);
+    color: gray;
+    border: 1px solid gray;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .gameCard .deleteButton {
+    padding: 0 10px;
+    border: 1px solid gray;
+    margin-left: 85%;
+    top: -50px;
+  }
+}
+/* phone */
+@media (max-width: 600px) {
+  .container {
+    margin-top: 5%;
+    margin-bottom: 5%;
+    width: auto;
+    margin-left: 10%;
+    margin-right: 10%;
+    display: grid;
+    grid-template-columns: 0.1fr 0.1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 0.3fr 0.1fr 0.1fr 0.1fr 0.1fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr 0.3fr;
+    grid-auto-columns: 1fr;
+    gap: 40px 0px;
+    grid-auto-flow: row;
+  }
+  .homePage {
+    grid-area: 1/1/5/7;
+    width: 150%;
+    margin-left: -40%;
+    margin-right: -10%;
+    background-size: 350% auto;
+    background-position: -1300px 0px;
+  }
+  .webTitle {
+    grid-area: 1/1/5/7;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .webTitle #mainTitle {
+    font-size: 30pt;
+    margin-top: 0px;
+    margin-bottom: 0px;
+  }
+  .webTitle #subTitle {
+    font-size: 25pt;
+    margin-top: 0px;
+    margin-bottom: 0px;
+  }
+  .webTitle #privacyStatement {
+    font-size: 10pt;
+  }
+  .beginTrack {
+    grid-area: 5/1/13/7;
+  }
+  .beginTrack #beginTrackLine {
+    top: 10px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    border-top: 2px dashed #000;
+  }
+  .beginTrack #beginTrackText {
+    padding: 0 10px;
+    font-size: 20pt;
+  }
+  .userEnter {
+    grid-area: 5/1/9/7;
+  }
+  .userEnter #step1 p {
+    font-size: 8pt;
+  }
+  .userEnter .gameName p {
+    font-size: 14pt;
+  }
+  .userEnter .gameName input {
+    z-index: 1;
+    font-size: 12pt;
+    width: 95%;
+    height: 20px;
+  }
+  .userEnter .playtime p {
+    font-size: 14pt;
+  }
+  .userEnter .playtime #enterPlaytimeSection input {
+    z-index: 1;
+    font-size: 12pt;
+    width: 95%;
+    height: 20px;
+  }
+  .userEnter .playtime #enterPlaytimeSection #playtimeUnit {
+    font-size: 14pt;
+  }
+  .userEnter .category p {
+    font-size: 14pt;
+  }
+  .userEnter .category select {
+    z-index: 1;
+    font-size: 12pt;
+    width: 95%;
+    height: 22px;
+  }
+  .userEnter button {
+    margin-top: 20px;
+    margin-right: 5%;
+    font-size: 14pt;
+    width: 30%;
+    height: 30px;
+    border-radius: 8px;
+  }
+  .userEnter #checkButton {
+    background-color: #46b8b8;
+    color: white;
+    border: 0px;
+  }
+  .userEnter #checkButton:hover {
+    background-color: #1b9494;
+    color: white;
+    border: 0px;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .userEnter #clearButton {
+    background-color: white;
+    color: gray;
+    border: 1px solid gray;
+  }
+  .userEnter #clearButton:hover {
+    background-color: rgb(234, 234, 234);
+    color: gray;
+    border: 1px solid gray;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .userEnter #enterErrorMessage {
+    color: #cf0000;
+    font-style: bold;
+    font-size: 12pt;
+  }
+  .userAdd {
+    grid-area: 9/1/13/7;
+    /* border:1px solid black; */
+    margin-top: 5%;
+    z-index: 5;
+  }
+  .userAdd #step2 p {
+    font-size: 10pt;
+    color: #767676;
+  }
+  .userAdd .checkCard {
+    background-color: #BDF1F1;
+    border-radius: 30px;
+    box-shadow: 2px 4px 50px rgba(0, 0, 0, 0.15);
+  }
+  .userAdd .checkGameName p {
+    display: flex;
+    justify-content: center;
+    padding-top: 5%;
+    font-size: 14pt;
+    color: #bbbbbb;
+  }
+  .userAdd .checkCategory {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkCategory p {
+    font-size: 12pt;
+  }
+  .userAdd .checkCategory #categoryOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .checkPlaytime {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkPlaytime p {
+    font-size: 12pt;
+  }
+  .userAdd .checkPlaytime #playtimeOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .checkTotalPlaytime {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkTotalPlaytime p {
+    font-size: 12pt;
+  }
+  .userAdd .checkTotalPlaytime #totalPlaytimeOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .checkDate {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+  .userAdd .checkDate p {
+    font-size: 12pt;
+  }
+  .userAdd .checkDate #dateOutput {
+    color: #bbbbbb;
+  }
+  .userAdd .addButton {
+    display: flex;
+    justify-content: center;
+    padding-top: 5%;
+    padding-bottom: 5%;
+  }
+  .userAdd .addButton #addButton {
+    font-size: 14pt;
+    width: 30%;
+    height: 30px;
+    border-radius: 8px;
+    background-color: #46b8b8;
+    color: white;
+    border: 0px;
+  }
+  .userAdd .addButton #addButton:hover {
+    background-color: #1b9494;
+    color: white;
+    border: 0px;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .userAdd #checkErrorMessage {
+    padding-top: 10px;
+    color: #cf0000;
+    font-style: bold;
+    font-size: 12pt;
+  }
+  .gameHisBG {
+    grid-area: 13/1/15/7;
+    /* border:1px solid black; */
+    text-align: center;
+    position: relative;
+  }
+  .gameHisBG #gameHisLine {
+    position: absolute;
+    top: 12px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    border-top: 2px dashed #000;
+  }
+  .gameHisBG #gameHisLineText {
+    position: relative;
+    display: inline-block;
+    padding: 0 10px;
+    background-color: #ffffff;
+    font-family: "Sedgwick Ave", cursive;
+    font-size: 20pt;
+  }
+  .gameHis {
+    grid-area: 13/1/15/7;
+    /* border: 1px solid black; */
+    margin-top: 2%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .gameHis #clearGameHis {
+    font-size: 8pt;
+    width: 40%;
+    height: 30px;
+    border-radius: 10px;
+    background-color: white;
+    color: gray;
+    border: 1px solid gray;
+    margin-top: 40px;
+    margin-left: auto;
+    position: relative;
+    z-index: 5;
+  }
+  .gameHis #clearGameHis:hover {
+    background-color: rgb(234, 234, 234);
+    color: gray;
+    border: 1px solid gray;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .gameHis #gameHisList {
+    position: absolute;
+    padding-top: 70px;
+    padding-bottom: 15%;
+    justify-content: center;
+    width: 100%;
+  }
+  .gameHis #gameHisList li .top {
+    display: none;
+    justify-content: space-between;
+    padding: 20px 20px 10px;
+    color: rgb(0, 0, 0);
+    font-size: 12pt;
+    font-weight: bold;
+  }
+  .gameHis #gameHisList li:first-child .top {
+    display: flex;
+  }
+  ul {
+    list-style-type: none;
+    left: 0;
+    padding: 0;
+    margin: 0;
+  }
+  .gameCard {
+    font-size: 12pt;
+    grid-row: 9/12;
+    margin-bottom: 20px;
+    /* width: 800px; */
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+  }
+  .gameCard strong {
+    font-weight: normal;
+    color: #666;
+    padding-bottom: 5px;
+    display: inline-block;
+    font-size: 8pt;
+  }
+  .gameCard #defaultInfo, .gameCard #details, .gameCard #detailInfo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #detailInfo {
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+    width: 90%;
+  }
+  #defaultInfo {
+    width: 90%;
+  }
+  .gameCard #defaultInfo #gameName, .gameCard #defaultInfo #category {
+    margin-left: 5%;
+  }
+  .gameCard #defaultInfo #palytime, .gameCard #defaultInfo #totalPlaytime {
+    margin-right: -10%;
+    width: 150px;
+  }
+  .gameCard #details #gameName, .gameCard #details #category {
+    margin-left: 5%;
+  }
+  .gameCard #details #palytime, .gameCard #details #totalPlaytime {
+    margin-right: -10%;
+    width: 150px;
+  }
+  .gameCard button {
+    margin-left: auto;
+    font-size: 14pt;
+    background-color: white;
+    border: none;
+    padding: 0;
+    margin-left: 92%;
+    position: relative;
+    top: -20px;
+  }
+  .deleteButton {
+    font-size: 8pt;
+    width: -moz-fit-content;
+    width: fit-content;
+    height: 20px;
+    border-radius: 8px;
+    background-color: white;
+    color: gray;
+    border: 1px solid gray;
+    margin-top: 10px;
+    margin-left: auto;
+  }
+  .deleteButton:hover {
+    background-color: rgb(234, 234, 234);
+    color: gray;
+    border: 1px solid gray;
+    transform: translateY(-2px);
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  .gameCard .deleteButton {
+    padding: 0 10px;
+    border: 1px solid gray;
+    margin-left: 85%;
+    top: -50px;
+  }
+}/*# sourceMappingURL=main.css.map */
