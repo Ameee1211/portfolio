@@ -29,7 +29,8 @@ const INT_ICONS = {
 /* ---------- 1. 首屏 ---------- */
 function abRenderHero() {
   const h = AB.hero;
-  const letters = SITE.wordsearch.letters.join("").split("");
+  // 首屏背景里的字母：沿用首页迷宫的桌面版字母表（此处只取字母做底纹）
+  const letters = SITE.wordsearch.desktop.letters.join("").split("");
   const ghost = letters
     .map((ch, i) => `<span style="--i:${i}">${esc(ch)}</span>`)
     .join("");

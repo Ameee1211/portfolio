@@ -115,40 +115,47 @@ function initNav() {
 
 /* ============================================================
    首屏：字母迷宫小游戏
+   桌面与手机各有一套题（见 content.js 的 wordsearch.desktop / .mobile），
+   格子尺寸、字号、高亮条厚度都随题目走，手机端是重新排版的竖版迷宫。
    ============================================================ */
-const CW = 150; // 单元格宽（SVG 单位）
-const CH = 100; // 单元格高
-const BAND = 64; // 高亮条厚度
+const WS_MQ = window.matchMedia("(max-width: 900px)");
+const wsCfg = () => (WS_MQ.matches ? SITE.wordsearch.mobile : SITE.wordsearch.desktop);
 
-const center = (r, c) => ({ x: c * CW + CW / 2, y: r * CH + CH / 2 });
+// g = { cw, ch, band }：格宽、格高、高亮条厚度
+const wsGrid = (cfg) => ({ cw: cfg.cell[0], ch: cfg.cell[1], band: cfg.band });
 
-function bandGeom(cells) {
-  const first = center(cells[0][0], cells[0][1]);
-  const last = center(cells[cells.length - 1][0], cells[cells.length - 1][1]);
+const wsCenter = (g, r, c) => ({ x: c * g.cw + g.cw / 2, y: r * g.ch + g.ch / 2 });
+
+/* 高亮条 = 沿字母中心的一条胶囊（两端是半径 band/2 的半圆）
+   两个圆心的位置正好是首、尾字母的格心，所以 TONG 与 ZHANG 共用的 G
+   两端是同圆心同半径的半圆 —— 完全重合，不会一边多出一个角。
+   首格圆心也在格心，T 那一端同样是完整的半圆，不会被裁掉。 */
+function wsBand(g, cells) {
+  const r = g.band / 2;
+  const first = wsCenter(g, cells[0][0], cells[0][1]);
+  const last = wsCenter(g, cells[cells.length - 1][0], cells[cells.length - 1][1]);
   const sameRow = cells.every((x) => x[0] === cells[0][0]);
 
   if (sameRow) {
-    const inset = 16;
     return {
-      x: first.x - CW / 2 + inset,
-      y: first.y - BAND / 2,
-      w: cells.length * CW - inset * 2,
-      h: BAND,
+      x: Math.min(first.x, last.x) - r,
+      y: first.y - r,
+      w: Math.abs(last.x - first.x) + g.band,
+      h: g.band,
+      rx: r,
       rot: 0,
       cx: 0,
       cy: 0,
     };
   }
+
   const dx = last.x - first.x;
   const dy = last.y - first.y;
-  const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
-  const rad = Math.atan2(dy, dx);
-  const pad =
-    (CW / 2) * Math.abs(Math.cos(rad)) + (CH / 2) * Math.abs(Math.sin(rad)) - 10;
-  const len = Math.hypot(dx, dy) + 2 * pad;
+  const rot = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const len = Math.hypot(dx, dy) + g.band;
   const mx = (first.x + last.x) / 2;
   const my = (first.y + last.y) / 2;
-  return { x: mx - len / 2, y: my - BAND / 2, w: len, h: BAND, rot: ang, cx: mx, cy: my };
+  return { x: mx - len / 2, y: my - g.band / 2, w: len, h: g.band, rx: r, rot, cx: mx, cy: my };
 }
 
 /* ---- 完成特效用的图形 ---- */
@@ -216,16 +223,21 @@ function playFinale() {
 function renderWordSearch() {
   const host = $("wordSearch");
   if (!host) return;
-  const { letters, words } = SITE.wordsearch;
+  const cfg = wsCfg();
+  const g = wsGrid(cfg);
+  const { letters, words } = cfg;
   const rows = letters.length;
   const cols = letters[0].length;
+  host.style.setProperty("--ws-font", `${cfg.font}px`);
+  host.style.setProperty("--ws-band", String(g.band));
+  host.dataset.puzzle = cfg === SITE.wordsearch.mobile ? "mobile" : "desktop";
 
   // 答案直接可见：每个单词一开始就画出虚线轮廓，未找到时轮流呼吸
   const foundBands = words
     .map((w, i) => {
-      const g = bandGeom(w.cells);
-      const rect = `<rect class="ws__hl" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${BAND / 2}" />`;
-      const rot = g.rot ? ` transform="rotate(${g.rot.toFixed(2)} ${g.cx} ${g.cy})"` : "";
+      const b = wsBand(g, w.cells);
+      const rect = `<rect class="ws__hl" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${b.rx}" />`;
+      const rot = b.rot ? ` transform="rotate(${b.rot.toFixed(2)} ${b.cx} ${b.cy})"` : "";
       return `<g class="ws__band" style="animation-delay:${(i * 0.55).toFixed(2)}s"${rot}>${rect}</g>`;
     })
     .join("");
@@ -236,7 +248,7 @@ function renderWordSearch() {
         .split("")
         .map(
           (_, c) =>
-            `<rect class="ws__hit" x="${c * CW + 6}" y="${r * CH + 6}" width="${CW - 12}" height="${CH - 12}" rx="14" />`
+            `<rect class="ws__hit" x="${c * g.cw + 6}" y="${r * g.ch + 6}" width="${g.cw - 12}" height="${g.ch - 12}" rx="14" />`
         )
         .join("")
     )
@@ -248,14 +260,14 @@ function renderWordSearch() {
         .split("")
         .map(
           (ch, c) =>
-            `<text class="ws__letter" x="${c * CW + CW / 2}" y="${r * CH + CH / 2}">${esc(ch)}</text>`
+            `<text class="ws__letter" x="${c * g.cw + g.cw / 2}" y="${r * g.ch + g.ch / 2}">${esc(ch)}</text>`
         )
         .join("")
     )
     .join("");
 
   host.innerHTML = `
-    <svg class="ws" viewBox="0 0 ${cols * CW} ${rows * CH}" role="img"
+    <svg class="ws" viewBox="0 0 ${cols * g.cw} ${rows * g.ch}" role="img"
          aria-label="A word search puzzle: drag across the letters to find them">
       <g class="ws__found">${foundBands}</g>
       <line class="ws__sel" x1="0" y1="0" x2="0" y2="0" />
@@ -264,10 +276,10 @@ function renderWordSearch() {
       <circle class="ws__cursor" cx="0" cy="0" r="13" />
     </svg>`;
 
-  initWordSearchGame(host, letters, words, rows, cols);
+  initWordSearchGame(host, letters, words, rows, cols, g);
 }
 
-function initWordSearchGame(host, letters, words, rows, cols) {
+function initWordSearchGame(host, letters, words, rows, cols, g) {
   const svg = host.querySelector(".ws");
   const sel = svg.querySelector(".ws__sel");
   const cursor = svg.querySelector(".ws__cursor");
@@ -300,8 +312,8 @@ function initWordSearchGame(host, letters, words, rows, cols) {
     pt.x = evt.clientX;
     pt.y = evt.clientY;
     const p = pt.matrixTransform(m.inverse());
-    const c = Math.floor(p.x / CW);
-    const r = Math.floor(p.y / CH);
+    const c = Math.floor(p.x / g.cw);
+    const r = Math.floor(p.y / g.ch);
     if (r < 0 || c < 0 || r >= rows || c >= cols) return null;
     return { r, c };
   };
@@ -325,8 +337,8 @@ function initWordSearchGame(host, letters, words, rows, cols) {
       sel.style.opacity = 0;
       return;
     }
-    const a = center(cells[0].r, cells[0].c);
-    const b = center(cells[cells.length - 1].r, cells[cells.length - 1].c);
+    const a = wsCenter(g, cells[0].r, cells[0].c);
+    const b = wsCenter(g, cells[cells.length - 1].r, cells[cells.length - 1].c);
     sel.setAttribute("x1", a.x);
     sel.setAttribute("y1", a.y);
     sel.setAttribute("x2", b.x);
@@ -377,8 +389,8 @@ function initWordSearchGame(host, letters, words, rows, cols) {
     if (!rest.length) return;
     cancelAnimationFrame(hintRaf);
     const w = words[rest[Math.floor(Math.random() * rest.length)]];
-    const a = center(w.cells[0][0], w.cells[0][1]);
-    const z = center(w.cells[w.cells.length - 1][0], w.cells[w.cells.length - 1][1]);
+    const a = wsCenter(g, w.cells[0][0], w.cells[0][1]);
+    const z = wsCenter(g, w.cells[w.cells.length - 1][0], w.cells[w.cells.length - 1][1]);
 
     sel.setAttribute("x1", a.x);
     sel.setAttribute("y1", a.y);
@@ -551,14 +563,211 @@ function renderProjects() {
 /* ============================================================
    页脚
    ============================================================ */
+const ICON_MAIL = `<svg class="footer__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.8" width="19" height="14.4" rx="3"/><path d="M3.4 6.6l7.5 5.5a2 2 0 0 0 2.2 0l7.5-5.5"/></svg>`;
+const ICON_PHONE = `<svg class="footer__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.2 3.5h2.9c.6 0 1.1.4 1.2 1l.6 3a1.3 1.3 0 0 1-.4 1.2l-1.6 1.5a12.6 12.6 0 0 0 5.9 5.9l1.5-1.6c.3-.3.8-.4 1.2-.3l3 .6c.6.1 1 .6 1 1.2v2.9a2 2 0 0 1-2.2 2A17.6 17.6 0 0 1 4.2 5.7a2 2 0 0 1 2-2.2z"/></svg>`;
+
 function renderFooter() {
   if (!$("footerThanks")) return;
   const f = SITE.footer;
   $("footerThanks").textContent = f.thanks;
-  $("footerEmail").textContent = f.email;
+  if ($("footerNote")) $("footerNote").textContent = f.note;
+
+  $("footerEmail").innerHTML = `${ICON_MAIL}<span>${esc(f.email)}</span>`;
   $("footerEmail").href = "mailto:" + f.email;
-  $("footerBadge").textContent = f.badge;
+
+  if ($("footerPhone")) {
+    $("footerPhone").innerHTML = `${ICON_PHONE}<span>${esc(f.phone)}</span>`;
+    $("footerPhone").href = "tel:" + f.phone.replace(/\s+/g, "");
+  }
   $("footerCopy").textContent = f.copyright;
+}
+
+/* ============================================================
+   首页分页滚动（pin）
+   与 about.me 页面同一套规则：
+   · 一次滑动只前进一步，先跟手滚到板块底部，绝不越过
+   · 板块底部整块露出来（含底部留白）之后，还需要新的一次滑动才翻页
+   · 比视口矮的板块整块看得见，同样要新的一次滑动
+   首页没有左侧导航栏，所以只有翻页，没有 rail。
+   ============================================================ */
+function initPinPager() {
+  const pinned = ["about", "projects"].map((id) => $(id)).filter(Boolean);
+  if (pinned.length < 2) return;
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  if (!window.matchMedia("(min-width: 1024px)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const nav = document.querySelector(".nav");
+  const hero = document.querySelector(".hero");
+
+  const THRESHOLD = 8;
+  const LOCK_MS = 760;
+  const GESTURE_GAP = 90;
+  const SETTLE_MS = 240;
+  const EDGE = 2;
+
+  let lockUntil = 0;
+  let lockDir = 0;
+  let lockTo = -1;
+  let settleUntil = 0;
+  let acc = 0;
+  let accTimer = 0;
+  let lastWheelAt = 0;
+
+  const navH = () => (nav ? nav.offsetHeight : 0);
+  const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
+  const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+  const clampY = (v) => Math.max(0, Math.min(v, maxScroll()));
+
+  const indexAt = () => {
+    const probe = window.scrollY + navH() + 4;
+    let idx = -1;
+    pinned.forEach((sec, i) => {
+      if (topOf(sec) <= probe) idx = i;
+    });
+    return idx;
+  };
+
+  const go = (top, dir) => {
+    const target = clampY(top);
+    lockUntil = performance.now() + LOCK_MS;
+    lockDir = dir;
+    lockTo = target;
+    window.scrollTo({ top: target, behavior: "smooth" });
+  };
+
+  const jump = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, clampY(top));
+    root.style.scrollBehavior = prev;
+  };
+
+  const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
+
+  const step = (dir, delta, now, sinceLast) => {
+    const y = window.scrollY;
+    const idx = indexAt();
+    const cur = idx >= 0 ? pinned[idx] : null;
+
+    if (dir > 0) {
+      if (cur) {
+        const endY = endOf(cur);
+        if (y < endY - EDGE) {
+          const target = Math.min(y + delta, endY);
+          jump(target);
+          if (target >= endY - 1) settleUntil = now + SETTLE_MS;
+          return true;
+        }
+        if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+      }
+      const next = pinned[idx + 1];
+      if (!next) return false; // 最后一屏：交回浏览器，页脚自然滑上来
+      const target = topOf(next);
+      if (Math.abs(target - y) < 4) return false;
+      go(target, 1);
+      return true;
+    }
+
+    if (cur) {
+      const curTop = topOf(cur);
+      if (y > curTop + EDGE) {
+        const target = Math.max(y - delta, curTop);
+        jump(target);
+        if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
+        return true;
+      }
+      if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+    }
+    const prev = idx > 0 ? pinned[idx - 1] : hero;
+    if (!prev) return false;
+    const prevTop = topOf(prev);
+    const prevEnd = endOf(prev);
+    const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
+    if (Math.abs(target - y) < 4) return false;
+    go(target, -1);
+    return true;
+  };
+
+  const inScroller = (el) => {
+    while (el && el !== document.body && el !== document.documentElement) {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 4) return true;
+      el = el.parentElement;
+    }
+    return false;
+  };
+
+  const onWheel = (e) => {
+    if (e.ctrlKey) return;
+    if (e.target instanceof Element && inScroller(e.target)) return;
+
+    const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    if (!d) return;
+
+    const now = performance.now();
+    const sinceLast = lastWheelAt ? now - lastWheelAt : 1e9;
+    lastWheelAt = now;
+
+    if (now < lockUntil) {
+      if (Math.sign(d) !== lockDir) {
+        lockUntil = 0;
+        acc = 0;
+        return;
+      }
+      if (Math.abs(window.scrollY - lockTo) > 2) {
+        e.preventDefault();
+        return;
+      }
+      lockUntil = 0;
+    }
+
+    acc += d;
+    clearTimeout(accTimer);
+    accTimer = setTimeout(() => (acc = 0), 200);
+
+    if (Math.abs(acc) < THRESHOLD) {
+      e.preventDefault();
+      return;
+    }
+
+    const delta = Math.abs(acc);
+    const dir = acc > 0 ? 1 : -1;
+    acc = 0;
+    if (step(dir, delta, now, sinceLast)) e.preventDefault();
+  };
+
+  const onKey = (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = (e.target && e.target.tagName) || "";
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+
+    let dir = 0;
+    if (e.key === "PageDown" || e.key === " " || e.key === "ArrowDown") dir = 1;
+    else if (e.key === "PageUp" || e.key === "ArrowUp") dir = -1;
+    else if (e.key === "Home") {
+      e.preventDefault();
+      go(0, -1);
+      return;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      go(maxScroll(), 1);
+      return;
+    }
+    if (!dir) return;
+    if (performance.now() < lockUntil) {
+      if (Math.abs(window.scrollY - lockTo) > 2) {
+        e.preventDefault();
+        return;
+      }
+      lockUntil = 0;
+    }
+    if (step(dir, window.innerHeight * 0.85, performance.now(), 1e9)) e.preventDefault();
+  };
+
+  window.addEventListener("wheel", onWheel, { passive: false });
+  window.addEventListener("keydown", onKey);
 }
 
 /* ============================================================
@@ -592,3 +801,7 @@ renderProjects();
 renderFooter();
 initReveal();
 initAboutStage();
+initPinPager();
+
+// 桌面 / 手机切换时换一套迷宫（两套题布局与字数都不同）
+WS_MQ.addEventListener("change", () => renderWordSearch());

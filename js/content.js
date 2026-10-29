@@ -27,24 +27,53 @@ const SITE = {
   },
 
   // ---------- 首屏：字母迷宫（Word Search） ----------
-  // letters：6 行 × 8 列的字母网格，每个字符串是一行
-  // words：被橙色高亮圈出的单词，cells 为 [行序号, 列序号]（都从 0 开始数）
+  // 两套题：桌面横向、手机竖版（手机不是桌面版缩小，而是重新排的竖版迷宫）
+  // letters：每个字符串是一行；words：cells 为 [行序号, 列序号]（都从 0 开始数）
+  // cell：[格宽, 格高]（SVG 内部单位）· band：高亮条厚度 · font：字母字号
   wordsearch: {
-    letters: [
-      "GXYTLMNP",
-      "CNOROKZR",
-      "HALIWNET",
-      "AJZHANGJ",
-      "UIBQUXFW",
-      "PVDESIGN",
-    ],
-    words: [
-      { text: "TONG",   cells: [[0, 3], [1, 4], [2, 5], [3, 6]] },
-      { text: "ZHANG",  cells: [[3, 2], [3, 3], [3, 4], [3, 5], [3, 6]] },
-      { text: "UI",     cells: [[4, 0], [4, 1]] },
-      { text: "UX",     cells: [[4, 4], [4, 5]] },
-      { text: "DESIGN", cells: [[5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [5, 7]] },
-    ],
+    // 桌面 / 平板横屏：6 行 × 8 列
+    desktop: {
+      cell: [150, 100],
+      band: 64,
+      font: 64,
+      letters: [
+        "GXYTLMNP",
+        "CNOROKZR",
+        "HALIWNET",
+        "AJZHANGJ",
+        "UIBQUXFW",
+        "PVDESIGN",
+      ],
+      words: [
+        { text: "TONG",   cells: [[0, 3], [1, 4], [2, 5], [3, 6]] },
+        { text: "ZHANG",  cells: [[3, 2], [3, 3], [3, 4], [3, 5], [3, 6]] },
+        { text: "UI",     cells: [[4, 0], [4, 1]] },
+        { text: "UX",     cells: [[4, 4], [4, 5]] },
+        { text: "DESIGN", cells: [[5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [5, 7]] },
+      ],
+    },
+    // 手机竖屏：7 行 × 6 列，DESIGN 竖排、TONG 斜排落在共用的 G 上
+    mobile: {
+      cell: [100, 122],
+      band: 76,
+      font: 58,
+      letters: [
+        "DXLMNP",
+        "ECTRKZ",
+        "SANOIH",
+        "ILWENJ",
+        "GZHANG",
+        "NVQBFR",
+        "PUIWUX",
+      ],
+      words: [
+        { text: "TONG",   cells: [[1, 2], [2, 3], [3, 4], [4, 5]] },
+        { text: "ZHANG",  cells: [[4, 1], [4, 2], [4, 3], [4, 4], [4, 5]] },
+        { text: "UI",     cells: [[6, 1], [6, 2]] },
+        { text: "UX",     cells: [[6, 4], [6, 5]] },
+        { text: "DESIGN", cells: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]] },
+      ],
+    },
     // 全部找齐后的庆祝特效：WELCOME 字样 + 小星星 + 小猫，然后滚到 About 板块
     finale: {
       text: "WELCOME",
@@ -403,8 +432,10 @@ const SITE = {
   // ---------- 页脚 ----------
   footer: {
     thanks: "Thank you for taking the time to view my portfolio",
+    note:
+      "If a project here felt close to something you're working on, I'd love to hear about it — email reaches me fastest.",
     email: "zhangtong011211@163.com",
-    badge: "Portfolio 2026",
+    phone: "19700766036",
     copyright: "© 2026 Tong Zhang (Amy). Designed & built with care.",
   },
 };
