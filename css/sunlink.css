@@ -1197,6 +1197,19 @@
   .sl-index__item.is-active::before { opacity: 1; transform: scaleY(1); }
 }
 
+/* 深色板块（06 / 08）时整条索引反白 */
+.sl-index.is-light .sl-index__num { color: rgba(226, 238, 250, 0.78); opacity: 0.85; }
+.sl-index.is-light .sl-index__label {
+  color: rgba(226, 238, 250, 0.62);
+  background: none;
+  box-shadow: none;
+}
+.sl-index.is-light .sl-index__item.is-active .sl-index__label { color: #ffffff; }
+.sl-index.is-light .sl-index__item.is-active .sl-index__num { color: #8fc4f2; opacity: 1; }
+.sl-index.is-light .sl-index__item:hover .sl-index__label { color: #8fc4f2; }
+.sl-index.is-light .sl-index__item::before { background: #8fc4f2; }
+.sl-index.is-light .sl-index__dot { background: rgba(226, 238, 250, 0.45); }
+
 @media (max-width: 1179px) {
   .sl-index { display: none; }
 }
@@ -1240,7 +1253,12 @@
   .sl-3d__canvas { aspect-ratio: 4 / 3.4; }
   .sl-3d__caption { font-size: 12.5px; }
   .sl-step__img { aspect-ratio: 16 / 9.6; }
-  .sl-circuit svg { min-width: 620px; }
+  /* 手机上直接把整张图缩到屏宽：字号跟着放大，读起来才不吃力 */
+  .sl-circuit { padding: 18px 14px 12px; }
+  .sl-circuit svg { min-width: 0; }
+  .sl-circuit svg text { font-size: 28px; }
+  .sl-circuit .sl-wires { stroke-width: 3.8; }
+  .sl-circuit .sl-flowline { stroke-width: 6; stroke-dasharray: 12 17; }
 }
 
 @media (max-width: 560px) {
@@ -1255,6 +1273,7 @@
   .sl-device { padding: 8px; border-radius: 14px; }
   .sl-device--model { padding: 6px; border-radius: 11px; }
   .sl-device::after { inset: 8px; border-radius: 8px; }
+  .sl-circuit svg text { font-size: 32px; }
   .sl-endnote .sl-wrap { flex-direction: column; gap: 6px; }
 }
 

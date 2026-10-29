@@ -670,6 +670,9 @@
         if (sec.offsetTop <= probe) active = i;
       });
       items.forEach((it, i) => it.classList.toggle("is-active", i === active));
+      // 深色板块（06 / 08）上索引必须反白，否则深蓝的字在深底上根本看不见
+      const dark = active >= 0 && sections[active].classList.contains("sl-sec--ink");
+      rail.classList.toggle("is-light", !!dark);
     };
 
     const onScroll = () => {
