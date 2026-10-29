@@ -315,13 +315,15 @@
    ============================================================ */
 .ab-philosophy__statement {
   max-width: 1020px;
-  font-size: clamp(20px, 2.35vw, 31px);
+  font-size: clamp(17px, 1.85vw, 25px);
   font-weight: 500;
-  line-height: 1.66;
-  letter-spacing: -0.006em;
+  /* 行高用绝对值：正文和对内强调字号不同，行高必须统一，否则行距会忽宽忽窄 */
+  line-height: clamp(30px, 3.05vw, 43px);
+  letter-spacing: -0.004em;
   color: var(--navy);
 }
 .ab-philosophy__statement .hl {
+  font-size: clamp(20px, 2.35vw, 31px);
   font-weight: 700;
   color: var(--purple);
   background-image: linear-gradient(rgba(255, 207, 149, 0.85), rgba(255, 207, 149, 0.85));
@@ -1128,7 +1130,8 @@
 @media (min-width: 1180px) {
   .ab-sec .ab-wrap { padding-left: 150px; }
   .ab-index {
-    left: max(12px, calc((100vw - var(--maxw)) / 2 + 2px));
+    /* 兜底位置；实际由 js/about.js 的 place() 按内容左边界精确摆放 */
+    left: 48px;
     gap: 15px;
   }
   .ab-index__item { gap: 8px; }
@@ -1237,7 +1240,8 @@
   .ab-float { display: none; }
   .ab-stage { min-height: 340px; }
   .ab-contact__card { border-radius: 24px; }
-  .ab-philosophy__statement { font-size: 19px; }
+  .ab-philosophy__statement { font-size: 16px; line-height: 27px; }
+  .ab-philosophy__statement .hl { font-size: 18px; }
   .ab-skillgrid { grid-template-columns: 1fr; }
 }
 

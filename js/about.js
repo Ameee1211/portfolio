@@ -601,6 +601,25 @@ function abInitIndex(rail) {
 
   let raf = null;
 
+  // 左侧索引摆位：内容位置和宽度都不动，索引自己往左挪到内容左侧的空白里
+  const place = () => {
+    if (window.innerWidth < 1180) {
+      rail.style.left = "";
+      return;
+    }
+    const wraps = [...document.querySelectorAll(".ab-sec .ab-wrap")];
+    if (!wraps.length) return;
+    const contentLeft = Math.min(
+      ...wraps.map(
+        (w) => w.getBoundingClientRect().left + (parseFloat(getComputedStyle(w).paddingLeft) || 0)
+      )
+    );
+    const railW = rail.offsetWidth || 124;
+    // 与内容至少留 78px；空间不够时先保左留白 24px，再退让间距
+    const gap = Math.min(78, Math.max(24, contentLeft - railW - 24));
+    rail.style.left = Math.max(8, Math.round(contentLeft - gap - railW)) + "px";
+  };
+
   const sync = () => {
     raf = null;
     const y = window.scrollY;
@@ -624,7 +643,10 @@ function abInitIndex(rail) {
   };
 
   window.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll);
+  window.addEventListener("resize", place);
+  window.addEventListener("load", place);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+  place();
   sync();
 
   items.forEach((it) => {
@@ -699,17 +721,24 @@ function abInitPager() {
   const sections = AB_SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean);
   if (sections.length < 2) return;
 
-  const THRESHOLD = 14; // 滚轮 / 触控板累积阈值
-  const LOCK_MS = 720;  // 翻页动画锁
+  const THRESHOLD = 8;      // 滚轮 / 触控板累积阈值
+  const LOCK_MS = 760;      // 翻页动画锁
+  const GESTURE_GAP = 90;   // 两次滚轮间隔小于此值 → 视为同一次滑动（惯性）
+  const SETTLE_MS = 240;    // 碰到板块底部后先停一下，让底部留白被看见
+  const EDGE = 2;           // 判定「已对齐到板块顶部 / 底部」的容差
 
   let lockUntil = 0;
   let lockDir = 0;
+  let lockTo = -1;
+  let settleUntil = 0;
   let acc = 0;
   let accTimer = 0;
+  let lastWheelAt = 0;
 
   const navH = () => (nav ? nav.offsetHeight : 0);
   const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
   const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+  const clampY = (v) => Math.max(0, Math.min(v, maxScroll()));
 
   // 当前板块序号，-1 = 还停在首屏
   const indexAt = () => {
@@ -722,38 +751,45 @@ function abInitPager() {
   };
 
   const go = (top, dir) => {
-    const target = Math.max(0, Math.min(top, maxScroll()));
+    const target = clampY(top);
     lockUntil = performance.now() + LOCK_MS;
     lockDir = dir;
+    lockTo = target;
     window.scrollTo({ top: target, behavior: "smooth" });
   };
 
-  // 板块底部留白 = 可以「忽略不计」的高度，避免为了几十像素空白再滚一次
-  const slackOf = (el) => {
-    const pb = parseFloat(getComputedStyle(el).paddingBottom) || 0;
-    return Math.max(56, pb + 18);
+  // 逐像素跟手滚动（html 上开了 scroll-behavior: smooth，这里必须临时关掉）
+  const jump = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, clampY(top));
+    root.style.scrollBehavior = prev;
   };
 
+  // 板块「读完」的位置：板块底边贴住视口底边
+  // 此时板块自身的 padding-bottom（留白）正好完整露出来，作为「本板块结束」的信号
+  const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
+
   // 返回 true 表示已接管本次滚动
-  const step = (dir) => {
-    const vh = window.innerHeight;
+  // now / sinceLast：用来区分「同一次滑动的惯性」和「新的一次操作」
+  const step = (dir, delta, now, sinceLast) => {
     const y = window.scrollY;
     const idx = indexAt();
     const cur = idx >= 0 ? sections[idx] : null;
 
     if (dir > 0) {
       if (cur) {
-        const curBottom = topOf(cur) + cur.offsetHeight;
-        const remain = curBottom - (y + vh);
-        const slack = slackOf(cur);
-        if (remain > slack) {
-          // 底部还有内容没露出：长板块交给浏览器连续滚
-          if (cur.offsetHeight > vh + slack) return false;
-          const target = curBottom - vh;
-          if (Math.abs(target - y) < 4) return false;
-          go(target, 1);
+        const endY = endOf(cur);
+        if (y < endY - EDGE) {
+          // 板块底部还没露出来：跟手推进，最多推到「底部对齐」为止，绝不冲进下一块
+          const target = Math.min(y + delta, endY);
+          jump(target);
+          if (target >= endY - 1) settleUntil = now + SETTLE_MS;
           return true;
         }
+        // 刚到板块底部：先停住，让底部留白被看到；同一次滑动的惯性也一并吞掉
+        if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
       }
       const next = sections[idx + 1];
       if (!next) return false;
@@ -765,19 +801,22 @@ function abInitPager() {
 
     // 向上
     if (cur) {
-      const over = y - topOf(cur);
-      if (over > 40) {
-        if (cur.offsetHeight > vh + slackOf(cur)) return false; // 长板块内部：连续滚
-        go(topOf(cur), -1);                                     // 只多一点点：一次回到板块顶
+      const curTop = topOf(cur);
+      if (y > curTop + EDGE) {
+        // 板块内部：跟手回退，最多回到板块顶部
+        const target = Math.max(y - delta, curTop);
+        jump(target);
+        if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
         return true;
       }
+      if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
     if (!prev) return false;
     const prevTop = topOf(prev);
-    const prevH = prev.offsetHeight;
-    // 上一块明显比视口高时，停到它的底部（从下往上读更自然）
-    const target = prevH > vh + slackOf(prev) ? prevTop + prevH - vh : prevTop;
+    const prevEnd = endOf(prev);
+    // 上一块比视口高时，停到它「读完」的位置（底部留白可见），从下往上读更自然
+    const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
     if (Math.abs(target - y) < 4) return false;
     go(target, -1);
     return true;
@@ -799,15 +838,22 @@ function abInitPager() {
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
 
-    // 翻页动画期间吞掉惯性滚动；反向输入则立即解锁
-    if (performance.now() < lockUntil) {
+    const now = performance.now();
+    const sinceLast = lastWheelAt ? now - lastWheelAt : 1e9;
+    lastWheelAt = now;
+
+    // 翻页动画期间吞掉惯性滚动；反向输入、或动画已经到位，都立刻放行
+    if (now < lockUntil) {
       if (Math.sign(d) !== lockDir) {
         lockUntil = 0;
         acc = 0;
         return;
       }
-      e.preventDefault();
-      return;
+      if (Math.abs(window.scrollY - lockTo) > 2) {
+        e.preventDefault();
+        return;
+      }
+      lockUntil = 0; // 已经到站，别让用户白滚一格
     }
 
     acc += d;
@@ -820,9 +866,10 @@ function abInitPager() {
       return;
     }
 
+    const delta = Math.abs(acc);
     const dir = acc > 0 ? 1 : -1;
     acc = 0;
-    if (step(dir)) e.preventDefault();
+    if (step(dir, delta, now, sinceLast)) e.preventDefault();
   };
 
   const onKey = (e) => {
@@ -844,10 +891,13 @@ function abInitPager() {
     }
     if (!dir) return;
     if (performance.now() < lockUntil) {
-      e.preventDefault();
-      return;
+      if (Math.abs(window.scrollY - lockTo) > 2) {
+        e.preventDefault();
+        return;
+      }
+      lockUntil = 0;
     }
-    if (step(dir)) e.preventDefault();
+    if (step(dir, window.innerHeight * 0.85, performance.now(), 1e9)) e.preventDefault();
   };
 
   window.addEventListener("wheel", onWheel, { passive: false });
