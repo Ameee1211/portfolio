@@ -12,12 +12,12 @@ https://Ameee1211.github.io/portfolio/
 |---|---|---|
 | HomePage | `index.html` | ✅ 已完成 |
 | About me | `about.html` | ✅ 已完成 |
-| Project 1 — SunLink Neighbours | `sunlink.html` | 空白页（待填内容） |
+| Project 1 — SunLink Neighbours | `sunlink.html` | ✅ 已完成 |
 | Project 2 — Auto-Signaled Bus Stop | `busstop.html` | 空白页（待填内容） |
 | Project 3 — SteamTracker | `steamtracker.html` | 空白页（待填内容） |
 | Project 4 — Chocolate 3D Model | `chocolate.html` | 空白页（待填内容） |
 
-> 4 个项目页只含顶部导航（与首页完全一致，含 Projects 下拉菜单和当前页高亮），
+> 另外 3 个项目页目前只含顶部导航（与首页完全一致，含 Projects 下拉菜单和当前页高亮），
 > 主体为空白，后续逐个填内容即可。导航由 `js/content.js` 的 `nav` 统一驱动，
 > 改一处、6 个页面同时生效。
 
@@ -213,6 +213,29 @@ git push
 - `tint` 配图区底色（对照设计稿取色）
 - `link` 项目详情页链接，留空则按钮先指向 #projects
 
+### SunLink Neighbours 项目页（sunlink.html）
+
+这个页面**没有走 `content.js`**，文案直接写在 `sunlink.html` 里，因为它是一篇长文，
+每段文字都紧贴自己的版式，拆到数据文件反而更难改。
+
+- `css/sunlink.css` 只作用于这一页（所有类名以 `sl-` 开头，不会影响其他页面）
+- `js/sunlink.js` 负责 4 个交互：
+  1. **三状态切换**（`04` 节）：按钮 `data-state` → 面板 `data-panel`
+  2. **XD 原型懒加载**（`06` 节）：点一下才插 iframe；三个 tab 换 `embed/<id>`；截图先当封面
+  3. **电路开关**（`07` 节）：`data-mode="battery|inverter"` 控制虚线走哪条支路 + 拨杆动画
+  4. **六户 3D 社区**（`08` 节）：three.js 手写建模（不加载外部模型文件），
+     滚到该区域才初始化，可拖拽旋转，三个状态改变电流方向
+- `assets/vendor/three.min.js` 是本地内嵌的 three.js r160（UMD，650KB）。
+  **故意不用 CDN**：国内加载 jsdelivr 可能很慢；也故意不用 ES module，
+  这样直接双击 `sunlink.html` 用 `file://` 打开也能跑。
+- 图片：`sl-panel-{green,blue,red}.webp`（控制面板）、`sl-model-{green,blue,red}.webp`（房屋页）、
+  `sl-confirm.webp` / `sl-sharing.webp`（分享流程）、`sl-model-print.jpg` / `sl-model-cardboard.jpg`（实物照片）、
+  `sl-iter-1..5.webp`（五代迭代缩略图）。
+  界面图是从 Adobe XD 原型里用 puppeteer 截的 2x 画布，比 PDF 里清楚。
+
+> XD 原型链接：三个状态各一个 artboard id，写在 `js/sunlink.js` 顶部的 `XD` 对象里。
+> `xd.adobe.com/view/...` 带 `X-Frame-Options: DENY` 嵌不了，必须换成 `xd.adobe.com/embed/<同一个 id>/`。
+
 ### 改配色
 `css/style.css` 顶部的 `:root` 变量。当前色值均从设计稿采样：
 
@@ -231,17 +254,28 @@ GitHub Pages 给静态文件设了 `Cache-Control: max-age=600`（缓存 10 分�
 解决办法：6 个页面的 css/js 引用都带了版本号，长这样
 `css/style.css?v=2` · `js/content.js?v=2` · `js/main.js?v=2`
 
-**每次改完 CSS 或 JS 后，把 3 处的 `v` 数字 +1**（只改 HTML 结构不用管），
+**每次改完 CSS 或 JS 后，把版本号 +1**（只改 HTML 结构不用管），
 浏览器就会强制重新下载，不用等缓存过期。
+不用手动改 6 个文件：运行下面这条命令，它会把所有页面的 css/js 版本号统一 +1。
+
+```bash
+node .workbuddy/design/bump.mjs bump
+```
+
 若还是看到旧内容，按 `Ctrl + Shift + R` 强制刷新一次。
 
 ## 文件结构
 
 ```
 portfolio/
-├── index.html          页面骨架（一般不用动）
-├── css/style.css       样式（配色在 :root 变量里）
-├── js/content.js       ★ 网站全部内容（改这个）
-├── js/main.js          渲染逻辑（一般不用动）
-└── assets/img/         图片素材
+├── index.html / about.html / sunlink.html ...   6 个页面
+├── css/style.css       全站样式（配色在 :root 变量里）
+├── css/about.css       About me 页专用
+├── css/sunlink.css     SunLink 项目页专用
+├── js/content.js       ★ 首页/关于页的全部内容（改这个）
+├── js/main.js          首页渲染逻辑（一般不用动）
+├── js/about.js         About me 渲染逻辑
+├── js/sunlink.js       SunLink 项目页交互（含 3D）
+├── assets/img/         图片素材
+└── assets/vendor/      本地第三方库（three.min.js）
 ```

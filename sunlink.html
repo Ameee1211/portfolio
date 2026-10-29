@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SunLink Neighbours — Tong Zhang (Amy)</title>
+  <title>SunLink Neighbours — Sharing surplus solar with your street · Tong Zhang (Amy)</title>
+  <meta name="description" content="A wall-mounted hub that lets a suburban street share surplus solar power. Interface design, 3D modelling and physical prototyping, from a four-person team at The University of Sydney." />
+  <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=29" />
+  <link rel="stylesheet" href="css/style.css?v=31" />
+  <link rel="stylesheet" href="css/sunlink.css?v=31" />
 </head>
-<body>
+<body class="sl-page">
 
   <!-- ================= 导航（与首页一致） ================= -->
   <header class="nav" id="nav">
@@ -22,9 +25,763 @@
     </div>
   </header>
 
-  <main class="blank-page"></main>
+  <main>
 
-  <script src="js/content.js?v=29"></script>
-  <script src="js/main.js?v=29"></script>
+    <!-- ================= 首屏 ================= -->
+    <section class="sl-hero">
+      <div class="sl-wrap">
+        <p class="sl-hero__kicker">Project 01 · Product &amp; interface design</p>
+        <h1 class="sl-hero__title">SunLink<br />Neighbours</h1>
+        <p class="sl-hero__lede">
+          A wall-mounted hub that lets a suburban street share surplus solar —
+          designed for <em>the moment your battery reaches 100%</em>.
+        </p>
+
+        <div class="sl-meta">
+          <div>
+            <div class="sl-meta__k">Role</div>
+            <div class="sl-meta__v">Interface design<br /><span>3D modelling &amp; physical prototype</span></div>
+          </div>
+          <div>
+            <div class="sl-meta__k">Team of four</div>
+            <div class="sl-meta__v">Tong Zhang<br /><span>Team Member One, Two &amp; Three — interviews and usability testing</span></div>
+          </div>
+          <div>
+            <div class="sl-meta__k">Course</div>
+            <div class="sl-meta__v">Interactive Design<br /><span>The University of Sydney, 2023</span></div>
+          </div>
+          <div>
+            <div class="sl-meta__k">Tools</div>
+            <div class="sl-meta__v">Adobe XD<br /><span>Rhino · Ultimaker · paper &amp; cardboard</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-wide">
+        <div class="sl-shot sl-hero__shot">
+          <img src="assets/img/sl-panel-green.webp" width="1600" height="1029"
+               alt="The SunLink Neighbours wall display in its full-battery state: a battery ring at 100%, a sharing panel, a community map of six households and a power request from a neighbour." />
+        </div>
+      </div>
+      <div class="sl-hero__spacer"></div>
+    </section>
+
+    <!-- ================= 01 概要 ================= -->
+    <section class="sl-sec">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">01 — The short version</p>
+        <h2 class="sl-h2">A full battery is a small, daily, avoidable waste.</h2>
+        <p class="sl-p">
+          Rooftop solar already produces more electricity than a house can use in the middle of
+          the day. By early afternoon the battery is full, the panels keep working, and the extra
+          power goes back to the grid for almost nothing. Meanwhile the house two doors down is
+          buying its electricity at full price.
+        </p>
+
+        <div class="sl-brief">
+          <div class="sl-brief__item">
+            <div class="sl-brief__n">The problem</div>
+            <div class="sl-brief__t">
+              <b>Surplus has nowhere to go.</b> Once storage is full, generation becomes waste —
+              and the household that could use it has no way to ask for it.
+            </div>
+          </div>
+          <div class="sl-brief__item">
+            <div class="sl-brief__n">The idea</div>
+            <div class="sl-brief__t">
+              <b>Give it to a neighbour, not to the grid.</b> No money, no trading, no middleman —
+              a street that treats its shared solar as a shared resource.
+            </div>
+          </div>
+          <div class="sl-brief__item">
+            <div class="sl-brief__n">The object</div>
+            <div class="sl-brief__t">
+              <b>Not an app. A thing on the wall.</b> It lives in the hallway where the whole
+              household walks past it, and it can be read from three metres away.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 02 问题 ================= -->
+    <section class="sl-sec sl-sec--sky">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">02 — Why this exists</p>
+        <h2 class="sl-h2">One in four rooftops makes power nobody is home to use.</h2>
+        <p class="sl-p">
+          In 2020 roughly <strong>27% of residential properties in New South Wales</strong> had
+          solar installed, and the number keeps climbing. The generation curve peaks at midday,
+          when the house is empty and the car is at work. Storage fills by mid-afternoon. After
+          that the inverter throttles the panels, and the resource that was supposed to pay for
+          itself quietly leaks away.
+        </p>
+
+        <div class="sl-stats">
+          <div class="sl-stat">
+            <div class="sl-stat__n">27<small>%</small></div>
+            <div class="sl-stat__l">of NSW homes had rooftop solar in 2020</div>
+          </div>
+          <div class="sl-stat">
+            <div class="sl-stat__n">12<small>kWh</small></div>
+            <div class="sl-stat__l">the battery capacity this design is built around</div>
+          </div>
+          <div class="sl-stat">
+            <div class="sl-stat__n">6</div>
+            <div class="sl-stat__l">households in the street we modelled</div>
+          </div>
+          <div class="sl-stat">
+            <div class="sl-stat__n">0</div>
+            <div class="sl-stat__l">ways a neighbour could ask you for power, before this</div>
+          </div>
+        </div>
+
+        <!-- 余电去向示意 -->
+        <div class="sl-surplus">
+          <div class="sl-surplus__row">
+            <span class="sl-surplus__chip">Roof</span>
+            <span class="sl-surplus__arrow">→</span>
+            <span class="sl-surplus__chip">Battery, full</span>
+            <span class="sl-surplus__arrow">→</span>
+            <span class="sl-surplus__label">and then what?</span>
+          </div>
+          <div class="sl-surplus__out">
+            <div class="sl-surplus__card">
+              <b>Sold back to the grid</b>
+              <span>for a feed-in tariff far below the retail price you pay at night</span>
+            </div>
+            <div class="sl-surplus__card">
+              <b>Throttled away</b>
+              <span>the inverter caps output and the panel simply stops earning</span>
+            </div>
+            <div class="sl-surplus__card is-target">
+              <b>Given to a neighbour</b>
+              <span>the obvious answer — and the one no product was making possible</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 03 概念选择 ================= -->
+    <section class="sl-sec">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">03 — Choosing a direction</p>
+        <h2 class="sl-h2">Three concepts, put in front of users before anything was designed.</h2>
+        <p class="sl-p">
+          Each concept was written up, explained in a short interview, and scored against six
+          criteria — usefulness, sustainability, social value, feasibility, learnability and fit
+          with daily routine. The point was not to pick the cleverest idea, but the one that
+          survived contact with real people.
+        </p>
+
+        <div class="sl-concepts">
+          <article class="sl-concept">
+            <div class="sl-concept__tag">Concept 01</div>
+            <h3 class="sl-concept__t">Virtual energy marketplace</h3>
+            <p class="sl-concept__d">
+              A peer-to-peer exchange where households sell surplus electricity to each other and
+              earn credits or cash.
+            </p>
+            <p class="sl-concept__verdict">
+              <b>Killed for:</b> transactional to the core. People liked the money and remembered
+              nothing else — no environmental or social reason to keep using it.
+            </p>
+          </article>
+
+          <article class="sl-concept is-pick">
+            <span class="sl-badge">Chosen</span>
+            <div class="sl-concept__tag">Concept 02</div>
+            <h3 class="sl-concept__t">SunLink Neighbours</h3>
+            <p class="sl-concept__d">
+              Surplus power is given to neighbours for free, and you can ask for power back when
+              you need it. A street-level network rather than a market.
+            </p>
+            <p class="sl-concept__verdict">
+              <b>Kept because:</b> it was the only concept that scored on sustainability
+              <em>and</em> on community at the same time. Its weakness — it depends on goodwill —
+              became the design problem.
+            </p>
+          </article>
+
+          <article class="sl-concept">
+            <div class="sl-concept__tag">Concept 03</div>
+            <h3 class="sl-concept__t">Smart home integration</h3>
+            <p class="sl-concept__d">
+              A hub that talks to every appliance in the house, scheduling loads around generation
+              so that nothing is wasted.
+            </p>
+            <p class="sl-concept__verdict">
+              <b>Killed for:</b> technically the strongest, socially the weakest. It optimises one
+              house and ignores the street — and it competes in a crowded market.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 04 三个状态 ================= -->
+    <section class="sl-sec sl-sec--sky">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">04 — The logic under the interface</p>
+        <h2 class="sl-h2">One rule decides everything: how much charge is left.</h2>
+        <p class="sl-p">
+          The entire product hangs on three states. Colour is not styling here — it is
+          <strong>permission</strong>. A green battery means you may give power away. A blue one
+          means you may neither give nor ask. A red one is the only state in which you are allowed
+          to ask someone else. Switch between them below.
+        </p>
+
+        <div class="sl-tabs" role="tablist" aria-label="Battery states">
+          <button class="sl-tab" role="tab" data-state="full" aria-selected="true"><i></i>Full · 100%</button>
+          <button class="sl-tab" role="tab" data-state="balanced" aria-selected="false"><i></i>Balanced · 21–99%</button>
+          <button class="sl-tab" role="tab" data-state="low" aria-selected="false"><i></i>Insufficient · 0–20%</button>
+        </div>
+
+        <!-- Full -->
+        <div class="sl-panel" data-panel="full">
+          <div class="sl-state" data-tone="full">
+            <div class="sl-state__rule">
+              <div class="sl-state__pct"><b>100%</b><span>12 kWh / 12 kWh</span></div>
+              <div class="sl-state__name">Full · you can give</div>
+              <p class="sl-p" style="font-size:15px">
+                The house on the wall turns green and the storage panel fills. This is the only
+                state in which sharing is possible, so it is the only state that shows the sharing
+                panel as active.
+              </p>
+              <ul class="sl-state__list">
+                <li><b>Requests arrive here.</b> A neighbour asking for power pops up on the community map with Accept and Ignore.</li>
+                <li><b>Auto-Share appears.</b> Turn it on before a trip and the system answers requests for you.</li>
+                <li><b>Sharing is never accidental.</b> Accepting opens a second confirmation naming the neighbour.</li>
+              </ul>
+            </div>
+            <div class="sl-state__shots">
+              <figure class="sl-figure">
+                <img src="assets/img/sl-model-green.webp" width="1600" height="1029" loading="lazy"
+                     alt="Model page, full state: a 3D house with a green battery panel reading 100% and 12 kWh." />
+                <figcaption>Model page — the house itself is the battery indicator</figcaption>
+              </figure>
+              <figure class="sl-figure">
+                <img src="assets/img/sl-panel-green.webp" width="1600" height="1029" loading="lazy"
+                     alt="Control panel, full state: battery ring at 100%, generation forecast, community map and a pending request from Amanda." />
+                <figcaption>Control panel — battery, sharing, forecast, community, monthly data</figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+
+        <!-- Balanced -->
+        <div class="sl-panel" data-panel="balanced" hidden>
+          <div class="sl-state" data-tone="balanced">
+            <div class="sl-state__rule">
+              <div class="sl-state__pct"><b>72%</b><span>8.6 kWh / 12 kWh</span></div>
+              <div class="sl-state__name">Balanced · you can do neither</div>
+              <p class="sl-p" style="font-size:15px">
+                Between 21% and 99% the device goes quiet. You cannot give power away and you
+                cannot ask for it either — the system protects your own evening use first. Most of
+                the day looks like this.
+              </p>
+              <ul class="sl-state__list">
+                <li><b>No pop-ups.</b> Neighbour requests are suppressed; the community map keeps updating as a background picture.</li>
+                <li><b>Only four things still respond:</b> Auto-Share, Information, Generation Efficiency and Data.</li>
+                <li><b>The sharing panel says why:</b> “You could not share power or send request” — a refusal with a reason, not a dead button.</li>
+              </ul>
+            </div>
+            <div class="sl-state__shots">
+              <figure class="sl-figure">
+                <img src="assets/img/sl-model-blue.webp" width="1600" height="1029" loading="lazy"
+                     alt="Model page, balanced state: the battery panel is blue at 72% and 8.6 kWh." />
+                <figcaption>Model page — the same house, blue battery</figcaption>
+              </figure>
+              <figure class="sl-figure">
+                <img src="assets/img/sl-panel-blue.webp" width="1600" height="1029" loading="lazy"
+                     alt="Control panel, balanced state: battery ring at 72% in blue, sharing panel greyed out." />
+                <figcaption>Control panel — sharing greyed out for the rest of the afternoon</figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+
+        <!-- Insufficient -->
+        <div class="sl-panel" data-panel="low" hidden>
+          <div class="sl-state" data-tone="low">
+            <div class="sl-state__rule">
+              <div class="sl-state__pct"><b>16%</b><span>1.8 kWh / 12 kWh</span></div>
+              <div class="sl-state__name">Insufficient · you can ask</div>
+              <p class="sl-p" style="font-size:15px">
+                Below 20% the battery turns red — the same red that tells a neighbour you need
+                help. Here the interface inverts: the sharing panel becomes a way to ask the street
+                rather than to answer it.
+              </p>
+              <ul class="sl-state__list">
+                <li><b>One action:</b> “Send a power request?” — sent to the households currently marked green.</li>
+                <li><b>Receiving is drawn as a line.</b> An amber line appears from the neighbour to your battery, so direction is never ambiguous.</li>
+                <li><b>It stops on its own</b> at 80%, so you cannot accidentally drain a neighbour.</li>
+              </ul>
+            </div>
+            <div class="sl-state__shots">
+              <figure class="sl-figure">
+                <img src="assets/img/sl-model-red.webp" width="1600" height="1029" loading="lazy"
+                     alt="Model page, insufficient state: the battery panel is red at 16% and 1.8 kWh." />
+                <figcaption>Model page — red battery, the visual alarm</figcaption>
+              </figure>
+              <figure class="sl-figure">
+                <img src="assets/img/sl-panel-red.webp" width="1600" height="1029" loading="lazy"
+                     alt="Control panel, insufficient state: battery ring at 16% in red and a Send a power request prompt." />
+                <figcaption>Control panel — the request prompt replaces incoming requests</figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+
+        <div class="sl-lawbox">
+          <div class="sl-law">
+            <b>Ceiling at 80%</b>
+            Sharing stops automatically once the receiving house reaches 80%, before it becomes
+            dependent on you.
+          </div>
+          <div class="sl-law">
+            <b>Floor at 20%</b>
+            Your own battery is never drained below 20% to help someone else. The system refuses
+            on your behalf.
+          </div>
+          <div class="sl-law">
+            <b>Auto-Share</b>
+            For a five-day trip: turn it on and requests from the street are accepted while you are
+            away, with nobody at home.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 怎么用 ================= -->
+    <section class="sl-sec">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">05 — Four seconds, once a day</p>
+        <h2 class="sl-h2">What actually happens, from the wall to the neighbour's meter.</h2>
+        <p class="sl-p">
+          The everyday interaction is almost nothing: the device says the battery is full, someone
+          asks, you confirm. Everything else is background. These four screens are the whole of it.
+        </p>
+
+        <div class="sl-steps">
+          <article class="sl-step">
+            <div class="sl-step__img"><img src="assets/img/sl-model-green.webp" width="1600" height="1029" loading="lazy" style="object-position:38% 46%" alt="Model page showing a house with a green battery at 100%." /></div>
+            <div class="sl-step__body">
+              <div class="sl-step__n">Step 01</div>
+              <h3 class="sl-step__t">The battery hits 100%</h3>
+              <p class="sl-step__d">
+                The house on the wall glows green and the cable from the roof lights up. From this
+                second on, surplus is spare.
+              </p>
+            </div>
+          </article>
+
+          <article class="sl-step">
+            <div class="sl-step__img"><img src="assets/img/sl-panel-green.webp" width="1600" height="1029" loading="lazy" style="object-position:82% 82%" alt="Control panel with a request card from Amanda and Accept and Ignore buttons." /></div>
+            <div class="sl-step__body">
+              <div class="sl-step__n">Step 02</div>
+              <h3 class="sl-step__t">Amanda asks</h3>
+              <p class="sl-step__d">
+                Her request appears at the bottom of the community map with her name, her photo
+                and two buttons. Nothing else on the screen changes.
+              </p>
+            </div>
+          </article>
+
+          <article class="sl-step">
+            <div class="sl-step__img"><img src="assets/img/sl-confirm.webp" width="1600" height="1029" loading="lazy" style="object-position:74% 84%" alt="A confirmation sheet reading Confirm to share power to Amanda, with No and Yes." /></div>
+            <div class="sl-step__body">
+              <div class="sl-step__n">Step 03</div>
+              <h3 class="sl-step__t">You confirm</h3>
+              <p class="sl-step__d">
+                Accept never shares immediately. A second sheet names the person — the fix for the
+                single most repeated finding in testing.
+              </p>
+            </div>
+          </article>
+
+          <article class="sl-step">
+            <div class="sl-step__img"><img src="assets/img/sl-sharing.webp" width="1600" height="1029" loading="lazy" style="object-position:36% 34%" alt="Sharing state: a green line from You to Amanda, Send-out 2 kW and a Stop Sharing button." /></div>
+            <div class="sl-step__body">
+              <div class="sl-step__n">Step 04</div>
+              <h3 class="sl-step__t">The line lights up</h3>
+              <p class="sl-step__d">
+                You and Amanda are drawn at either end of a lit line, 2 kW moving between you, and
+                a Stop Sharing button that is always there.
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 06 可玩原型 ================= -->
+    <section class="sl-sec sl-sec--ink">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">06 — The prototype is the argument</p>
+        <h2 class="sl-h2" style="color:#fff">Don't take the screenshots' word for it. Click it.</h2>
+        <p class="sl-p">
+          The final prototype is three linked artboards in Adobe XD, running live inside this page.
+          Pick a state, then click anything: open the community map, accept a request, confirm it,
+          watch the line appear. This is the same build that went through the last round of
+          usability testing.
+        </p>
+
+        <div class="sl-tabs" role="tablist" aria-label="Prototype states">
+          <button class="sl-tab" role="tab" data-proto="green" aria-selected="true"><i></i>Full · green</button>
+          <button class="sl-tab" role="tab" data-proto="blue" aria-selected="false"><i></i>Balanced · blue</button>
+          <button class="sl-tab" role="tab" data-proto="red" aria-selected="false"><i></i>Insufficient · red</button>
+        </div>
+
+        <div class="sl-embed" id="slEmbed">
+          <div class="sl-embed__frame">
+            <button class="sl-embed__gate" id="slEmbedGate" aria-label="Load the interactive prototype">
+              <div>
+                <span class="sl-embed__play">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+                </span>
+                <b>Load the live prototype</b>
+                <span>Adobe XD · 1280 × 800 · runs here, no new tab</span>
+              </div>
+            </button>
+          </div>
+          <div class="sl-embed__bar">
+            <span>Each state is a separate artboard. The one you pick here matches the tab above.</span>
+            <a id="slEmbedLink" href="https://xd.adobe.com/view/652e1648-9f5c-46c7-9e9b-7e457586dc36-307d/" target="_blank" rel="noopener">Open in Adobe XD ↗</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 07 电路 ================= -->
+    <section class="sl-sec">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">07 — Why it is a device and not a feature</p>
+        <h2 class="sl-h2">Sharing power is a switch, not a button.</h2>
+        <p class="sl-p">
+          Each house has three parts: a solar panel, a battery and an inverter. One single-pole
+          double-throw switch decides where the current goes. Not sharing — the current charges
+          your battery. Sharing — it routes to the inverter and out into the street. There is no
+          software trick behind it; the interface is only a remote control for a physical decision.
+          Try the switch.
+        </p>
+
+        <div class="sl-circuit" id="slCircuit" data-mode="battery">
+          <svg viewBox="0 0 780 352" role="img" aria-label="Circuit diagram of one house: solar panel, diode, and an SPDT switch choosing between battery and inverter.">
+            <!-- 静态导线 -->
+            <g fill="none" stroke="#16243a" stroke-width="2.4" stroke-linecap="round">
+              <path d="M156 180 H236" />
+              <path d="M272 180 H330" />
+              <path d="M390 110 H470" />
+              <path d="M518 110 H700 V340 H110 V226" />
+              <path d="M390 250 H464" />
+              <path d="M516 250 H700" />
+            </g>
+
+            <!-- 流动虚线（两条支路） -->
+            <g fill="none" stroke="#2b6cae" stroke-width="4" stroke-linecap="round" class="sl-flow-battery">
+              <path class="sl-flowline" d="M156 180 H330 L390 110 H470" />
+              <path class="sl-flowline" d="M518 110 H700 V340 H110 V226" />
+            </g>
+            <g fill="none" stroke="#2b6cae" stroke-width="4" stroke-linecap="round" class="sl-flow-inverter">
+              <path class="sl-flowline" d="M156 180 H330 L390 250 H464" />
+              <path class="sl-flowline" d="M516 250 H700 V340 H110 V226" />
+            </g>
+
+            <!-- 太阳能板 -->
+            <g>
+              <circle cx="110" cy="180" r="46" fill="#fff" stroke="#16243a" stroke-width="2.4" />
+              <text x="110" y="170" text-anchor="middle" font-size="15" font-weight="700" fill="#16243a">+</text>
+              <text x="110" y="200" text-anchor="middle" font-size="19" font-weight="700" fill="#16243a">−</text>
+              <text x="110" y="276" text-anchor="middle" font-size="13" font-weight="600" fill="#46566e" style="paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round">Solar panel</text>
+            </g>
+
+            <!-- 二极管 -->
+            <g stroke="#16243a" stroke-width="2.2" fill="none">
+              <path d="M236 166 L236 194 L262 180 Z" fill="#16243a" />
+              <path d="M262 166 V194" />
+            </g>
+
+            <!-- SPDT 开关 -->
+            <g>
+              <circle cx="330" cy="180" r="6" fill="#16243a" />
+              <circle cx="390" cy="110" r="6" fill="#fff" stroke="#16243a" stroke-width="2.2" />
+              <circle cx="390" cy="250" r="6" fill="#fff" stroke="#16243a" stroke-width="2.2" />
+              <line id="slLever" x1="330" y1="180" x2="390" y2="110" stroke="#16243a" stroke-width="3.4" stroke-linecap="round" />
+              <text x="352" y="292" text-anchor="middle" font-size="13" font-weight="600" fill="#46566e">SPDT switch</text>
+            </g>
+
+            <!-- 电池 -->
+            <g stroke="#16243a" stroke-linecap="round" fill="none">
+              <line x1="470" y1="86" x2="470" y2="134" stroke-width="7" />
+              <line x1="486" y1="94" x2="486" y2="126" stroke-width="7" />
+              <line x1="502" y1="86" x2="502" y2="134" stroke-width="7" />
+              <line x1="518" y1="94" x2="518" y2="126" stroke-width="7" />
+            </g>
+            <text x="490" y="72" text-anchor="middle" font-size="13" font-weight="600" fill="#46566e">Power battery · 12 kWh</text>
+
+            <!-- 逆变器 -->
+            <g>
+              <circle cx="490" cy="250" r="26" fill="#fff" stroke="#16243a" stroke-width="2.4" />
+              <path d="M480 256 q5 -12 10 0 q5 12 10 0" fill="none" stroke="#16243a" stroke-width="2.2" stroke-linecap="round" />
+              <text x="490" y="308" text-anchor="middle" font-size="13" font-weight="600" fill="#46566e">Inverter → street</text>
+            </g>
+          </svg>
+
+          <div class="sl-circuit__switch">
+            <button class="sl-chip" id="slSwitchBattery" aria-pressed="true">Not sharing → battery</button>
+            <button class="sl-chip" id="slSwitchInverter" aria-pressed="false">Sharing → inverter</button>
+          </div>
+        </div>
+
+        <div class="sl-lawbox" style="margin-top:26px">
+          <div class="sl-law">
+            <b>Parallel, not serial</b>
+            Every house sits on the same pair of shared lines. One household can drop out without
+            taking the street down.
+          </div>
+          <div class="sl-law">
+            <b>One switch, two futures</b>
+            Charge yourself, or feed the street. The model forces that choice to be visible
+            instead of hiding it inside an app.
+          </div>
+          <div class="sl-law">
+            <b>Why build it at all</b>
+            A screen cannot explain a circuit. A physical model can be picked up, wired and pointed
+            at during a conversation.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 08 3D 社区 ================= -->
+    <section class="sl-sec sl-sec--ink">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">08 — The street you can turn around</p>
+        <h2 class="sl-h2" style="color:#fff">Six houses, one shared cable, and a hub in the middle.</h2>
+        <p class="sl-p">
+          We printed six houses, wired each one to a central hub, and used the model in testing to
+          explain a parallel circuit to people who had never thought about one. This is that model,
+          rebuilt in 3D — the same six households that appear on the community map, down to their
+          names and their battery states. Drag to turn it. Change the state to see which way the
+          current runs.
+        </p>
+
+        <div class="sl-3d" id="sl3d">
+          <div class="sl-3d__bar">
+            <span class="sl-3d__title">SunLink Neighbours · street model</span>
+            <div class="sl-3d__states" role="group" aria-label="Model state">
+              <button class="sl-3d__btn" data-mode="share" aria-pressed="true">Sharing</button>
+              <button class="sl-3d__btn" data-mode="idle" aria-pressed="false">Idle</button>
+              <button class="sl-3d__btn" data-mode="receive" aria-pressed="false">Receiving</button>
+            </div>
+          </div>
+          <div class="sl-3d__canvas" id="sl3dCanvas">
+            <span class="sl-3d__hint">Drag to rotate</span>
+          </div>
+          <div class="sl-3d__caption" id="sl3dCaption">
+            <b>Sharing.</b> Your house is full, Amanda's is empty — the current leaves your roof,
+            passes through the shared bus in the middle, and arrives at her battery.
+          </div>
+        </div>
+
+        <div class="sl-lawbox" style="margin-top:26px">
+          <div class="sl-law" style="background:rgba(255,255,255,.06);border-left-color:#8fc4f2;color:#b9c8db">
+            <b style="color:#fff">6 households</b>
+            Printed in PLA on an Ultimaker, one house per group member, all the same model.
+          </div>
+          <div class="sl-law" style="background:rgba(255,255,255,.06);border-left-color:#8fc4f2;color:#b9c8db">
+            <b style="color:#fff">The black cable</b>
+            Twisted rope standing in for the shared line — the parallel circuit every house is
+            plugged into.
+          </div>
+          <div class="sl-law" style="background:rgba(255,255,255,.06);border-left-color:#8fc4f2;color:#b9c8db">
+            <b style="color:#fff">The hub</b>
+            The dark cylinder in the middle is the street's inverter: where individual houses meet
+            the shared supply.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 09 实物 ================= -->
+    <section class="sl-sec">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">09 — It existed outside the screen</p>
+        <h2 class="sl-h2">We built the street twice: once in cardboard, once in plastic.</h2>
+        <p class="sl-p">
+          The first street was six paper houses on a cardboard board, wired with red and green
+          tape — red for the parallel circuit, green for the two houses actually exchanging power.
+          It was fast, cheap and good enough to test whether the idea made sense at all. The second
+          was the printed version above, made once the concept had earned the effort.
+        </p>
+
+        <div class="sl-gallery">
+          <figure>
+            <img src="assets/img/sl-model-print.jpg" width="1035" height="771" loading="lazy"
+                 alt="The 3D-printed model: six white houses arranged in a ring on cardboard, each connected by twisted black cord to a dark cylindrical hub in the centre." />
+            <figcaption>
+              The printed model. Six houses, one hub, black cord for the shared circuit — the same
+              arrangement as the community map on screen.
+            </figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/sl-model-cardboard.jpg" width="636" height="477" loading="lazy"
+                 alt="The earlier cardboard model: five black paper houses and one copper-coloured house connected with red and green tape lines on a board." />
+            <figcaption>
+              The cardboard model from the mid-fidelity round. The copper house is the person being
+              tested; red is the parallel circuit, green is the power actually moving.
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 10 迭代 ================= -->
+    <section class="sl-sec sl-sec--sky">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">10 — Five rounds</p>
+        <h2 class="sl-h2">The useful part was not the version that worked.</h2>
+        <p class="sl-p">
+          Five prototypes, four rounds of testing, and one score that went <em>down</em>. The
+          details below are the ones that changed the design, not the ones that flattered it.
+        </p>
+
+        <div class="sl-time">
+          <article class="sl-time__row">
+            <div class="sl-time__era"><b>Lo-fi 1.0</b>Phone app</div>
+            <div class="sl-time__thumb"><img src="assets/img/sl-iter-1.webp" alt="Paper prototype of the phone app showing a community map of six households along streets." loading="lazy" /></div>
+            <div class="sl-time__body">
+              <p class="sl-time__find">
+                “Unclear how the community map works” — nobody in the first round could tell what
+                the map was for. The tutor added the bigger note: a phone is the wrong device for a
+                home control centre, and it has no presence in the house at all.
+              </p>
+              <p class="sl-time__move">Keep the features, throw away the device</p>
+            </div>
+          </article>
+
+          <article class="sl-time__row is-turn">
+            <div class="sl-time__era"><b>Lo-fi 2.0</b>Wall display</div>
+            <div class="sl-time__thumb"><img src="assets/img/sl-iter-2.webp" alt="Paper prototype of the wall display with four navigation buttons and a house illustration." loading="lazy" /></div>
+            <div class="sl-time__body">
+              <p class="sl-time__find">
+                Rebuilt as a screen that hangs on a wall, with four buttons that feel like they
+                belong there. The red low-power state was understood instantly — colour worked
+                before anything else did. People also asked to compare their usage against the
+                street average.
+              </p>
+              <p class="sl-time__move">Add live data graphs and a community reference line</p>
+            </div>
+          </article>
+
+          <article class="sl-time__row">
+            <div class="sl-time__era"><b>Mid-fi</b>Cardboard circuit</div>
+            <div class="sl-time__thumb"><img src="assets/img/sl-iter-3.webp" alt="Mid-fidelity screen showing an illustrated house with labelled power flows." loading="lazy" /></div>
+            <div class="sl-time__body">
+              <p class="sl-time__find">
+                Six participants, and the first real number: <b>SUS 74</b>. The failures were
+                specific — nobody discovered that day / week / month was a slider, and accepting a
+                request gave no confirmation whatsoever.
+              </p>
+              <p class="sl-time__move">Make the periods visible tabs; add a confirmation step</p>
+              <span class="sl-time__sus up">SUS 74</span>
+            </div>
+          </article>
+
+          <article class="sl-time__row is-turn">
+            <div class="sl-time__era"><b>Hi-fi 1.0</b>One crowded page</div>
+            <div class="sl-time__thumb"><img src="assets/img/sl-iter-4.webp" alt="Hi-fi 1.0 screen: a 3D house on the left and a dense grid of small panels on the right." loading="lazy" /></div>
+            <div class="sl-time__body">
+              <p class="sl-time__find">
+                A modelled house replaced the illustration and the score went down: <b>SUS 66.6</b>
+                across eight participants. Button text was too small, the house took half the
+                screen, and nobody could tell what green, blue and red meant without being told.
+              </p>
+              <p class="sl-time__move">Split the page in two and label the states</p>
+              <span class="sl-time__sus down">SUS 66.6 ↓</span>
+            </div>
+          </article>
+
+          <article class="sl-time__row">
+            <div class="sl-time__era"><b>Hi-fi 2.0</b>The final build</div>
+            <div class="sl-time__thumb"><img src="assets/img/sl-panel-green.webp" alt="The final control panel with battery ring, sharing status, forecast, community map and data." loading="lazy" /></div>
+            <div class="sl-time__body">
+              <p class="sl-time__find">
+                Model page and Control Panel page became two places, and the information button
+                explains one board at a time. Three more users then found the last two ambiguities:
+                the minus sign made direction unclear, and it was still hard to see who was sharing
+                with whom.
+              </p>
+              <p class="sl-time__move">Redraw the connecting lines; onboard one board at a time</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 11 反思 ================= -->
+    <section class="sl-sec">
+      <div class="sl-wrap">
+        <p class="sl-eyebrow">11 — What I would take to the next one</p>
+        <h2 class="sl-h2">Three things this project taught me, in order of how much they hurt.</h2>
+
+        <div class="sl-reflect">
+          <div class="sl-reflect__i">
+            <p class="sl-reflect__q">We designed the screen before we decided where it lived.</p>
+            <p class="sl-reflect__a">
+              Six screens of a phone app were thrown away because nobody had asked what object this
+              should be. The device decides the layout, the viewing distance, the type size and the
+              input — everything downstream. Decide the object first.
+            </p>
+          </div>
+          <div class="sl-reflect__i">
+            <p class="sl-reflect__q">A colour that needs explaining is not doing its job.</p>
+            <p class="sl-reflect__a">
+              Green, blue and red carried the entire permission model, and testing showed they
+              carried nothing. Label the state in words, then let the colour agree with it. The
+              drop from 74 to 66.6 was mostly this.
+            </p>
+          </div>
+          <div class="sl-reflect__i">
+            <p class="sl-reflect__q">Five rounds beat one round of polish.</p>
+            <p class="sl-reflect__a">
+              Every real improvement came from watching someone use a rough version, not from
+              making a rough version look better. The cardboard model taught more about the product
+              than any screen did.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 下一个 ================= -->
+    <section class="sl-sec sl-sec--tight">
+      <div class="sl-wrap">
+        <div class="sl-next">
+          <div>
+            <div class="sl-next__k">Next project</div>
+            <a class="sl-next__t" href="busstop.html">
+              Auto-Signaled Bus Stop
+              <svg width="30" height="16" viewBox="0 0 30 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 8h26M20 1l7 7-7 7"/></svg>
+            </a>
+          </div>
+          <div class="sl-next__k" style="margin:0">Project 02 of 04</div>
+        </div>
+
+        <div class="sl-foot">
+          <span>Interactive Design · The University of Sydney · 2023 · team of four</span>
+          <span>Teammates' names withheld at their request</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/content.js?v=31"></script>
+  <script src="js/main.js?v=31"></script>
+  <script src="assets/vendor/three.min.js"></script>
+  <script src="js/sunlink.js?v=31"></script>
 </body>
 </html>
