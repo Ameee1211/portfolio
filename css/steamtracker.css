@@ -1116,3 +1116,34 @@
   .st-law + .st-law { border-top: 1px solid var(--st-line); }
   .st-law:nth-child(n + 3) { border-top: 1px solid var(--st-line); }
 }
+
+/* 内嵌页固定浅色：不让作品集页面的配色影响 iframe 里的 App */
+.st-embed__frame iframe { color-scheme: light; background: #fff; }
+
+/* ---------- 01 界面展示：两张并排 ---------- */
+.st-shots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 30px;
+  align-items: start;
+}
+.st-shots figure { margin: 0; }
+.st-shots img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #fff;
+  border: 1px solid var(--st-line);
+  border-radius: 14px;
+  box-shadow: 0 30px 60px -46px rgba(16, 34, 43, 0.55);
+}
+.st-shots figcaption {
+  margin-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.62;
+  color: #71838a;
+}
+@media (max-width: 900px) {
+  .st-shots { grid-template-columns: 1fr; gap: 18px; }
+}

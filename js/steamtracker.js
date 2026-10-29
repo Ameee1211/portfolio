@@ -9,19 +9,14 @@
   "use strict";
 
   const ST_SECTIONS = [
-    { id: "overview", label: "Short version" },
-    { id: "problem", label: "Why this exists" },
-    { id: "direction", label: "The API decision" },
-    { id: "logic", label: "Form logic" },
-    { id: "usage", label: "How it's used" },
+    { id: "overview", label: "The interface" },
+    { id: "flow", label: "How it behaves" },
     { id: "app", label: "Try the app" },
-    { id: "storage", label: "Under the hood" },
     { id: "mockups", label: "Two mockups" },
-    { id: "responsive", label: "One breakpoint" },
-    { id: "build", label: "How it was built" },
+    { id: "responsive", label: "Responsive" },
+    { id: "built", label: "Built" },
     { id: "issues", label: "Known issues" },
-  ];
-  function stRenderIndex() {
+  ];  function stRenderIndex() {
     const rail = document.createElement("nav");
     rail.className = "st-index";
     rail.setAttribute("aria-label", "Section index");
