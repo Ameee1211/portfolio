@@ -89,7 +89,6 @@ const SITE = {
   // ============================================================
   aboutPage: {
     hero: {
-      eyebrow: "Portfolio 2026 · Hangzhou, China",
       name: "Tong",
       nameAccent: "Zhang",
       alias: "Amy · 张彤",
@@ -111,13 +110,13 @@ const SITE = {
       index: "01",
       label: "How I design",
       statement: [
-        { t: "I start with " },
-        { t: "whoever has to use the thing", hl: true },
-        { t: " — the task they are trying to finish, and the exact point where they get stuck. " },
-        { t: "Clarity", hl: true },
-        { t: " earns its place before style does; a screen that needs instructions has already failed. I also keep the build in the room while I design, because a decision that " },
-        { t: "cannot ship", hl: true },
-        { t: " is not a decision." },
+        { t: "I design for the moment someone actually uses the thing — " },
+        { t: "how it feels to use", hl: true },
+        { t: ", not how it looks in a frame. So I start with the friction: the point where people hesitate, re-read the same label, or quietly give up and do it another way. That gets fixed before anything gets decorated. " },
+        { t: "Experience comes first", hl: true },
+        { t: "; visual polish has to earn its place on top of it. AI is part of how I work now — I use it to explore more directions, draft faster and pressure-test my own thinking before I commit — but " },
+        { t: "the judgement stays mine", hl: true },
+        { t: "." },
       ],
     },
 
@@ -188,15 +187,40 @@ const SITE = {
       capabilities: {
         title: "What I do",
         items: [
-          { name: "User Research", note: "Interviews, contextual observation, synthesis" },
-          { name: "Information Architecture", note: "Flows, structure, naming, navigation" },
-          { name: "Prototyping", note: "Wireframes through to clickable high fidelity" },
-          { name: "Web Design", note: "Responsive layout, HTML, CSS, JavaScript" },
-          { name: "3D Modelling", note: "Form exploration, modelling, 3D printing" },
-          { name: "Visual Systems", note: "Type, colour, components, consistency" },
+          {
+            name: "User Research",
+            note: "Interviews, contextual observation, synthesis",
+            chips: ["Interviews", "Observation"],
+          },
+          {
+            name: "Information Architecture",
+            note: "Flows, structure, naming, navigation",
+            chips: ["Flows", "Naming"],
+          },
+          {
+            name: "Prototyping",
+            note: "Wireframes through to clickable high fidelity",
+            chips: ["Wireframes", "Prototypes"],
+          },
+          {
+            name: "Web Design",
+            note: "Responsive layout, HTML, CSS, JavaScript",
+            chips: ["HTML / CSS", "Responsive"],
+          },
+          {
+            name: "3D Modelling",
+            note: "Form exploration, modelling, 3D printing",
+            chips: ["Rhino", "3D print"],
+          },
+          {
+            name: "Visual Systems",
+            note: "Type, colour, components, consistency",
+            chips: ["Type", "Components"],
+          },
           {
             name: "AI-Assisted Design",
-            note: "Prompting for ideation, research and drafting; I keep the judgement and the craft, and let AI take the repetitive half.",
+            note: "AI does the repetitive half — I keep the judgement and the craft.",
+            chips: ["Prompting", "Drafting", "Critique"],
             wide: true,
           },
         ],
@@ -241,6 +265,8 @@ const SITE = {
       index: "05",
       label: "Off the screen",
       intro: "Three things I do away from a desk, and what they quietly teach me about design.",
+      // 每张卡片可点击展开：more 里是展开后的内容
+      // type: "gallery" 图集 / "list" 条目 / "awards" 奖项 + 配图
       items: [
         {
           title: "Crochet",
@@ -250,6 +276,18 @@ const SITE = {
           image: "",
           tint: "#FFE9C7",
           icon: "yarn",
+          more: {
+            heading: "Things I made with one hook",
+            lead:
+              "Mostly small creatures. Each one starts as a spiral of single crochet and ends up with a face, which is the part I care about most.",
+            type: "gallery",
+            items: [
+              { label: "Amigurumi fox", meta: "Cotton yarn · 2025", image: "", tint: "#FFE9C7", icon: "yarn" },
+              { label: "Granny-square tote", meta: "Cotton · 2024", image: "", tint: "#D2FFF1", icon: "yarn" },
+              { label: "Chunky cardigan", meta: "Wool · 2024", image: "", tint: "#DCE9FB", icon: "yarn" },
+              { label: "Jellyfish mobile", meta: "Cotton · 2023", image: "", tint: "#F1E7FF", icon: "yarn" },
+            ],
+          },
         },
         {
           title: "Indie games",
@@ -259,15 +297,54 @@ const SITE = {
           image: "",
           tint: "#D2FFF1",
           icon: "gamepad",
+          more: {
+            heading: "Three I keep coming back to",
+            lead: "Each one taught me something I now use in interface work.",
+            type: "list",
+            items: [
+              {
+                title: "What Remains of Edith Finch",
+                meta: "Giant Sparrow · 2017",
+                note:
+                  "Every room explains who lived in it without a line of exposition. That is information architecture doing emotional work — I steal the idea of revealing structure through objects instead of menus.",
+              },
+              {
+                title: "Outer Wilds",
+                meta: "Mobius Digital · 2019",
+                note:
+                  "Nothing is unlocked by items, only by understanding. It convinced me that good onboarding hands over knowledge, never a tour.",
+              },
+              {
+                title: "Florence",
+                meta: "Mountains · 2018",
+                note:
+                  "A puzzle shaped like an argument, not a description of one. Interaction can carry the feeling on its own — the copy does not have to explain it.",
+              },
+            ],
+          },
         },
         {
-          title: "Swimming",
+          title: "Swimming & diving",
           kicker: "25 m, back and forth",
           text:
             "Laps are the only place I think in straight lines. Most of my information architecture decisions get made somewhere around the eight-hundred-metre mark.",
           image: "",
           tint: "#DCE9FB",
           icon: "wave",
+          more: {
+            heading: "In the water, competitively and otherwise",
+            lead: "I raced as a kid, taught it later, and still spend weekends underneath it.",
+            type: "awards",
+            items: [
+              { k: "2nd place", v: "National Youth Swimming Championship, China" },
+              { k: "Certified", v: "Swimming Instructor Certificate, Australia" },
+              { k: "Freediver", v: "Open-water dives on weekends, chasing the quiet" },
+            ],
+            // 潜水照片：把文件放进 assets/img/ 后把路径填在这里
+            image: "",
+            imageCaption: "Under the surface, somewhere off the coast",
+            tint: "#CFE6FF",
+          },
         },
       ],
     },

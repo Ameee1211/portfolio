@@ -47,8 +47,7 @@ function abRenderHero() {
     <div class="ab-hero__ghost" id="abGhost" aria-hidden="true">${ghost}</div>
     <div class="ab-wrap ab-hero__inner">
       <div class="ab-hero__lead">
-        <span class="ab-eyebrow" data-ab-in="1"><span class="ab-eyebrow__dot"></span>${esc(h.eyebrow)}</span>
-        <h1 class="ab-hero__name" data-ab-in="2">${esc(h.name)} <em>${esc(h.nameAccent)}</em>
+        <h1 class="ab-hero__name" data-ab-in="1">${esc(h.name)} <em>${esc(h.nameAccent)}</em>
           <span class="ab-hero__alias">${esc(h.alias)}</span>
         </h1>
       </div>
@@ -198,46 +197,45 @@ function abRenderExperience() {
 }
 
 /* ---------- 5. 技能与工具 ---------- */
+// 8 个等大瓦片：7 项能力 + 语言。全部同构（编号 / 名称 / 说明 / 关键词标签），
+// 用户一眼扫下来就能抓到"会什么"，不用在不同形状的卡片里找。
 function abRenderSkills() {
   const s = AB.skills;
-  const all = s.capabilities.items;
-  const grid = all.filter((c) => !c.wide);
-  const aside = all.filter((c) => c.wide);
 
-  const capCard = (c, i) => `
-      <div class="ab-cap__item">
-        <span class="ab-cap__num">${String(i + 1).padStart(2, "0")}</span>
-        <h4 class="ab-cap__name">${esc(c.name)}</h4>
-        <p class="ab-cap__note">${esc(c.note)}</p>
-      </div>`;
-
-  const caps = grid.map((c, i) => capCard(c, i)).join("");
-
-  // 通栏强调卡（AI 能力）放在右栏底部，避免左栏被拉高后右栏空一大块
-  const asideCards = aside
-    .map((c) => {
-      const idx = all.indexOf(c);
-      return `
-      <div class="ab-cap__item ab-cap__item--wide">
-        <span class="ab-cap__num">${String(idx + 1).padStart(2, "0")}</span>
-        <h4 class="ab-cap__name">${esc(c.name)}</h4>
-        <p class="ab-cap__note">${esc(c.note)}</p>
-      </div>`;
-    })
+  const tiles = s.capabilities.items
+    .map(
+      (c, i) => `
+      <article class="ab-skill">
+        <span class="ab-skill__num">${String(i + 1).padStart(2, "0")}</span>
+        <h3 class="ab-skill__name">${esc(c.name)}</h3>
+        <p class="ab-skill__note">${esc(c.note)}</p>
+        ${
+          c.chips && c.chips.length
+            ? `<div class="ab-skill__chips">${c.chips.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>`
+            : ""
+        }
+      </article>`
+    )
     .join("");
+
+  const langRows = (s.languages || [])
+    .map(
+      (l) => `
+        <span class="ab-skill__langrow"><b>${esc(l.name)}</b>${esc(l.level)}</span>`
+    )
+    .join("");
+
+  const langTile = s.languages && s.languages.length
+    ? `
+      <article class="ab-skill ab-skill--lang">
+        <span class="ab-skill__num">LANG</span>
+        <h3 class="ab-skill__name">Languages</h3>
+        <div class="ab-skill__langs">${langRows}</div>
+      </article>`
+    : "";
 
   const tools = s.tools.items
     .map((t) => `<span class="ab-tool" style="--c:${esc(t.color)}">${esc(t.label)}</span>`)
-    .join("");
-
-  const langs = (s.languages || [])
-    .map(
-      (l) => `
-      <div class="ab-lang__row">
-        <span class="ab-lang__k">${esc(l.name)}</span>
-        <span class="ab-lang__v">${esc(l.level)}</span>
-      </div>`
-    )
     .join("");
 
   return `
@@ -248,21 +246,16 @@ function abRenderSkills() {
         <span class="ab-head__label">${esc(s.label)}</span>
         <span class="ab-head__rule"></span>
       </div>
-      <div class="ab-skills">
-        <div>
-          <h3 class="ab-group__title">${esc(s.capabilities.title)}</h3>
-          <div class="ab-cap">${caps}</div>
-        </div>
-        <div>
-          <h3 class="ab-group__title">${esc(s.tools.title)}</h3>
-          <div class="ab-tools">${tools}</div>
-          ${langs ? `<div class="ab-lang">${langs}</div>` : ""}
-          ${asideCards}
-        </div>
+      <p class="ab-skills__lead">Eight things that show up on almost every project, from first interview to final build.</p>
+      <div class="ab-skillgrid">${tiles}${langTile}</div>
+      <div class="ab-toolbelt">
+        <h3 class="ab-group__title">${esc(s.tools.title)}</h3>
+        <div class="ab-tools">${tools}</div>
       </div>
     </div>
   </section>`;
 }
+
 
 /* ---------- 6. 联系方式 ---------- */
 function abRenderContact() {
@@ -306,20 +299,102 @@ function abRenderContact() {
 }
 
 /* ---------- 7. 个人兴趣 ---------- */
+// 展开后的内容：图集 / 条目 / 奖项
+function abMoreBody(m) {
+  if (!m) return "";
+
+  const head = `
+    <div class="ab-more__head">
+      <div>
+        <h4 class="ab-more__heading">${esc(m.heading)}</h4>
+        <p class="ab-more__lead">${esc(m.lead)}</p>
+      </div>
+    </div>`;
+
+  let body = "";
+
+  if (m.type === "gallery") {
+    body = `<div class="ab-more__grid">${m.items
+      .map(
+        (it) => `
+        <figure class="ab-more__tile" style="--tint:${esc(it.tint || "#FFE9C7")}">
+          ${
+            it.image
+              ? `<img src="${esc(it.image)}" alt="${esc(it.label)}" loading="lazy" />`
+              : `<span class="ab-more__ph" aria-hidden="true">${INT_ICONS[it.icon] || ""}</span>`
+          }
+          <figcaption>
+            <span class="ab-more__t">${esc(it.label)}</span>
+            <span class="ab-more__m">${esc(it.meta)}</span>
+          </figcaption>
+        </figure>`
+      )
+      .join("")}</div>`;
+  } else if (m.type === "list") {
+    body = `<ol class="ab-more__list">${m.items
+      .map(
+        (it, i) => `
+        <li class="ab-more__row">
+          <span class="ab-more__idx">${String(i + 1).padStart(2, "0")}</span>
+          <div class="ab-more__rowbody">
+            <h5 class="ab-more__item">${esc(it.title)}<span class="ab-more__meta">${esc(it.meta)}</span></h5>
+            <p class="ab-more__note">${esc(it.note)}</p>
+          </div>
+        </li>`
+      )
+      .join("")}</ol>`;
+  } else if (m.type === "awards") {
+    body = `<div class="ab-more__split">
+      <ul class="ab-more__awards">
+        ${m.items
+          .map(
+            (it) => `
+          <li>
+            <span class="ab-more__k">${esc(it.k)}</span>
+            <span class="ab-more__v">${esc(it.v)}</span>
+          </li>`
+          )
+          .join("")}
+      </ul>
+      <figure class="ab-more__photo" style="--tint:${esc(m.tint || "#CFE6FF")}">
+        ${
+          m.image
+            ? `<img src="${esc(m.image)}" alt="${esc(m.imageCaption || "Diving")}" loading="lazy" />`
+            : `<span class="ab-more__ph ab-more__ph--wide" aria-hidden="true">${INT_ICONS.wave}</span>`
+        }
+        <figcaption>${esc(m.imageCaption || "")}</figcaption>
+      </figure>
+    </div>`;
+  }
+
+  return head + body;
+}
+
 function abRenderInterests() {
   const s = AB.interests;
   const cards = s.items
-    .map((it) => {
+    .map((it, i) => {
       const media = it.image
         ? `<img src="${esc(it.image)}" alt="${esc(it.title)}" loading="lazy" />`
         : INT_ICONS[it.icon] || "";
       return `
-      <article class="ab-int__card reveal" style="--tint:${esc(it.tint)}">
+      <article class="ab-int__card reveal" data-int="${i}" style="--tint:${esc(it.tint)}">
         <div class="ab-int__media">${media}</div>
-        <div class="ab-int__body">
-          <span class="ab-int__kicker">${esc(it.kicker)}</span>
-          <h3 class="ab-int__title">${esc(it.title)}</h3>
-          <p class="ab-int__text">${esc(it.text)}</p>
+        <div class="ab-int__right">
+          <div class="ab-int__body">
+            <span class="ab-int__kicker">${esc(it.kicker)}</span>
+            <h3 class="ab-int__title">${esc(it.title)}</h3>
+            <p class="ab-int__text">${esc(it.text)}</p>
+            ${
+              it.more
+                ? `<button class="ab-int__toggle" type="button" aria-expanded="false" aria-controls="intMore${i}">
+                    <span class="ab-int__sign" aria-hidden="true"></span>
+                    <span class="ab-int__toggle-txt">See more</span>
+                  </button>`
+                : ""
+            }
+          </div>
+          ${it.more ? `<div class="ab-int__more" id="intMore${i}">${abMoreBody(it.more)}</div>` : ""}
         </div>
       </article>`;
     })
@@ -334,7 +409,7 @@ function abRenderInterests() {
         <span class="ab-head__rule"></span>
       </div>
       <p class="ab-int__intro">${esc(s.intro)}</p>
-      <div class="ab-int">${cards}</div>
+      <div class="ab-int" id="abInt">${cards}</div>
     </div>
   </section>`;
 }
@@ -480,6 +555,124 @@ function abInitCopy() {
 }
 
 /* ============================================================
+   左侧板块索引（fixed，不随页面滚动）
+   ============================================================ */
+const AB_SECTIONS = [
+  { id: "philosophy", label: "How I design" },
+  { id: "education", label: "Education" },
+  { id: "experience", label: "Experience" },
+  { id: "skills", label: "Skills & tools" },
+  { id: "interests", label: "Off the screen" },
+  { id: "contact", label: "Contact" },
+];
+
+function abRenderIndex() {
+  const rail = document.createElement("nav");
+  rail.className = "ab-index";
+  rail.setAttribute("aria-label", "Section index");
+  rail.innerHTML = AB_SECTIONS.map(
+    (s, i) => `
+    <a class="ab-index__item" href="#${s.id}" data-target="${s.id}" aria-label="${esc(s.label)}">
+      <span class="ab-index__num">${String(i + 1).padStart(2, "0")}</span>
+      <span class="ab-index__dot" aria-hidden="true"></span>
+      <span class="ab-index__label">${esc(s.label)}</span>
+    </a>`
+  ).join("");
+  document.body.appendChild(rail);
+  return rail;
+}
+
+function abInitIndex(rail) {
+  if (!rail) return;
+  const hero = document.querySelector(".ab-hero");
+  const items = [...rail.querySelectorAll(".ab-index__item")];
+  const sections = AB_SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean);
+  if (!sections.length) return;
+
+  let raf = null;
+
+  const sync = () => {
+    raf = null;
+    const y = window.scrollY;
+    const vh = window.innerHeight;
+
+    // 首屏不显示索引
+    const heroH = hero ? hero.offsetHeight : 0;
+    rail.classList.toggle("is-visible", y > heroH - vh * 0.55);
+
+    // 当前板块：以视口 42% 处所在的板块为准
+    const probe = y + vh * 0.42;
+    let active = -1;
+    sections.forEach((sec, i) => {
+      if (sec.offsetTop <= probe) active = i;
+    });
+    items.forEach((it, i) => it.classList.toggle("is-active", i === active));
+  };
+
+  const onScroll = () => {
+    if (!raf) raf = requestAnimationFrame(sync);
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  sync();
+
+  items.forEach((it) => {
+    it.addEventListener("click", (e) => {
+      const el = document.getElementById(it.dataset.target);
+      if (!el) return;
+      e.preventDefault();
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.replaceState(null, "", "#" + it.dataset.target);
+    });
+  });
+}
+
+/* ============================================================
+   兴趣卡片：点击展开成横跨三卡的长方形
+   ============================================================ */
+function abInitInterests() {
+  const wrap = $("abInt");
+  if (!wrap) return;
+  const cards = [...wrap.querySelectorAll(".ab-int__card")];
+
+  const setOpen = (card) => {
+    cards.forEach((c) => {
+      const on = c === card;
+      c.classList.toggle("is-open", on);
+      const btn = c.querySelector(".ab-int__toggle");
+      if (btn) {
+        btn.setAttribute("aria-expanded", String(on));
+        const txt = btn.querySelector(".ab-int__toggle-txt");
+        if (txt) txt.textContent = on ? "Close" : "See more";
+      }
+    });
+    wrap.classList.toggle("has-open", !!card);
+    if (card) {
+      const top = card.getBoundingClientRect().top + window.scrollY - 96;
+      if (Math.abs(window.scrollY - top) > 40) window.scrollTo({ top, behavior: "smooth" });
+    }
+  };
+
+  cards.forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".ab-more__close")) {
+        setOpen(null);
+        return;
+      }
+      // 已展开时，点内容区不收起（方便阅读）
+      if (card.classList.contains("is-open") && e.target.closest(".ab-int__more")) return;
+      setOpen(card.classList.contains("is-open") ? null : card);
+    });
+  });
+
+  // Esc 收起
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setOpen(null);
+  });
+}
+
+/* ============================================================
    启动
    ============================================================ */
 (function abBoot() {
@@ -499,6 +692,8 @@ function abInitCopy() {
   abInitHero();
   abInitAnim();
   abInitCopy();
+  abInitInterests();
+  abInitIndex(abRenderIndex());
 
   // main.js 的滚动入场在这里补挂一次（内容刚生成）
   if (typeof initReveal === "function") initReveal();

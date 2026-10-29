@@ -84,9 +84,25 @@ git push
 | 设计理念 | `aboutPage.philosophy` | `statement` 是分段数组，`hl: true` 的片段会被橙色马克笔高亮 |
 | 教育背景 | `aboutPage.education` | `gpa` 控制圆环比例，`courses` 的 `score` 决定进度条长度 |
 | 相关经历 | `aboutPage.experience` | `items` 数组，每项含 `points`（要点）和 `tags` |
-| 技能工具 | `aboutPage.skills` | `capabilities` 是能力卡片（带 `wide: true` 的会渲染成右栏强调卡），`tools` 的颜色决定标签色 |
-| 个人兴趣 | `aboutPage.interests` | `image` 留空时显示内置小图标；填了图片路径就自动换成照片 |
+| 技能工具 | `aboutPage.skills` | 8 个等大瓦片：7 项能力（`capabilities`，含 `chips` 关键词）+ 语言；`tools` 的颜色决定标签色 |
+| 个人兴趣 | `aboutPage.interests` | 三张卡片可点击展开，展开内容在 `items[].more`；`image` 留空显示内置图标 |
 | 联系方式 | `aboutPage.contact` | 点击整张卡片即可复制；`copy: false` 的那条渲染成不可点的信息卡 |
+
+左侧还有一个固定的小索引（`.ab-index`，`js/about.js` 里的 `AB_SECTIONS`）：
+首屏不显示，滚过首屏后淡入，6 个板块各一个点，当前板块的点变紫放大，
+点击平滑跳转。窗口窄于 1180px 自动隐藏。
+
+### 兴趣卡片的展开内容（`interests.items[].more`）
+`type` 决定展开后的版式，三种都实现好了：
+
+| `type` | 版式 | 每条需要的字段 |
+|---|---|---|
+| `gallery` | 四宫格作品图集 | `label`、`meta`、`image`、`tint`、`icon` |
+| `list` | 编号条目清单 | `title`、`meta`、`note` |
+| `awards` | 奖项列表 + 右侧配图 | `k`（左侧小标题）、`v`（内容）；`image` + `imageCaption` |
+
+> 想放真实照片：把文件放进 `assets/img/`，然后把对应条目的 `image` 改成
+> `"assets/img/文件名.jpg"`，占位图标会自动换掉。
 
 ### 视觉规范：按钮 vs 标签（全站统一，别混）
 - **按钮**（`.btn` / `.btn--purple`）：实心紫底白字、胶囊圆角 `999px`、带投影、悬停上浮。
@@ -99,6 +115,7 @@ git push
 - 背景铺的是和首页字母迷宫同一套字母，随鼠标轻微漂移（透明度 5%）
 - 滚到理念段落时，三个关键词的橙色底色从左扫过
 - 滚到教育背景时，GPA 圆环填色 + 四条课程分数条依次生长
+- 兴趣卡片点击展开成横跨三卡的长方形，同一时间只开一张，Esc 也可收起
 - 联系方式点击即复制，底部弹出提示；不支持剪贴板的浏览器自动降级
 
 > 想给兴趣卡片配图：把照片放进 `assets/img/`，然后把 `interests.items[].image`
