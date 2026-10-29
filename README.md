@@ -238,6 +238,12 @@ git push
 - `assets/vendor/three.min.js` 是本地内嵌的 three.js r160（UMD，650KB）。
   **故意不用 CDN**：国内加载 jsdelivr 可能很慢；也故意不用 ES module，
   这样直接双击 `sunlink.html` 用 `file://` 打开也能跑。
+- **这个页面的强调色是蓝色，全站只有它例外 —— 这是有意保留的，不要"统一"成站点紫。**
+  原因：① `#548CBD / #4494E2` 是项目自己的品牌色（文档第 71 页品牌规范），案例研究该用产品的颜色；
+  ② 蓝在该项目里是三态之一 = Balanced（21–99%），页面底色取蓝＝"页面处在均衡态"，
+  绿/红标签才是"发生在这个底色上的事件"，换成紫会让三态配色散掉；
+  ③ 紫＝关于 Amy（Home / About），项目色＝关于作品，翻标签页时一眼能分辨。
+  改色值在 `css/sunlink.css` 顶部的 `:root`，改之前先想清楚三态语义还能不能成立。
 - 第 11 节「Known Issues & Future Versions」的内容直接来自 DECO3200 最终文档第 78–79 页，
   第 2 节的数据来自 APVI / Clean Energy Regulator（页面上标了来源），**不要凭印象改数字**。
 - 图片：`sl-panel-{green,blue,red}.webp`（控制面板）、`sl-model-{green,blue,red}.webp`（房屋页）、
