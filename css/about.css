@@ -13,7 +13,16 @@
   padding: 0 40px;
 }
 
-.ab-sec { position: relative; padding: clamp(72px, 8vw, 116px) 0; }
+/* 每个板块至少一整屏，配合 js/about.js 的分页滚动 */
+.ab-sec {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: clamp(72px, 8vw, 116px) 0;
+}
 .ab-sec--cream { background: var(--cream); }
 .ab-sec--white { background: var(--white); }
 /* Contact 现在是本页最后一个区块，底部留出更宽松的收尾空间 */
@@ -1113,7 +1122,53 @@
   background: var(--purple);
   transform: scale(1.5);
 }
-@media (max-width: 1180px) {
+
+/* 宽屏：编号 + 文字标签常显。
+   rail 约 124px，所以板块内容整体右移让出空间（首屏保持通栏） */
+@media (min-width: 1180px) {
+  .ab-sec .ab-wrap { padding-left: 150px; }
+  .ab-index {
+    left: max(12px, calc((100vw - var(--maxw)) / 2 + 2px));
+    gap: 15px;
+  }
+  .ab-index__item { gap: 8px; }
+  .ab-index__dot { display: none; }
+  .ab-index__num { width: 14px; opacity: 0.55; }
+  .ab-index__label {
+    position: static;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    opacity: 1;
+    transform: none;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(51, 61, 109, 0.62);
+    transition: color 0.3s ease;
+  }
+  .ab-index__item.is-active .ab-index__label { color: var(--navy); }
+  .ab-index__item.is-active .ab-index__num { color: var(--purple); opacity: 1; }
+  .ab-index__item:hover .ab-index__label { color: var(--purple); opacity: 1; transform: none; }
+  /* 当前项左侧的短竖线 */
+  .ab-index__item::before {
+    content: "";
+    position: absolute;
+    left: -11px;
+    top: 50%;
+    width: 2px;
+    height: 11px;
+    margin-top: -5.5px;
+    border-radius: 2px;
+    background: var(--purple);
+    opacity: 0;
+    transform: scaleY(0.3);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .ab-index__item.is-active::before { opacity: 1; transform: scaleY(1); }
+}
+
+@media (max-width: 1179px) {
   .ab-index { display: none; }
 }
 

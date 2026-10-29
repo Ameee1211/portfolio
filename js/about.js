@@ -683,6 +683,178 @@ function abInitInterests() {
 }
 
 /* ============================================================
+   板块分页滚动（pin）：一次滚轮 = 前进一个板块
+   - 板块高于视口时，先让用户连续滚动看完底部，再翻到下一块
+   - 触屏 / 小屏 / 减弱动效 时整体不启用，保持原生滚动
+   ============================================================ */
+function abInitPager() {
+  const main = $("abMain");
+  if (!main) return;
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  if (!window.matchMedia("(min-width: 1024px)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const nav = document.querySelector(".nav");
+  const hero = main.querySelector(".ab-hero");
+  const sections = AB_SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean);
+  if (sections.length < 2) return;
+
+  const THRESHOLD = 14; // 滚轮 / 触控板累积阈值
+  const LOCK_MS = 720;  // 翻页动画锁
+
+  let lockUntil = 0;
+  let lockDir = 0;
+  let acc = 0;
+  let accTimer = 0;
+
+  const navH = () => (nav ? nav.offsetHeight : 0);
+  const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
+  const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+
+  // 当前板块序号，-1 = 还停在首屏
+  const indexAt = () => {
+    const probe = window.scrollY + navH() + 4;
+    let idx = -1;
+    sections.forEach((sec, i) => {
+      if (topOf(sec) <= probe) idx = i;
+    });
+    return idx;
+  };
+
+  const go = (top, dir) => {
+    const target = Math.max(0, Math.min(top, maxScroll()));
+    lockUntil = performance.now() + LOCK_MS;
+    lockDir = dir;
+    window.scrollTo({ top: target, behavior: "smooth" });
+  };
+
+  // 板块底部留白 = 可以「忽略不计」的高度，避免为了几十像素空白再滚一次
+  const slackOf = (el) => {
+    const pb = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+    return Math.max(56, pb + 18);
+  };
+
+  // 返回 true 表示已接管本次滚动
+  const step = (dir) => {
+    const vh = window.innerHeight;
+    const y = window.scrollY;
+    const idx = indexAt();
+    const cur = idx >= 0 ? sections[idx] : null;
+
+    if (dir > 0) {
+      if (cur) {
+        const curBottom = topOf(cur) + cur.offsetHeight;
+        const remain = curBottom - (y + vh);
+        const slack = slackOf(cur);
+        if (remain > slack) {
+          // 底部还有内容没露出：长板块交给浏览器连续滚
+          if (cur.offsetHeight > vh + slack) return false;
+          const target = curBottom - vh;
+          if (Math.abs(target - y) < 4) return false;
+          go(target, 1);
+          return true;
+        }
+      }
+      const next = sections[idx + 1];
+      if (!next) return false;
+      const target = topOf(next);
+      if (Math.abs(target - y) < 4) return false;
+      go(target, 1);
+      return true;
+    }
+
+    // 向上
+    if (cur) {
+      const over = y - topOf(cur);
+      if (over > 40) {
+        if (cur.offsetHeight > vh + slackOf(cur)) return false; // 长板块内部：连续滚
+        go(topOf(cur), -1);                                     // 只多一点点：一次回到板块顶
+        return true;
+      }
+    }
+    const prev = idx > 0 ? sections[idx - 1] : hero;
+    if (!prev) return false;
+    const prevTop = topOf(prev);
+    const prevH = prev.offsetHeight;
+    // 上一块明显比视口高时，停到它的底部（从下往上读更自然）
+    const target = prevH > vh + slackOf(prev) ? prevTop + prevH - vh : prevTop;
+    if (Math.abs(target - y) < 4) return false;
+    go(target, -1);
+    return true;
+  };
+
+  const inScroller = (el) => {
+    while (el && el !== document.body && el !== document.documentElement) {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 4) return true;
+      el = el.parentElement;
+    }
+    return false;
+  };
+
+  const onWheel = (e) => {
+    if (e.ctrlKey) return; // 缩放
+    if (e.target instanceof Element && inScroller(e.target)) return;
+
+    const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    if (!d) return;
+
+    // 翻页动画期间吞掉惯性滚动；反向输入则立即解锁
+    if (performance.now() < lockUntil) {
+      if (Math.sign(d) !== lockDir) {
+        lockUntil = 0;
+        acc = 0;
+        return;
+      }
+      e.preventDefault();
+      return;
+    }
+
+    acc += d;
+    clearTimeout(accTimer);
+    accTimer = setTimeout(() => (acc = 0), 200);
+
+    if (Math.abs(acc) < THRESHOLD) {
+      // 累积不够：先吞掉，避免页面停在两个板块之间
+      e.preventDefault();
+      return;
+    }
+
+    const dir = acc > 0 ? 1 : -1;
+    acc = 0;
+    if (step(dir)) e.preventDefault();
+  };
+
+  const onKey = (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = (e.target && e.target.tagName) || "";
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+
+    let dir = 0;
+    if (e.key === "PageDown" || e.key === " " || e.key === "ArrowDown") dir = 1;
+    else if (e.key === "PageUp" || e.key === "ArrowUp") dir = -1;
+    else if (e.key === "Home") {
+      e.preventDefault();
+      go(0, -1);
+      return;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      go(maxScroll(), 1);
+      return;
+    }
+    if (!dir) return;
+    if (performance.now() < lockUntil) {
+      e.preventDefault();
+      return;
+    }
+    if (step(dir)) e.preventDefault();
+  };
+
+  window.addEventListener("wheel", onWheel, { passive: false });
+  window.addEventListener("keydown", onKey);
+}
+
+/* ============================================================
    启动
    ============================================================ */
 (function abBoot() {
@@ -704,6 +876,7 @@ function abInitInterests() {
   abInitCopy();
   abInitInterests();
   abInitIndex(abRenderIndex());
+  abInitPager();
 
   // main.js 的滚动入场在这里补挂一次（内容刚生成）
   if (typeof initReveal === "function") initReveal();

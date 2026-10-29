@@ -88,9 +88,25 @@ git push
 | 个人兴趣 | `aboutPage.interests` | 三张卡片可点击展开，展开内容在 `items[].more`；`image` 留空显示内置图标 |
 | 联系方式 | `aboutPage.contact` | 点击整张卡片即可复制；`copy: false` 的那条渲染成不可点的信息卡 |
 
-左侧还有一个固定的小索引（`.ab-index`，`js/about.js` 里的 `AB_SECTIONS`）：
-首屏不显示，滚过首屏后淡入，6 个板块各一个点，当前板块的点变紫放大，
-点击平滑跳转。窗口窄于 1180px 自动隐藏。
+左侧固定索引（`.ab-index`，名字在 `js/about.js` 的 `AB_SECTIONS` 里改）：
+宽于 1180px 时显示「编号 + 文字标签」，当前板块的编号变紫、左侧出现一条短竖线；
+点击平滑跳转；首屏不显示，滚过首屏后淡入。窄于 1180px 自动隐藏。
+为了让标签有地方站，`@media (min-width:1180px)` 里给板块内容加了 `padding-left:150px`
+（首屏 `.ab-hero .ab-wrap` 不受影响，保持通栏）。
+
+### 板块分页滚动（一次滚轮 = 前进一个板块）
+`.ab-sec` 都是 `min-height:100svh`，滚动行为在 `js/about.js` 的 `abInitPager()`：
+
+- 滚一下 → 直接吸附到下一个板块顶部，不用连续滚
+- **板块比视口高时不会硬跳**：先把底部内容滚出来给你看完，再翻页
+  （判断阈值 `isLong()` = 高于视口 130px；130px 大致就是板块自己的底部留白）
+- 只略高于视口（如 skills / interests）的板块，一次滚轮直接补完再翻，不会让你小步挪
+- 快速连滚三下也只走一屏（`LOCK_MS` 锁 + `scroll-snap-stop` 式拦截）
+- 触控板的小 delta 会累积到 `THRESHOLD` 才翻页，轻微抖动不会让页面停在两块之间
+- `PageDown / Space / ↑ / ↓ / Home / End` 同样按板块走
+- **触屏、宽度 <1024、系统「减弱动态效果」时不启用**，保持原生滚动
+
+想调整手感，改 `abInitPager()` 顶部那几个常量即可。
 
 ### 兴趣卡片的展开内容（`interests.items[].more`）
 `type` 决定展开后的版式，三种都实现好了：
