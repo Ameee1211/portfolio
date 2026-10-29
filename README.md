@@ -76,17 +76,23 @@ git push
 
 ### About me 页面（about.html）
 独立页面，内容全部来自 `content.js` 的 `aboutPage`，渲染与交互在 `js/about.js`，
-样式在 `css/about.css`。七个区块依次是：
+样式在 `css/about.css`。七个区块依次是（Contact 收尾整页，没有单独页脚）：
 
 | 区块 | 数据位置 | 说明 |
 |---|---|---|
-| 首屏 | `aboutPage.hero` | 名字、身份标签、简介、照片、三个小浮动标签、底部三条信息 |
+| 首屏 | `aboutPage.hero` | 名字、身份标签、简介、照片、四个浮动标签、底部三条信息 |
 | 设计理念 | `aboutPage.philosophy` | `statement` 是分段数组，`hl: true` 的片段会被橙色马克笔高亮 |
 | 教育背景 | `aboutPage.education` | `gpa` 控制圆环比例，`courses` 的 `score` 决定进度条长度 |
 | 相关经历 | `aboutPage.experience` | `items` 数组，每项含 `points`（要点）和 `tags` |
-| 技能工具 | `aboutPage.skills` | `capabilities` 是能力卡片，`tools` 的颜色决定标签边框与悬停填充色 |
-| 联系方式 | `aboutPage.contact` | 点击整张卡片即可复制；`copy: false` 的那条改成提示语 |
+| 技能工具 | `aboutPage.skills` | `capabilities` 是能力卡片（带 `wide: true` 的会渲染成右栏强调卡），`tools` 的颜色决定标签色 |
 | 个人兴趣 | `aboutPage.interests` | `image` 留空时显示内置小图标；填了图片路径就自动换成照片 |
+| 联系方式 | `aboutPage.contact` | 点击整张卡片即可复制；`copy: false` 的那条渲染成不可点的信息卡 |
+
+### 视觉规范：按钮 vs 标签（全站统一，别混）
+- **按钮**（`.btn` / `.btn--purple`）：实心紫底白字、胶囊圆角 `999px`、带投影、悬停上浮。
+- **标签**（`.tag` / `.ab-role` / `.ab-tool`）：浅色平底、方角 `7–8px`、小字号大写字距、
+  **无边框、无阴影、无悬停位移、`cursor: default`**。
+  目的是让人一眼分清"这是可以点的"和"这只是一个词"，不要给标签加回胶囊和边框。
 
 交互清单：
 - 首屏身份标签每 2.1 秒自动轮换高亮；照片随鼠标 3D 倾斜、高光跟随

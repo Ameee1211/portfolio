@@ -16,6 +16,8 @@
 .ab-sec { position: relative; padding: clamp(72px, 8vw, 116px) 0; }
 .ab-sec--cream { background: var(--cream); }
 .ab-sec--white { background: var(--white); }
+/* Contact 现在是本页最后一个区块，底部留出更宽松的收尾空间 */
+.ab-page > .ab-sec:last-child { padding-bottom: clamp(84px, 9vw, 132px); }
 
 /* ---------- 分区标题 ---------- */
 .ab-head {
@@ -141,26 +143,45 @@
 .ab-roles {
   display: flex;
   flex-wrap: wrap;
-  gap: 9px;
+  gap: 8px;
   margin-top: 26px;
 }
+/* 身份标签：按全站标签规则 —— 平面浅底、方角、小字大写、无阴影无位移，
+   跟胶囊状实心按钮彻底区分开，用户不会想去点它。 */
 .ab-role {
-  padding: 8px 15px;
-  border-radius: 999px;
-  border: 1px solid rgba(51, 61, 109, 0.16);
-  background: var(--white);
-  font-size: 12.5px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  border: 0;
+  background: rgba(51, 61, 109, 0.06);
   color: var(--navy);
-  /* 只过渡位移和阴影，底色与字色瞬时切换，避免交叉淡入时出现看不清的中间态 */
-  transition: transform 0.32s ease, box-shadow 0.32s ease;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  cursor: default;
+  user-select: none;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+.ab-role::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  transition: opacity 0.4s ease, background 0.4s ease;
 }
 .ab-role.is-lit {
+  background: rgba(116, 105, 182, 0.16);
+  color: var(--purple);
+}
+.ab-role.is-lit::before {
   background: var(--purple);
-  border-color: var(--purple);
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 9px 20px rgba(116, 105, 182, 0.3);
+  opacity: 1;
 }
 
 .ab-hero__lede {
@@ -282,40 +303,28 @@
 }
 .ab-stage:hover .ab-photo__glare { opacity: 1; }
 
-.ab-badge {
-  position: absolute;
-  z-index: 3;
-  padding: 10px 18px;
-  border-radius: 10px;
-  background: var(--orange);
-  color: var(--navy);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  box-shadow: 0 12px 26px rgba(51, 61, 109, 0.18);
-  transform: rotate(-7deg);
-  bottom: 7%;
-  right: 4%;
-}
 .ab-float {
   position: absolute;
   z-index: 3;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 9px 15px;
-  border-radius: 999px;
+  padding: 8px 13px;
+  border-radius: 9px;
   background: #fff;
   box-shadow: 0 12px 26px rgba(51, 61, 109, 0.14);
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--navy);
   white-space: nowrap;
+  cursor: default;
 }
 .ab-float::before {
   content: "";
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--purple);
   opacity: 0.75;
@@ -323,6 +332,7 @@
 .ab-float--1 { top: 9%; left: -2%; animation: abFloat 6s ease-in-out infinite; }
 .ab-float--2 { top: 38%; right: -3%; animation: abFloat 7.4s ease-in-out infinite 0.6s; }
 .ab-float--3 { bottom: 15%; left: 1%; animation: abFloat 6.8s ease-in-out infinite 1.2s; }
+.ab-float--4 { bottom: 2%; right: 1%; animation: abFloat 7.8s ease-in-out infinite 1.8s; }
 @keyframes abFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
@@ -537,10 +547,10 @@
   background: var(--orange);
   border: 1px solid rgba(51, 61, 109, 0.16);
 }
-.ab-exp__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.ab-exp__tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
 .ab-exp__tags .tag {
-  font-size: 11.5px;
-  padding: 5px 12px;
+  font-size: 10px;
+  padding: 4px 9px;
 }
 
 /* ============================================================
@@ -551,6 +561,7 @@
   grid-template-columns: 1.06fr 0.94fr;
   gap: clamp(30px, 4.5vw, 60px);
 }
+.ab-skills > div { display: flex; flex-direction: column; }
 .ab-group__title {
   display: flex;
   align-items: center;
@@ -585,6 +596,14 @@
 }
 .ab-cap__name { margin-top: 10px; font-size: 15px; font-weight: 700; color: var(--navy); }
 .ab-cap__note { margin-top: 7px; font-size: 12.5px; line-height: 1.62; color: var(--muted); }
+/* AI 能力：右栏底部的强调卡，视觉上比其余六张重一档 */
+.ab-cap__item--wide {
+  margin-top: 18px;
+  background: linear-gradient(120deg, rgba(116, 105, 182, 0.1), rgba(126, 181, 236, 0.12));
+  border-color: rgba(116, 105, 182, 0.22);
+}
+.ab-cap__item--wide .ab-cap__name { color: var(--purple); }
+.ab-cap__item--wide .ab-cap__note { max-width: 68ch; }
 @media (hover: hover) and (pointer: fine) {
   .ab-cap__item:hover {
     transform: translateY(-4px);
@@ -592,19 +611,37 @@
     background: #fffdf8;
     box-shadow: 0 16px 34px rgba(51, 61, 109, 0.1);
   }
+  .ab-cap__item--wide:hover {
+    background: linear-gradient(120deg, rgba(116, 105, 182, 0.14), rgba(126, 181, 236, 0.16));
+  }
 }
 
-.ab-tools { display: flex; flex-wrap: wrap; gap: 11px; }
+.ab-tools { display: flex; flex-wrap: wrap; gap: 9px; }
+/* 工具标签：同样走「标签」规范 —— 浅底方角、无边框、无阴影，用品牌色只做点与字色 */
 .ab-tool {
-  padding: 11px 17px;
-  border-radius: 12px;
-  border: 1px solid var(--c);
-  background: var(--white);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(51, 61, 109, 0.055);
+  background: color-mix(in srgb, var(--c) 10%, #fff);
   color: var(--c);
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.28s ease, color 0.28s ease, transform 0.28s ease,
-    box-shadow 0.28s ease;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  cursor: default;
+  transition: background 0.28s ease, transform 0.28s ease;
+}
+.ab-tool::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--c);
+  opacity: 0.85;
 }
 
 /* 右栏补充：语言能力（来自简历） */
@@ -627,10 +664,9 @@
 .ab-lang__v { font-size: 12.5px; font-weight: 600; color: var(--muted); text-align: right; }
 @media (hover: hover) and (pointer: fine) {
   .ab-tool:hover {
-    background: var(--c);
-    color: #fff;
-    transform: translateY(-3px);
-    box-shadow: 0 10px 22px rgba(51, 61, 109, 0.18);
+    background: rgba(51, 61, 109, 0.075);
+    background: color-mix(in srgb, var(--c) 20%, #fff);
+    transform: translateY(-2px);
   }
 }
 
@@ -690,6 +726,16 @@
   cursor: pointer;
   font-family: inherit;
   transition: background 0.3s, transform 0.3s, border-color 0.3s;
+}
+/* 不可点击的信息项（如所在地）：不表现按钮态，也不显示复制提示 */
+.ab-contact__row.is-static {
+  cursor: default;
+  background: rgba(255, 255, 255, 0.04);
+}
+.ab-contact__row.is-static:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.13);
+  transform: none;
 }
 .ab-contact__row:hover {
   background: rgba(255, 255, 255, 0.14);
@@ -842,7 +888,6 @@
   .ab-exp__dot { left: -26px; width: 12px; height: 12px; top: 38px; }
   .ab-photo { width: min(260px, 70%); }
   .ab-float { display: none; }
-  .ab-badge { font-size: 11px; padding: 8px 14px; bottom: 2%; right: 0; }
   .ab-stage { min-height: 340px; }
   .ab-contact__card { border-radius: 24px; }
   .ab-philosophy__statement { font-size: 19px; }

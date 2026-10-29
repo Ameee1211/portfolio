@@ -539,7 +539,9 @@ img { display: block; max-width: 100%; }
   }
 }
 
-/* ================= 按钮 ================= */
+/* ================= 按钮 =================
+   规则：实心填充 + 胶囊圆角(999px) + 投影 + 悬停位移 —— 一眼看出可点击。
+   标签（.tag / .ab-role / .ab-tool）绝不使用这套特征，见下方 .tag。 */
 .btn {
   display: inline-block;
   font-family: var(--font-en);
@@ -554,9 +556,15 @@ img { display: block; max-width: 100%; }
   border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
-  transition: background 0.3s, transform 0.3s;
+  letter-spacing: 0.01em;
+  box-shadow: 0 8px 20px rgba(116, 105, 182, 0.26);
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
 }
-.btn--purple:hover { background: var(--purple-deep); transform: translateY(-2px); }
+.btn--purple:hover {
+  background: var(--purple-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(116, 105, 182, 0.34);
+}
 
 /* ================= Featured Projects ================= */
 .projects { padding: 104px 0 110px; }
@@ -603,13 +611,29 @@ img { display: block; max-width: 100%; }
 .card:hover { transform: translateY(-6px); box-shadow: 0 18px 50px rgba(51, 61, 109, 0.13); }
 .card__body { padding: 28px 30px 26px; }
 .card__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+/* 标签：平面浅底 + 方角(7px) + 小字号 + 无边框无阴影无悬停位移。
+   这是全站统一的「这只是一个词，不是按钮」的视觉语言。 */
 .tag {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--purple);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 7px;
   background: rgba(116, 105, 182, 0.1);
-  padding: 5px 13px;
-  border-radius: 999px;
+  color: var(--purple);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+.tag::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
 }
 .card__title { font-size: 22px; font-weight: 700; color: var(--navy); }
 .card__desc {

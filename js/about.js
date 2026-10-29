@@ -60,7 +60,6 @@ function abRenderHero() {
             <img src="${esc(h.photo)}" alt="Portrait of Tong Zhang (Amy)" />
             <span class="ab-photo__glare" aria-hidden="true"></span>
           </div>
-          <span class="ab-badge">${esc(h.badge)}</span>
           ${floats}
         </div>
       </div>
@@ -201,16 +200,32 @@ function abRenderExperience() {
 /* ---------- 5. 技能与工具 ---------- */
 function abRenderSkills() {
   const s = AB.skills;
-  const caps = s.capabilities.items
-    .map(
-      (c, i) => `
+  const all = s.capabilities.items;
+  const grid = all.filter((c) => !c.wide);
+  const aside = all.filter((c) => c.wide);
+
+  const capCard = (c, i) => `
       <div class="ab-cap__item">
         <span class="ab-cap__num">${String(i + 1).padStart(2, "0")}</span>
         <h4 class="ab-cap__name">${esc(c.name)}</h4>
         <p class="ab-cap__note">${esc(c.note)}</p>
-      </div>`
-    )
+      </div>`;
+
+  const caps = grid.map((c, i) => capCard(c, i)).join("");
+
+  // 通栏强调卡（AI 能力）放在右栏底部，避免左栏被拉高后右栏空一大块
+  const asideCards = aside
+    .map((c) => {
+      const idx = all.indexOf(c);
+      return `
+      <div class="ab-cap__item ab-cap__item--wide">
+        <span class="ab-cap__num">${String(idx + 1).padStart(2, "0")}</span>
+        <h4 class="ab-cap__name">${esc(c.name)}</h4>
+        <p class="ab-cap__note">${esc(c.note)}</p>
+      </div>`;
+    })
     .join("");
+
   const tools = s.tools.items
     .map((t) => `<span class="ab-tool" style="--c:${esc(t.color)}">${esc(t.label)}</span>`)
     .join("");
@@ -242,6 +257,7 @@ function abRenderSkills() {
           <h3 class="ab-group__title">${esc(s.tools.title)}</h3>
           <div class="ab-tools">${tools}</div>
           ${langs ? `<div class="ab-lang">${langs}</div>` : ""}
+          ${asideCards}
         </div>
       </div>
     </div>
@@ -252,14 +268,23 @@ function abRenderSkills() {
 function abRenderContact() {
   const c = AB.contact;
   const rows = c.items
-    .map(
-      (it) => `
-      <button class="ab-contact__row" type="button" data-copy="${esc(it.value)}"${it.copy === false ? ' data-nocopy="1"' : ""}>
+    .map((it) => {
+      const hint = it.hint || (it.copy === false ? "" : "Click to copy");
+      if (it.copy === false) {
+        return `
+      <div class="ab-contact__row is-static">
         <span class="ab-contact__k">${esc(it.label)}</span>
         <span class="ab-contact__v">${esc(it.value)}</span>
-        <span class="ab-contact__hint">${it.copy === false ? "Ask me for it" : "Click to copy"}</span>
-      </button>`
-    )
+        <span class="ab-contact__hint">${esc(hint)}</span>
+      </div>`;
+      }
+      return `
+      <button class="ab-contact__row" type="button" data-copy="${esc(it.value)}">
+        <span class="ab-contact__k">${esc(it.label)}</span>
+        <span class="ab-contact__v">${esc(it.value)}</span>
+        <span class="ab-contact__hint">${esc(hint)}</span>
+      </button>`;
+    })
     .join("");
 
   return `
@@ -449,10 +474,6 @@ function abInitCopy() {
     row.addEventListener("click", () => {
       const val = row.dataset.copy || "";
       if (!val) return;
-      if (row.dataset.nocopy) {
-        say("Drop me an email and I'll send it");
-        return;
-      }
       copy(val);
     });
   });
@@ -471,8 +492,8 @@ function abInitCopy() {
     abRenderEducation(),
     abRenderExperience(),
     abRenderSkills(),
-    abRenderContact(),
     abRenderInterests(),
+    abRenderContact(),
   ].join("");
 
   abInitHero();

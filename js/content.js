@@ -89,20 +89,19 @@ const SITE = {
   // ============================================================
   aboutPage: {
     hero: {
-      eyebrow: "Portfolio 2026 · Sydney",
+      eyebrow: "Portfolio 2026 · Hangzhou, China",
       name: "Tong",
       nameAccent: "Zhang",
       alias: "Amy · 张彤",
       roles: ["UI/UX Designer", "Web Designer", "3D Modeller", "Product Designer"],
       lede:
-        "I design interfaces, websites and 3D objects from Sydney. I studied Design Computing at the University of Sydney, and I like problems that arrive messy: too many stakeholders, too many screens, no obvious next step.",
+        "I design interfaces, websites and 3D objects from Hangzhou, China. I studied Design Computing at the University of Sydney, and I like problems that arrive messy: too many stakeholders, too many screens, no obvious next step.",
       ctaPrimary: { label: "View my work", href: "index.html#projects" },
       ctaSecondary: { label: "Get in touch", href: "#contact" },
       photo: "assets/img/amy-portrait.jpg",
-      badge: "Open to work",
-      floats: ["Figma", "Rhino 7", "Blender"],
+      floats: ["Figma", "Rhino 7", "Blender", "Adobe CC"],
       stats: [
-        { k: "Based in", v: "Sydney, Australia" },
+        { k: "Based in", v: "Hangzhou, China" },
         { k: "Looking for", v: "UI/UX & product roles" },
         { k: "Graduated", v: "USYD · 2024" },
       ],
@@ -195,6 +194,11 @@ const SITE = {
           { name: "Web Design", note: "Responsive layout, HTML, CSS, JavaScript" },
           { name: "3D Modelling", note: "Form exploration, modelling, 3D printing" },
           { name: "Visual Systems", note: "Type, colour, components, consistency" },
+          {
+            name: "AI-Assisted Design",
+            note: "Prompting for ideation, research and drafting; I keep the judgement and the craft, and let AI take the repetitive half.",
+            wide: true,
+          },
         ],
       },
       tools: {
@@ -207,6 +211,7 @@ const SITE = {
           { label: "Photoshop", color: "#31A8FF" },
           { label: "InDesign", color: "#FF3366" },
           { label: "After Effects", color: "#D6A4FF" },
+          { label: "Canva", color: "#00C4CC" },
           { label: "Rhino 7", color: "#4B4B4B" },
           { label: "Blender", color: "#EA7600" },
           { label: "Fusion 360", color: "#F5A623" },
@@ -221,20 +226,19 @@ const SITE = {
     },
 
     contact: {
-      index: "05",
+      index: "06",
       label: "Contact",
       heading: "Let's make something clear.",
-      sub: "I'm looking for UI/UX and product design roles in Sydney or remote. Email reaches me fastest.",
-      // WeChat 待补充：把 value 换成你的微信号即可
+      sub: "I'm looking for UI/UX and product design roles in Hangzhou, Shanghai or remote. Email reaches me fastest.",
       items: [
-        { label: "Email", value: "zhangtong011211@163.com", href: "mailto:zhangtong011211@163.com" },
-        { label: "Phone", value: "19700766036", href: "tel:+8619700766036" },
-        { label: "WeChat", value: "Available on request", href: "", copy: false },
+        { label: "Email", value: "zhangtong011211@163.com", copy: true },
+        { label: "Phone", value: "19700766036", copy: true },
+        { label: "Location", value: "Hangzhou, China · GMT+8", copy: false, hint: "Open to remote work" },
       ],
     },
 
     interests: {
-      index: "06",
+      index: "05",
       label: "Off the screen",
       intro: "Three things I do away from a desk, and what they quietly teach me about design.",
       items: [
