@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=43" />
-  <link rel="stylesheet" href="css/steamtracker.css?v=43" />
+  <link rel="stylesheet" href="css/style.css?v=44" />
+  <link rel="stylesheet" href="css/steamtracker.css?v=44" />
 </head>
 <body class="st-page">
 
@@ -63,7 +63,8 @@
         </div>
 
         <div class="st-hero__stage">
-          <div class="st-stage">
+          <div class="st-stage" id="stStage">
+            <span class="st-stage__glow" aria-hidden="true"></span>
             <div class="st-device st-device--web">
               <div class="st-browser__bar" aria-hidden="true">
                 <i></i><i></i><i></i>
@@ -71,7 +72,9 @@
               </div>
               <img src="assets/img/stk-hero-app.webp" width="1500" height="990"
                    alt="The app at desktop width: on the left the game name, playtime and category are filled in; on the right a mint card previews the same entry with its date and running total." />
+              <span class="st-device__sheen" aria-hidden="true"></span>
             </div>
+            <span class="st-stage__shadow" aria-hidden="true"></span>
           </div>
         </div>
 
@@ -440,8 +443,8 @@
 
   </main>
 
-  <script src="js/content.js?v=43"></script>
-  <script src="js/main.js?v=43"></script>
-  <script src="js/steamtracker.js?v=43"></script>
+  <script src="js/content.js?v=44"></script>
+  <script src="js/main.js?v=44"></script>
+  <script src="js/steamtracker.js?v=44"></script>
 </body>
 </html>

@@ -101,7 +101,7 @@
   /* ---------- 6. 分页滚动：一次滚轮 = 下一个板块 ----------
      规则与 about 页一致：板块必须先滚到底（底部留白完整露出），再滚一次才翻页 */
   function stInitPager() {
-    const main = document.getElementById("slMain");
+    const main = document.getElementById("stMain");
     if (!main) return;
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -163,11 +163,14 @@
       const idx = indexAt();
       const cur = idx >= 0 ? sections[idx] : null;
 
+      // 一次手势至少走半屏，最多一屏 —— 读得完，又不会停在半路
+      const page = Math.min(Math.max(delta, window.innerHeight * 0.5), window.innerHeight * 0.95);
+
       if (dir > 0) {
         if (cur) {
           const endY = endOf(cur);
           if (y < endY - EDGE) {
-            const target = Math.min(y + delta, endY);
+            const target = Math.min(y + page, endY);
             jump(target);
             if (target >= endY - 1) settleUntil = now + SETTLE_MS;
             return true;
@@ -185,7 +188,7 @@
       if (cur) {
         const curTop = topOf(cur);
         if (y > curTop + EDGE) {
-          const target = Math.max(y - delta, curTop);
+          const target = Math.max(y - page, curTop);
           jump(target);
           if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
           return true;
@@ -282,6 +285,44 @@
     window.addEventListener("keydown", onKey);
   }
 
+  /* ---------- 首屏：鼠标带动的轻微 3D 视角 ---------- */
+  function stHeroTilt() {
+    const hero = document.querySelector(".st-hero");
+    const stage = document.getElementById("stStage");
+    if (!hero || !stage) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let tx = 0;
+    let ty = 0;
+    let cx = 0;
+    let cy = 0;
+    let raf = 0;
+
+    const tick = () => {
+      cx += (tx - cx) * 0.12;
+      cy += (ty - cy) * 0.12;
+      stage.style.setProperty("--ry", cx.toFixed(2) + "deg");
+      stage.style.setProperty("--rx", cy.toFixed(2) + "deg");
+      raf = Math.abs(tx - cx) > 0.06 || Math.abs(ty - cy) > 0.06 ? requestAnimationFrame(tick) : 0;
+    };
+    const start = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
+    hero.addEventListener("mousemove", (e) => {
+      const r = hero.getBoundingClientRect();
+      tx = ((e.clientX - r.left) / r.width - 0.5) * 11;
+      ty = -((e.clientY - r.top) / r.height - 0.5) * 7;
+      start();
+    });
+    hero.addEventListener("mouseleave", () => {
+      tx = 0;
+      ty = 0;
+      start();
+    });
+  }
+
   /* ---------- 内嵌 App ---------- */
   /* App 按 1440px 的桌面宽度渲染，再整体缩放到框里 —— 这样它看起来是电脑网页，
      而不是被挤成平板宽度。窄屏时退回 1:1，交给 App 自己的响应式布局。 */
@@ -327,6 +368,7 @@
     stInitIndex(stRenderIndex());
     stInitPager();
     stInitEmbed();
+    stHeroTilt();
   }
 
   if (document.readyState === "loading") {
