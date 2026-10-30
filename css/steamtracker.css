@@ -1552,9 +1552,9 @@
 }
 
 /* 首屏是深色照片，导航在未滚动的状态要转白 */
-.st-page .nav:not(.is-solid) .nav__link { color: rgba(255, 255, 255, 0.82); }
-.st-page .nav:not(.is-solid) .nav__link:hover { color: #fff; }
-.st-page .nav:not(.is-solid) .nav__link.is-active { color: #fff; }
+.st-page .nav:not(.is-solid):not(.is-open) .nav__link { color: rgba(255, 255, 255, 0.82); }
+.st-page .nav:not(.is-solid):not(.is-open) .nav__link:hover { color: #fff; }
+.st-page .nav:not(.is-solid):not(.is-open) .nav__link.is-active { color: #fff; }
 .st-page .nav:not(.is-solid) .nav__burger span { background: #fff; }
 
 /* ============================================================
@@ -1684,16 +1684,17 @@
   .st-hero__cue {
     position: absolute;
     left: 50%;
-    bottom: auto;
+    bottom: 12px;
     top: auto;
     z-index: 4;
     order: 0;
     margin: 0;
     transform: translateX(-50%);
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.52);
     font-size: 8px;
     letter-spacing: 0.14em;
     pointer-events: none;
+    text-shadow: 0 1px 10px rgba(6, 16, 18, 0.8);
   }
   .st-hero__cue .scrollcue__line { height: 22px; }
   .st-hero__cue .scrollcue__dot { width: 4px; height: 4px; }

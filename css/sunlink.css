@@ -1387,11 +1387,11 @@
   align-items: flex-end;
   /* --rail 由脚本按“面板右边缘”算出来，文案永远不会压到屏上 */
   padding: 116px max(40px, calc((100vw - 1240px) / 2 + 40px)) 104px var(--rail, 720px);
-  text-align: left;
+  text-align: right;
 }
 .sl-hero__copy {
   max-width: 100%;
-  text-align: left;
+  text-align: right;
 }
 
 .sl-hero__kicker { color: #8ec2f5; }
@@ -1457,9 +1457,9 @@
 }
 
 /* 深色首屏要让导航在未滚动时转白 */
-.sl-page .nav:not(.is-solid) .nav__link { color: rgba(255, 255, 255, 0.82); }
-.sl-page .nav:not(.is-solid) .nav__link:hover,
-.sl-page .nav:not(.is-solid) .nav__link.is-active { color: #fff; }
+.sl-page .nav:not(.is-solid):not(.is-open) .nav__link { color: rgba(255, 255, 255, 0.82); }
+.sl-page .nav:not(.is-solid):not(.is-open) .nav__link:hover,
+.sl-page .nav:not(.is-solid):not(.is-open) .nav__link.is-active { color: #fff; }
 .sl-page .nav:not(.is-solid) .nav__burger span { background: #fff; }
 
 /* ============================================================

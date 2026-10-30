@@ -319,17 +319,11 @@
       stage.style.setProperty("--k", k.toFixed(4));
       stage.style.setProperty("--tx", Math.round(tx) + "px");
       stage.style.setProperty("--ty", Math.round(ty) + "px");
-
-      // 下滑提示顶到文字正下方，不压在设备上
-      const cue = document.querySelector(".st-hero__cue");
-      if (cue) cue.style.top = Math.round(textBottom + 14) + "px";
       return;
     }
 
     /* ---------- 桌面 / 横屏：整屏铺满 ---------- */
     hero.style.minHeight = "";
-    const cueD = document.querySelector(".st-hero__cue");
-    if (cueD) cueD.style.top = "";
     const k = Math.max(vw / 1536, vh / 950);
     stage.style.setProperty("--k", k.toFixed(4));
     stage.style.setProperty("--tx", Math.round(vw / 2 - 768 * k) + "px");
