@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=47" />
-  <link rel="stylesheet" href="css/sunlink.css?v=46" />
+  <link rel="stylesheet" href="css/style.css?v=49" />
+  <link rel="stylesheet" href="css/sunlink.css?v=48" />
 </head>
 <body class="sl-page">
 
@@ -29,8 +29,21 @@
 
     <!-- ================= 首屏 ================= -->
     <section class="sl-hero" id="top">
-      <div class="sl-wrap sl-hero__grid">
 
+      <div class="sl-hero__stage" id="slStage" aria-hidden="true">
+        <div class="sl-hero__world">
+          <img class="sl-hero__room" src="assets/img/sl-room.webp" width="1536" height="934" alt="" />
+          <div class="sl-screen">
+            <img src="assets/img/sl-panel-hero.webp" width="1361" height="950"
+                 alt="The SunLink Neighbours control panel: battery ring at 100%, sharing status, generation forecast, a community map of six households and a power request from a neighbour." />
+            <span class="sl-screen__glare"></span>
+          </div>
+        </div>
+      </div>
+
+      <span class="sl-hero__veil" aria-hidden="true"></span>
+
+      <div class="sl-hero__inner">
         <div class="sl-hero__copy">
           <p class="sl-hero__kicker">Project 01 · Product &amp; interface design</p>
           <h1 class="sl-hero__title">SunLink<br />Neighbours</h1>
@@ -41,41 +54,28 @@
           </p>
 
           <p class="sl-hero__spec">11-inch · 1080p · multi-touch · wall-mounted</p>
-
-          <div class="sl-meta">
-            <div>
-              <div class="sl-meta__k">Role</div>
-              <div class="sl-meta__v">Interface design<br /><span>3D modelling &amp; physical prototype</span></div>
-            </div>
-            <div>
-              <div class="sl-meta__k">Team</div>
-              <div class="sl-meta__v">Tong Zhang<br /><span>Y Tang · N Yang · K Luo</span></div>
-            </div>
-            <div>
-              <div class="sl-meta__k">Course</div>
-              <div class="sl-meta__v">Interactive Design Studio<br /><span>The University of Sydney, 2023</span></div>
-            </div>
-            <div>
-              <div class="sl-meta__k">Tools</div>
-              <div class="sl-meta__v">Adobe XD<br /><span>Fusion 360 · 3D printing</span></div>
-            </div>
-          </div>
         </div>
 
-        <div class="sl-hero__stage">
-          <div class="sl-stage">
-            <div class="sl-device sl-device--panel">
-              <img src="assets/img/sl-panel-green.webp" width="1600" height="1029"
-                   alt="The SunLink Neighbours control panel: battery ring at 100%, sharing status, generation forecast, a community map of six households and a power request from a neighbour." />
-            </div>
-            <div class="sl-device sl-device--model">
-              <img src="assets/img/sl-model-green.webp" width="1600" height="1029"
-                   alt="The model page: a 3D house with a green battery panel reading 100% and 12 kWh." />
-            </div>
+        <div class="sl-meta">
+          <div>
+            <div class="sl-meta__k">Role</div>
+            <div class="sl-meta__v">Interface design<br /><span>3D modelling &amp; physical prototype</span></div>
+          </div>
+          <div>
+            <div class="sl-meta__k">Team</div>
+            <div class="sl-meta__v">Tong Zhang<br /><span>Y Tang · N Yang · K Luo</span></div>
+          </div>
+          <div>
+            <div class="sl-meta__k">Course</div>
+            <div class="sl-meta__v">Interactive Design Studio<br /><span>The University of Sydney, 2023</span></div>
+          </div>
+          <div>
+            <div class="sl-meta__k">Tools</div>
+            <div class="sl-meta__v">Adobe XD<br /><span>Fusion 360 · 3D printing</span></div>
           </div>
         </div>
-
       </div>
+
       <a class="scrollcue sl-hero__cue" href="#overview" aria-label="Scroll down to explore more">
         <span class="scrollcue__txt">Scroll down to explore more</span>
         <span class="scrollcue__line" aria-hidden="true"><i></i></span>
@@ -865,9 +865,9 @@
 
   </main>
 
-  <script src="js/content.js?v=47"></script>
-  <script src="js/main.js?v=47"></script>
+  <script src="js/content.js?v=49"></script>
+  <script src="js/main.js?v=49"></script>
   <script src="assets/vendor/three.min.js"></script>
-  <script src="js/sunlink.js?v=46"></script>
+  <script src="js/sunlink.js?v=48"></script>
 </body>
 </html>

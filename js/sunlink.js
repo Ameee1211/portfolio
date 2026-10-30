@@ -881,6 +881,52 @@
     window.addEventListener("keydown", onKey);
   }
 
+  /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
+  function slFitHero() {
+    const stage = document.getElementById("slStage");
+    const hero = document.querySelector(".sl-hero");
+    const inner = document.querySelector(".sl-hero__inner");
+    if (!stage || !hero) return;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    /* 手机 / 竖屏：文案在上，面板在下 */
+    if (vw <= 900) {
+      const heroTop = hero.getBoundingClientRect().top;
+      const textBottom = inner ? inner.getBoundingClientRect().bottom - heroTop : vh * 0.5;
+      const sceneTop = textBottom + 6;
+      const sceneH = Math.max(170, vh - sceneTop);
+
+      // 墙上面板的可视范围（1536×934 坐标系）
+      const EX0 = 400, EX1 = 1010, EY0 = 290, EY1 = 700;
+      const ew = EX1 - EX0;
+      const eh = EY1 - EY0;
+      const k = Math.min(vw / ew, sceneH / eh) * 0.98;
+
+      const tx = vw / 2 - ((EX0 + EX1) / 2) * k;
+      const ty = sceneTop + (sceneH - eh * k) / 2 - EY0 * k;
+
+      stage.style.setProperty("--k", k.toFixed(4));
+      stage.style.setProperty("--tx", Math.round(tx) + "px");
+      stage.style.setProperty("--ty", Math.round(ty) + "px");
+      return;
+    }
+
+    /* 桌面 / 横屏：整屏铺满 */
+    const k = Math.max(vw / 1536, vh / 934);
+    const tx = vw / 2 - 768 * k;
+    const ty = vh / 2 - 467 * k;
+    stage.style.setProperty("--k", k.toFixed(4));
+    stage.style.setProperty("--tx", Math.round(tx) + "px");
+    stage.style.setProperty("--ty", Math.round(ty) + "px");
+
+    // 文案从面板右边缘之后开始，宽度不够时退到“至少留 300px”
+    const screenRight = 967 * k + tx;
+    const rail = Math.min(screenRight + 56, vw - 300);
+    hero.style.setProperty("--rail", Math.round(rail) + "px");
+  }
+
   /* ---------- 启动 ---------- */
   function boot() {
     initStateTabs();
@@ -888,6 +934,22 @@
     initCircuit();
     slInitIndex(slRenderIndex());
     slInitPager();
+    slFitHero();
+    window.addEventListener("resize", slFitHero);
+    // 字体与图片加载完再量一次，否则算出来的取景是过时的
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => setTimeout(slFitHero, 60));
+    }
+    [120, 400, 900, 1800].forEach((t) => setTimeout(slFitHero, t));
+    const innerEl = document.querySelector(".sl-hero__inner");
+    if (innerEl && window.ResizeObserver) {
+      let busy = false;
+      new ResizeObserver(() => {
+        if (busy) return;
+        busy = true;
+        requestAnimationFrame(() => { slFitHero(); busy = false; });
+      }).observe(innerEl);
+    }
 
     const el = document.getElementById("sl3dCanvas");
     if (!el) return;

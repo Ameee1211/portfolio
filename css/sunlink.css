@@ -1294,3 +1294,273 @@
   .sl-flowline { animation: none !important; }
   html { scroll-behavior: auto; }
 }
+
+/* ============================================================
+   首屏：墙上的中控面板（全屏照片 + 合成界面）
+   —— 版式与 SteamTracker 镜像：产品在左，文字在右
+   ============================================================ */
+.sl-hero {
+  position: relative;
+  display: block;
+  height: 100svh;
+  min-height: 640px;
+  padding: 0;
+  overflow: hidden;
+  background: #0a1424;
+  color: #fff;
+}
+
+/* 舞台：1536×934 坐标系，界面按同一套坐标贴屏 */
+.sl-hero__stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1536px;
+  height: 934px;
+  max-width: none;
+  transform-origin: 0 0;
+  transform: translate(var(--tx, 0px), var(--ty, 0px)) scale(var(--k, 1));
+}
+.sl-hero__room {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 把偏暖的墙面压一点饱和度，往品牌蓝靠 */
+  filter: saturate(0.7) brightness(1.14) contrast(1.03);
+}
+
+/* 面板：四角用单应矩阵贴到墙上那块屏 */
+.sl-screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1361px;
+  height: 950px;
+  transform-origin: 0 0;
+  transform: matrix3d(0.382634, -0.000123, 0.000000, -0.000002, 0.001946, 0.316039, 0.000000, 0.000002, 0.000000, 0.000000, 1.000000, 0.000000, 443.000000, 348.000000, 0.000000, 1.000000);
+  overflow: hidden;
+  background: #fff;
+  filter: drop-shadow(0 0 14px rgba(110, 175, 240, 0.16));
+}
+.sl-screen img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* 屏幕玻璃上的一道淡反光 */
+.sl-screen__glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.04) 26%, rgba(255, 255, 255, 0) 44%);
+}
+
+/* 遮罩：右侧压成深蓝，让文字有底 */
+.sl-hero__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(6, 16, 32, 0) 20%, rgba(6, 16, 32, 0.22) 33%, rgba(6, 16, 32, 0.52) 45%, rgba(6, 16, 32, 0.82) 60%, rgba(6, 16, 32, 0.94) 76%, #08111f 100%),
+    linear-gradient(180deg, rgba(6, 16, 32, 0.54) 0%, rgba(6, 16, 32, 0.1) 18%, rgba(6, 16, 32, 0) 34%),
+    linear-gradient(122deg, rgba(32, 78, 132, 0.24) 0%, rgba(32, 78, 132, 0.06) 56%, rgba(32, 78, 132, 0) 100%);
+}
+
+/* 文字：靠右 */
+.sl-hero__inner {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  /* --rail 由脚本按“面板右边缘”算出来，文案永远不会压到屏上 */
+  padding: 116px 40px 104px var(--rail, 720px);
+  text-align: left;
+}
+.sl-hero__copy {
+  max-width: 100%;
+  text-align: left;
+}
+
+.sl-hero__kicker { color: #8ec2f5; }
+.sl-hero__title {
+  color: #fff;
+  /* 跟着可用宽度走：窄窗口自动缩小，不会溢出到照片上 */
+  font-size: clamp(32px, 14.5cqw, 66px);
+}
+.sl-hero__lede {
+  color: rgba(255, 255, 255, 0.86);
+  max-width: 32ch;
+}
+.sl-hero__lede em {
+  color: #fff;
+  box-shadow: inset 0 -0.42em 0 rgba(120, 180, 245, 0.3);
+}
+.sl-hero__spec { color: rgba(255, 255, 255, 0.5); }
+
+.sl-meta {
+  width: 100%;
+  max-width: 100%;
+  border-top-color: rgba(255, 255, 255, 0.16);
+}
+.sl-meta__k { color: rgba(255, 255, 255, 0.42); }
+.sl-meta__v,
+.sl-meta__v span { color: rgba(255, 255, 255, 0.9); }
+
+/* 提示贴在右下角，压在信息行下面，不再和它打架 */
+.sl-hero__cue {
+  color: rgba(255, 255, 255, 0.58);
+  left: auto;
+  right: 40px;
+  bottom: 22px;
+  transform: none;
+}
+.sl-hero__cue:hover,
+.sl-hero__cue.is-gone { transform: none; }
+.sl-hero__cue .scrollcue__line { background: rgba(255, 255, 255, 0.26); }
+
+/* 文案与面板依次浮现 */
+.sl-hero__copy > * {
+  animation: sl-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.sl-hero__copy > *:nth-child(1) { animation-delay: 0.08s; }
+.sl-hero__copy > *:nth-child(2) { animation-delay: 0.16s; }
+.sl-hero__copy > *:nth-child(3) { animation-delay: 0.24s; }
+.sl-hero__copy > *:nth-child(4) { animation-delay: 0.32s; }
+.sl-meta { animation: sl-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.42s backwards; }
+@keyframes sl-rise {
+  from { opacity: 0; transform: translateY(16px); }
+}
+.sl-hero__stage {
+  animation: sl-scene-in 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes sl-scene-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-hero__stage,
+  .sl-hero__copy > *,
+  .sl-meta { animation: none !important; }
+}
+
+/* 深色首屏要让导航在未滚动时转白 */
+.sl-page .nav:not(.is-solid) .nav__link { color: rgba(255, 255, 255, 0.82); }
+.sl-page .nav:not(.is-solid) .nav__link:hover,
+.sl-page .nav:not(.is-solid) .nav__link.is-active { color: #fff; }
+.sl-page .nav:not(.is-solid) .nav__burger span { background: #fff; }
+
+/* ============================================================
+   手机端首屏：一屏之内 —— 文案在上，墙上面板在下
+   ============================================================ */
+@media (max-width: 900px) {
+  .sl-hero {
+    display: block;
+    height: 100svh;
+    min-height: 560px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .sl-hero__inner {
+    display: block;
+    height: auto;
+    align-items: stretch;
+    padding: 74px 22px 0;
+  }
+  .sl-hero__copy,
+  .sl-meta { max-width: none; }
+
+  .sl-hero__kicker {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    margin-bottom: 9px;
+  }
+  .sl-hero__title {
+    font-size: clamp(32px, 10.4vw, 44px);
+    line-height: 1;
+    margin-bottom: 11px;
+  }
+  .sl-hero__lede {
+    font-size: 13.4px;
+    line-height: 1.56;
+    max-width: none;
+    margin-bottom: 10px;
+  }
+  .sl-hero__spec {
+    font-size: 9px;
+    letter-spacing: 0.11em;
+    margin-bottom: 0;
+  }
+  .sl-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px 16px;
+    padding-top: 12px;
+    margin-top: 14px;
+  }
+  .sl-meta__k {
+    font-size: 8.5px;
+    letter-spacing: 0.13em;
+    margin-bottom: 3px;
+  }
+  .sl-meta__v { font-size: 11.4px; line-height: 1.38; }
+  .sl-meta__v span { font-size: 10.4px; }
+
+  /* 舞台顶部渐隐，接住上方的深色文字区 */
+  .sl-hero__stage {
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.6) 54px, #000 120px);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.6) 54px, #000 120px);
+  }
+  .sl-hero__veil {
+    background:
+      linear-gradient(180deg, rgba(6, 16, 32, 0.9) 0%, rgba(6, 16, 32, 0.66) 34%, rgba(6, 16, 32, 0.12) 58%, rgba(6, 16, 32, 0.34) 100%),
+      linear-gradient(122deg, rgba(32, 78, 132, 0.2) 0%, rgba(32, 78, 132, 0) 60%);
+  }
+  .sl-hero__cue {
+    position: absolute;
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: 12px;
+    margin: 0;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    pointer-events: none;
+  }
+  .sl-hero__cue:hover,
+  .sl-hero__cue.is-gone { transform: translateX(-50%); }
+}
+
+@media (max-width: 900px) and (max-height: 720px) {
+  .sl-hero__cue { display: none; }
+  .sl-hero__inner { padding-top: 60px; }
+  .sl-hero__title { font-size: clamp(30px, 9.4vw, 38px); margin-bottom: 9px; }
+  .sl-hero__lede { font-size: 12.4px; line-height: 1.5; margin-bottom: 8px; }
+  .sl-hero__spec { font-size: 8.4px; }
+  .sl-meta { gap: 7px 14px; padding-top: 10px; margin-top: 11px; }
+  .sl-meta__k { font-size: 8px; }
+  .sl-meta__v { font-size: 10.4px; }
+  .sl-meta__v span { font-size: 9.6px; }
+}
+
+/* 中等宽度（小笔记本 / iPad 横屏）：文案区被面板挤窄，字号跟着收一档 */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .sl-hero__inner { padding-top: 104px; padding-bottom: 40px; }
+  .sl-hero__kicker { font-size: 10.5px; letter-spacing: 0.12em; margin-bottom: 11px; }
+  .sl-hero__title { font-size: clamp(30px, 4.4cqw, 52px); margin-bottom: 14px; }
+  .sl-hero__lede { font-size: 14.5px; line-height: 1.5; margin-bottom: 12px; }
+  .sl-hero__spec { font-size: 9px; letter-spacing: 0.12em; margin-bottom: 0; }
+  .sl-meta { gap: 11px 20px; padding-top: 14px; }
+  .sl-meta__k { font-size: 9px; margin-bottom: 3px; }
+  .sl-meta__v { font-size: 12px; line-height: 1.42; }
+  .sl-meta__v span { font-size: 11px; }
+  /* 这一档高度不够，提示会把信息行压住，先不显示 */
+  .sl-hero__cue { display: none; }
+}
