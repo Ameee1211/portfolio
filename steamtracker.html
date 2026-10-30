@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=41" />
-  <link rel="stylesheet" href="css/steamtracker.css?v=41" />
+  <link rel="stylesheet" href="css/style.css?v=42" />
+  <link rel="stylesheet" href="css/steamtracker.css?v=42" />
 </head>
 <body class="st-page">
 
@@ -339,16 +339,54 @@
     <section class="st-sec" id="issues">
       <div class="st-wrap">
         <p class="st-eyebrow">07 — Known issues &amp; future versions</p>
-        <h2 class="st-h2">What it cannot do yet, and the one thing it now can.</h2>
+        <h2 class="st-h2">Three things left open at the end. The first still bothers me.</h2>
         <p class="st-p">
-          These are the four I wrote down when the assignment was handed in, in the order I would
-          tackle them. Only the last one is finished, and it was finished here rather than in the
-          repository.
+          These were the notes I left for myself when the assignment was handed in, in the order I
+          would tackle them. The first one is the feature I actually wanted and never shipped. It
+          failed on the API, not on time.
         </p>
 
         <div class="st-issues">
-          <article class="st-issue">
+          <article class="st-issue st-issue--wide">
             <div class="st-issue__n">01</div>
+            <h3 class="st-issue__t">Reading your Steam library — wanted, and not built</h3>
+            <p class="st-issue__d">
+              The whole first mockup was built around this: you type a game, the app recognises it,
+              pulls the cover art and the hours you have already put in, and the history fills
+              itself. I went looking for the endpoint that would allow it, and found three problems
+              that a static website cannot get around.
+            </p>
+            <ul class="st-issue__list">
+              <li>
+                <b>It needs a server, and this app has none.</b> Every Steam Web API call requires a
+                developer key, and Steam's responses carry no CORS headers — so a browser on your
+                machine is not allowed to call them directly. The key would have to sit in a small
+                backend that forwards the request, which is exactly the thing this project was built
+                to avoid.
+              </li>
+              <li>
+                <b>Steam counts totals, not sessions.</b> The API returns lifetime hours per game and
+                a rolling two-week figure. There is no “this session started” event, so the
+                real-time monitoring people picture when they hear “connect your Steam account” is
+                not something the API can supply. You would have to keep a page open and poll it,
+                then subtract the difference.
+              </li>
+              <li>
+                <b>It only works if the player is already public.</b> A Steam profile with its game
+                details set to private returns an empty library. The first thing the feature would do
+                is tell half its users that their account does not exist.
+              </li>
+            </ul>
+            <p class="st-issue__fix">
+              <b>So it stayed manual:</b> three fields, typed by hand. By the time I understood the
+              constraints I also understood that a tracker you fill in yourself is the only version
+              of this idea that runs as a plain web page — and the typing is what makes the number
+              feel like yours.
+            </p>
+          </article>
+
+          <article class="st-issue">
+            <div class="st-issue__n">02</div>
             <h3 class="st-issue__t">The responsive SCSS is longer than it needs to be</h3>
             <p class="st-issue__d">
               The tablet and phone blocks repeat rules that differ only by a margin. They work, and
@@ -357,20 +395,6 @@
             <p class="st-issue__fix">
               <b>Next version:</b> fold both into one mixin that takes the spacing as an argument,
               instead of writing the block out twice.
-            </p>
-          </article>
-
-          <article class="st-issue">
-            <div class="st-issue__n">02</div>
-            <h3 class="st-issue__t">No Steam integration</h3>
-            <p class="st-issue__d">
-              Every session is typed by hand, so the app can only report what you remembered to
-              record — the one thing a tracker should not depend on.
-            </p>
-            <p class="st-issue__fix">
-              <b>Next version:</b> let the user connect their own library with their permission and
-              fill the history from it. That is the version I drew first, before I found out the API
-              was library-scoped.
             </p>
           </article>
 
@@ -384,19 +408,6 @@
             <p class="st-issue__fix">
               <b>Next version:</b> <code>background-attachment: fixed</code> on desktop and a static
               crop on mobile, where the fixed version behaves badly.
-            </p>
-          </article>
-
-          <article class="st-issue is-solved">
-            <div class="st-issue__n">04</div>
-            <h3 class="st-issue__t">It only opened on the machine that had the files</h3>
-            <p class="st-issue__d">
-              The app needed Node, a Parcel build and a local server, so the repository was not a
-              link to anything a tutor or a friend could actually use.
-            </p>
-            <p class="st-issue__fix">
-              <b>Done here:</b> the compiled folder is static, so the app now runs in section 03 of
-              this page and in a new tab, on any machine with a browser. No install, no build.
             </p>
           </article>
         </div>
@@ -433,8 +444,8 @@
 
   </main>
 
-  <script src="js/content.js?v=41"></script>
-  <script src="js/main.js?v=41"></script>
-  <script src="js/steamtracker.js?v=41"></script>
+  <script src="js/content.js?v=42"></script>
+  <script src="js/main.js?v=42"></script>
+  <script src="js/steamtracker.js?v=42"></script>
 </body>
 </html>
