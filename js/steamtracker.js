@@ -283,19 +283,42 @@
   }
 
   /* ---------- 内嵌 App ---------- */
+  /* App 按 1440px 的桌面宽度渲染，再整体缩放到框里 —— 这样它看起来是电脑网页，
+     而不是被挤成平板宽度。窄屏时退回 1:1，交给 App 自己的响应式布局。 */
   function stInitEmbed() {
     const frame = document.querySelector(".st-embed__frame");
     const gate = document.getElementById("stEmbedGate");
     if (!frame || !gate) return;
     gate.style.backgroundImage = "url(assets/img/stk-hero-app.webp)";
+
+    const DESIGN_W = 1440;
+    let iframe = null;
+
+    const fit = () => {
+      if (!iframe) return;
+      const w = frame.clientWidth;
+      if (w < 900) {
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+        iframe.style.transform = "";
+        return;
+      }
+      const s = w / DESIGN_W;
+      iframe.style.width = DESIGN_W + "px";
+      iframe.style.height = Math.round(frame.clientHeight / s) + "px";
+      iframe.style.transform = "scale(" + s + ")";
+    };
+
     gate.addEventListener("click", () => {
-      if (frame.querySelector("iframe")) return;
-      const f = document.createElement("iframe");
-      f.title = "SteamTracker — the app itself";
-      f.src = "apps/steamtracker/index.html?v=39";
-      f.loading = "lazy";
-      frame.appendChild(f);
+      if (iframe) return;
+      iframe = document.createElement("iframe");
+      iframe.title = "SteamTracker — the app itself";
+      iframe.src = "apps/steamtracker/index.html?v=39";
+      iframe.loading = "lazy";
+      frame.appendChild(iframe);
       gate.remove();
+      fit();
+      window.addEventListener("resize", fit);
     });
   }
 
