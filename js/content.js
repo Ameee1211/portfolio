@@ -156,7 +156,7 @@ const SITE = {
       degree: "Bachelor of Design Computing",
       period: "Mar 2021 — Jul 2024",
       place: "Sydney, Australia",
-      gpa: { value: 5.4, max: 7 },
+      gpa: { value: 3.4, max: 4 },
       note:
         "Coursework ran across UI/UX, web and 3D form, which is still the shape of the work I take on.",
       courses: [
