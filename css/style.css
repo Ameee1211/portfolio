@@ -811,6 +811,15 @@ img { display: block; max-width: 100%; }
 section[id] { scroll-margin-top: 92px; }
 
 /* ================= 响应式 ================= */
+/* 手机端菜单一展开就固定深色。
+   SunLink / SteamTracker 首屏是深色照片，导航在未滚动时是白字；
+   下拉菜单是白底，白字会看不见，所以这里用最高优先级把颜色钉死。 */
+.nav.is-open .nav__link:not(.is-active),
+.nav.is-open .nav__drop-link:not(.is-active) { color: #333d6d !important; }
+/* 当前页那颗紫色胶囊本来就是白字，别被上面的规则改掉 */
+.nav.is-open .nav__link.is-active { color: #fff !important; }
+.nav.is-open .nav__drop-link.is-active { color: var(--purple) !important; }
+
 @media (max-width: 900px) {
   .nav__inner { padding: 16px 24px; }
   .nav__burger { display: flex; }
