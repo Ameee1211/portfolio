@@ -291,25 +291,45 @@
     const hero = document.querySelector(".st-hero");
     const inner = document.querySelector(".st-hero__inner");
     if (!stage || !hero) return;
+
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    if (vw < 900) {
-      // 窄屏：文字在上、设备在下，首屏随内容变高
-      hero.style.minHeight = "";            // 先复位，量到真实的文字底边
-      const k = vw / 560;
+    /* ---------- 手机 / 竖屏：一屏之内，文案在上，场景在下 ---------- */
+    if (vw <= 900) {
+      hero.style.minHeight = "";
       const heroTop = hero.getBoundingClientRect().top;
-      const base = inner
-        ? inner.getBoundingClientRect().bottom - heroTop + 28
-        : vh * 0.6;
-      hero.style.minHeight = Math.round(base + 214 * k + 110) + "px";
+      // 文字块底边（hero 内坐标）
+      const textBottom = inner
+        ? inner.getBoundingClientRect().bottom - heroTop
+        : vh * 0.5;
+      const sceneTop = textBottom + 8;
+      const sceneH = Math.max(180, vh - sceneTop);
+
+      // 照片里设备的可视范围（1024×972 坐标系）
+      const EX0 = 174, EX1 = 895, EY0 = 368, EY1 = 805;
+      const ew = EX1 - EX0;
+      const eh = EY1 - EY0;
+      // 留一点边，别让手机贴着屏幕边被切掉
+      const k = Math.min(vw / ew, sceneH / eh) * 0.94;
+
+      const tx = vw / 2 - ((EX0 + EX1) / 2) * k;
+      const ty = sceneTop + (sceneH - eh * k) / 2 - EY0 * k;
+
       stage.style.setProperty("--k", k.toFixed(4));
-      stage.style.setProperty("--tx", Math.round(vw / 2 - 1072 * k) + "px");
-      stage.style.setProperty("--ty", Math.round(base - 352 * k) + "px");
+      stage.style.setProperty("--tx", Math.round(tx) + "px");
+      stage.style.setProperty("--ty", Math.round(ty) + "px");
+
+      // 下滑提示顶到文字正下方，不压在设备上
+      const cue = document.querySelector(".st-hero__cue");
+      if (cue) cue.style.top = Math.round(textBottom + 14) + "px";
       return;
     }
 
+    /* ---------- 桌面 / 横屏：整屏铺满 ---------- */
     hero.style.minHeight = "";
+    const cueD = document.querySelector(".st-hero__cue");
+    if (cueD) cueD.style.top = "";
     const k = Math.max(vw / 1536, vh / 950);
     stage.style.setProperty("--k", k.toFixed(4));
     stage.style.setProperty("--tx", Math.round(vw / 2 - 768 * k) + "px");

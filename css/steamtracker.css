@@ -818,6 +818,8 @@
   height: 100%;
   object-fit: cover;
 }
+/* 竖版那张只在手机端出现 */
+.st-hero__room--tall { display: none; }
 
 /* 镜头：默认不动，讲到手机时推近 */
 .st-hero__world {
@@ -1554,3 +1556,166 @@
 .st-page .nav:not(.is-solid) .nav__link:hover { color: #fff; }
 .st-page .nav:not(.is-solid) .nav__link.is-active { color: #fff; }
 .st-page .nav:not(.is-solid) .nav__burger span { background: #fff; }
+
+/* ============================================================
+   手机端首屏：一整屏 —— 文案在上，竖版书房场景在下
+   （覆盖前面所有窄屏首屏规则）
+   ============================================================ */
+@media (max-width: 900px) {
+  .st-hero {
+    display: block;
+    height: 100svh;
+    min-height: 560px;
+    padding: 0;
+    overflow: hidden;
+    /* 承接照片上方的暗部，让文字区与场景之间没有硬边 */
+    background: linear-gradient(180deg, #0a1210 0%, #141b16 26%, #21251b 54%, #2f3325 78%, #33372a 100%);
+  }
+
+  /* 文字块：紧凑到 420px 左右，好把下半屏留给场景 */
+  .st-hero__inner {
+    position: relative;
+    z-index: 3;
+    display: block;
+    height: auto;
+    padding: 76px 22px 0;
+  }
+  .st-hero__copy { max-width: none; }
+  .st-hero__kicker {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    margin-bottom: 9px;
+  }
+  .st-hero__title {
+    font-size: clamp(32px, 10.6vw, 44px);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .st-hero__lede {
+    font-size: 13.6px;
+    line-height: 1.58;
+    max-width: none;
+    margin-bottom: 11px;
+  }
+  .st-hero__spec {
+    font-size: 9.5px;
+    letter-spacing: 0.13em;
+    margin-bottom: 0;
+  }
+  .st-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px 16px;
+    padding-top: 12px;
+    margin-top: 14px;
+    max-width: none;
+    border-top-color: rgba(255, 255, 255, 0.14);
+  }
+  .st-meta__k {
+    font-size: 8.5px;
+    letter-spacing: 0.14em;
+    margin-bottom: 3px;
+  }
+  .st-meta__v {
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+  .st-meta__v span { font-size: 10.5px; }
+
+  /* 舞台：换成竖版照片，坐标系 1024×972 */
+  .st-hero__stage {
+    width: 1024px;
+    height: 972px;
+    max-width: none;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.55) 70px, #000 150px);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.55) 70px, #000 150px);
+  }
+  .st-hero__room--wide { display: none; }
+  .st-hero__room--tall { display: block; }
+  .st-hero__world { animation: none; }
+
+  /* 两块屏幕在新照片里的位置 */
+  .st-screen--lap {
+    width: 420px;
+    height: 292px;
+    transform: matrix3d(1.092759, -0.086742, 0.000000, -0.000236, -0.153644, 1.166376, 0.000000, -0.000016, 0.000000, 0.000000, 1.000000, 0.000000, 224.000000, 368.000000, 0.000000, 1.000000);
+  }
+  .st-screen--phone {
+    width: 120px;
+    height: 268px;
+    transform: matrix3d(0.648599, -0.171764, 0.000000, -0.000327, -0.257482, 0.862487, 0.000000, -0.000047, 0.000000, 0.000000, 1.000000, 0.000000, 782.000000, 549.000000, 0.000000, 1.000000);
+  }
+
+  /* 屏幕缩到 0.54 之后字会很小，统一放大一档 */
+  .st-screen--lap .lap__bar { padding: 5px 8px; font-size: 8px; }
+  .st-screen--lap .lap__bar i { width: 5px; height: 5px; }
+  .st-screen--lap .lap__grid { gap: 12px; padding: 11px 13px 0; }
+  .st-screen--lap .lap__hint { font-size: 8.5px; margin-bottom: 7px; }
+  .st-screen--lap .lf { height: 21px; padding: 0 7px; margin-bottom: 7px; }
+  .st-screen--lap .lf__t { font-size: 11px; }
+  .st-screen--lap .lf em,
+  .st-screen--lap .lf i { font-size: 7.5px; }
+  .st-screen--lap .lap__btns { gap: 7px; margin-top: 7px; }
+  .st-screen--lap .lb { font-size: 9px; height: 18px; min-width: 42px; }
+  .st-screen--lap .lb--add { margin-top: 7px; }
+  .st-screen--lap .lc { padding: 6px 9px; }
+  .st-screen--lap .lc__row { height: 17px; }
+  .st-screen--lap .lc__val,
+  .st-screen--lap .lc__na { font-size: 9.5px; }
+  .st-screen--lap .lap__his { padding: 0 13px 10px; }
+  .st-screen--lap .lhis { padding: 6px 9px; font-size: 8px; gap: 9px; }
+  .st-screen--lap .lhis b { font-size: 8.5px; }
+
+  .st-screen--phone .ph { padding: 8px 7px; }
+  .st-screen--phone .ph__status { font-size: 5.5px; margin-bottom: 6px; }
+  .st-screen--phone .ph__title { font-size: 8.5px; padding-bottom: 5px; margin-bottom: 6px; }
+  .st-screen--phone .ph__day { font-size: 7px; margin-bottom: 4px; }
+  .st-screen--phone .ph__card { padding: 7px 7px 8px; }
+  .st-screen--phone .ph__card span { font-size: 7px; }
+  .st-screen--phone .ph__card b { font-size: 13px; }
+  .st-screen--phone .ph__row { font-size: 7px; padding: 5px 2px; }
+  .st-screen--phone .ph__foot { font-size: 7px; padding: 5px 0; }
+
+  /* 遮罩：只压上方文字区 */
+  .st-hero__veil {
+    background: linear-gradient(180deg, rgba(9, 22, 24, 0.72) 0%, rgba(9, 22, 24, 0.5) 30%, rgba(9, 22, 24, 0) 56%);
+  }
+
+  /* 下滑提示压在场景底部 */
+  .st-hero__cue {
+    position: absolute;
+    left: 50%;
+    bottom: auto;
+    top: auto;
+    z-index: 4;
+    order: 0;
+    margin: 0;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    pointer-events: none;
+  }
+  .st-hero__cue .scrollcue__line { height: 22px; }
+  .st-hero__cue .scrollcue__dot { width: 4px; height: 4px; }
+  .st-hero__cue:hover,
+  .st-hero__cue.is-gone { transform: translateX(-50%); }
+}
+
+/* 矮一点的手机（iPhone SE 那类）再收一档，好让场景留出空间 */
+@media (max-width: 900px) and (max-height: 720px) {
+  /* 高度不够，提示会压在设备上，这一档直接不显示 */
+  .st-hero__cue { display: none; }
+  .st-hero__inner { padding-top: 62px; }
+  .st-hero__kicker { font-size: 9px; margin-bottom: 7px; }
+  .st-hero__title { font-size: clamp(30px, 9.6vw, 38px); margin-bottom: 10px; }
+  .st-hero__lede { font-size: 12.6px; line-height: 1.5; margin-bottom: 9px; }
+  .st-hero__spec { font-size: 8.5px; letter-spacing: 0.11em; }
+  .st-meta {
+    gap: 7px 14px;
+    padding-top: 10px;
+    margin-top: 11px;
+  }
+  .st-meta__k { font-size: 8px; }
+  .st-meta__v { font-size: 10.5px; line-height: 1.35; }
+  .st-meta__v span { font-size: 9.5px; }
+}
