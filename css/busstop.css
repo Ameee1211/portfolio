@@ -205,7 +205,16 @@
 }
 .bs-meta__v span { display: block; color: rgba(255, 255, 255, 0.6); }
 
-.bs-hero__cue { color: rgba(255, 255, 255, 0.72); }
+.bs-hero__cue {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  bottom: 16px;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.72);
+}
+.bs-hero__cue:hover,
+.bs-hero__cue.is-gone { transform: translateX(-50%); }
 .bs-hero__cue .scrollcue__line { background: rgba(255, 255, 255, 0.28); }
 
 /* 深色首屏：导航收起时转白，展开菜单时回深色 */
@@ -792,6 +801,8 @@
     bottom: 10px;
     transform: translateX(-50%);
   }
+  .bs-hero__cue:hover,
+  .bs-hero__cue.is-gone { transform: translateX(-50%); }
 
   .bs-stats { grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px 0; }
   .bs-quotes { grid-template-columns: 1fr; }
