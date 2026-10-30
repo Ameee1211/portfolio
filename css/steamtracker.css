@@ -1182,3 +1182,13 @@
 @media (max-width: 1000px) {
   .st-issue__list { grid-template-columns: 1fr; gap: 14px; }
 }
+
+/* 正文里的行内代码，与卡片里保持一致 */
+.st-p code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #eef8f8;
+  color: var(--st-teal-deep);
+  padding: 2px 6px;
+  border-radius: 5px;
+}

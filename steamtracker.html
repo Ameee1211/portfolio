@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SteamTracker — a daily log of your Steam hours · Tong Zhang (Amy)</title>
+  <title>SteamTracker · a daily log of your Steam hours · Tong Zhang (Amy)</title>
   <meta name="description" content="A small web app for Steam players: three fields, one preview card, and a history that keeps every session in the browser. Designed and built end to end for Advanced Web Design, 2023." />
   <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=42" />
-  <link rel="stylesheet" href="css/steamtracker.css?v=42" />
+  <link rel="stylesheet" href="css/style.css?v=43" />
+  <link rel="stylesheet" href="css/steamtracker.css?v=43" />
 </head>
 <body class="st-page">
 
@@ -37,7 +37,7 @@
           <p class="st-hero__lede">
             Steam will tell you that you have played a game for three hundred hours. It will not
             tell you how long you played today. This app keeps every session you add, so
-            <em>the hours are in front of you</em> instead of buried in a lifetime total.
+            <em>the total for today</em> is a number you can see.
           </p>
 
           <p class="st-hero__spec">No account · No server · Nothing leaves the browser</p>
@@ -69,7 +69,7 @@
                 <i></i><i></i><i></i>
                 <span class="st-browser__url">steamtracker</span>
               </div>
-              <img src="assets/img/stk-hero-app.webp" width="1500" height="1010"
+              <img src="assets/img/stk-hero-app.webp" width="1500" height="990"
                    alt="The app at desktop width: on the left the game name, playtime and category are filled in; on the right a mint card previews the same entry with its date and running total." />
             </div>
           </div>
@@ -88,22 +88,21 @@
         <p class="st-eyebrow">01 — The interface</p>
         <h2 class="st-h2">Two screens: the page you land on, and the list it fills.</h2>
         <p class="st-p">
-          The homepage is a Steam store image, one sentence about privacy, and the form straight
-          underneath. There is no sign-up to get past and nothing to click through. The history
-          lives below it on the same page, newest first, with a date and a running total on every
-          entry.
+          The homepage is a Steam store image, one sentence about privacy, and the form directly
+          underneath. No account, no menu, no second page. The history sits below it in the same
+          view, newest first, and every entry carries its date and a running total.
         </p>
 
         <div class="st-shots">
           <figure>
             <img src="assets/img/stk-home.webp" width="1200" height="900" loading="lazy"
                  alt="The landing screen: Steam artwork across the top, the title, a privacy statement, and the entry form starting underneath." />
-            <figcaption><b>The landing screen.</b> Artwork for context, a sentence about privacy, then the form — nobody has to read a manual first.</figcaption>
+            <figcaption><b>The landing screen.</b> Artwork for context, one sentence about privacy, then the form.</figcaption>
           </figure>
           <figure>
             <img src="assets/img/stk-history.webp" width="1200" height="901" loading="lazy"
                  alt="The history list: two entries under a date header, each with its game name and playtime." />
-            <figcaption><b>The history.</b> Newest entry at the top, a date and a total above it, and an arrow on every row to open it.</figcaption>
+            <figcaption><b>The history.</b> Newest entry at the top, a date and a total above it, and an arrow on the right of every row to open it.</figcaption>
           </figure>
         </div>
       </div>
@@ -116,9 +115,9 @@
         <h2 class="st-h2">Two steps, and a gate between them.</h2>
         <p class="st-p">
           Check reads the three fields and writes them into a mint card. Add puts that card into
-          the history. Between the two clicks there is a preview you can read, and before the first
-          one there are six ways to be told what is missing — each message sitting directly under
-          the field that caused it.
+          the history. Between the two clicks you get to read back what you typed. Before the first
+          one, six different mistakes each get their own message, printed under the field that
+          caused it.
         </p>
 
         <div class="st-steps">
@@ -129,7 +128,7 @@
               <h3 class="st-step__t">Fill in three fields</h3>
               <p class="st-step__d">
                 Name, hours to one decimal place, and one of eleven genres. Clear empties all three
-                at once, which was the tutor's suggestion.
+                at once.
               </p>
             </div>
           </article>
@@ -141,7 +140,7 @@
               <h3 class="st-step__t">Read it back on the card</h3>
               <p class="st-step__d">
                 Check writes the entry into a mint card: name, genre, this session, the running
-                total for that game, and the date. Nothing is saved yet.
+                total for that game, and the date. Nothing is saved until you press Add.
               </p>
             </div>
           </article>
@@ -178,11 +177,10 @@
     <section class="st-sec st-sec--ink" id="app">
       <div class="st-wrap">
         <p class="st-eyebrow">03 — It is a website, so use it</p>
-        <h2 class="st-h2" style="color:#fff">This is the app, not a picture of it.</h2>
+        <h2 class="st-h2" style="color:#fff">The build below is the real thing.</h2>
         <p class="st-p">
-          This is the real application, not a recording of one. Add a game, watch the total change,
-          refresh the page and it is still there. Everything you type stays in your own browser,
-          and I cannot see any of it.
+          Add a game, watch the total change, refresh the page and it is still there. Everything
+          you type stays in your own browser. I cannot see any of it, and nothing is sent anywhere.
         </p>
 
         <div class="st-embed" id="stEmbed">
@@ -198,8 +196,8 @@
             </button>
           </div>
           <div class="st-embed__bar">
-            <span>Try “Hollow Knight”, 2.0, Action — then Check, then Add.</span>
-            <a href="apps/steamtracker/index.html?v=39" target="_blank" rel="noopener">Open in a new tab ↗</a>
+            <span>Try “Hollow Knight”, 2.0, Action. Then Check, then Add.</span>
+            <a href="https://ameee1211.github.io/tzha9554-tracker/" target="_blank" rel="noopener">Open it full size ↗</a>
           </div>
         </div>
 
@@ -213,34 +211,34 @@
         <h2 class="st-h2">The first version was bright, full width, and had no way to clear the form.</h2>
         <p class="st-p">
           My tutor's feedback on version one was blunt: you cannot read the game information
-          against that background. So I went and looked at sites that are easy to read, and wrote
-          down what they had in common — a white page with a single accent colour, content held
-          inside margins instead of stretched across a wide screen, and instructions placed where
-          the user is about to act.
+          against that background. So I looked at sites that are easy to read and wrote down what
+          they had in common: a white page with one accent colour, content held inside margins
+          rather than stretched across a wide screen, and instructions where the user is about to
+          act.
         </p>
         <p class="st-p">
-          Version one also depended on cover art fetched from Steam. When I could not find a public
-          endpoint for it, the pictures came out of the design and the three fields stayed — which
-          is why version two has no thumbnails in the history at all.
+          Version one also drew its cover art from Steam. That endpoint turned out not to exist, so
+          the pictures left the design and the history kept the three fields. Section 07 explains
+          what stopped it.
         </p>
 
         <div class="st-mocks">
           <figure>
             <img src="assets/img/stk-v1-desktop.webp" width="652" height="1248" loading="lazy"
                  alt="Version one: a saturated blue page across the full width, a Steam banner on top, the form, and a history list where every game has a circular cover-art thumbnail." />
-            <figcaption><b>Version 1</b> — full width, saturated blue, no clear button, and a history built around cover art that could not be fetched.</figcaption>
+            <figcaption><b>Version 1.</b> Full width, saturated blue, no clear button, and a history built around cover art that could not be fetched.</figcaption>
           </figure>
           <figure>
             <img src="assets/img/stk-v2-desktop.webp" width="651" height="1230" loading="lazy"
                  alt="Version two: a white page inside margins, mint green as the only accent, a clear button, step instructions and a divider before each of the four sections." />
-            <figcaption><b>Version 2</b> — white ground, mint as the only accent, margins, a Clear button, step instructions, and a divider before each section.</figcaption>
+            <figcaption><b>Version 2.</b> White ground, mint as the only accent, margins, a Clear button, step instructions, and a divider before each section.</figcaption>
           </figure>
         </div>
 
         <div class="st-lawbox">
           <div class="st-law"><b>Mint green</b>Chosen as the single accent because it sits next to Steam without copying it.</div>
           <div class="st-law"><b>Margins</b>Content pulled into the middle so a wide screen still reads left to right.</div>
-          <div class="st-law"><b>Clear</b>One button to empty all three fields — the tutor's suggestion.</div>
+          <div class="st-law"><b>Clear</b>One button to empty all three fields, added on the tutor's advice.</div>
           <div class="st-law"><b>Dividers</b>Four sections made visible, so the page reads in steps rather than as one column.</div>
         </div>
       </div>
@@ -259,19 +257,19 @@
 
         <div class="st-widths">
           <figure>
-            <img src="assets/img/stk-hero-app.webp" width="1500" height="1010" loading="lazy"
+            <img src="assets/img/stk-hero-app.webp" width="1500" height="990" loading="lazy"
                  alt="Desktop width: the form on the left and the mint preview card on the right." />
-            <figcaption><b>Above 1024px</b>Form and preview side by side.</figcaption>
+            <figcaption><b>Desktop</b>Form and preview side by side.</figcaption>
           </figure>
           <figure>
             <img src="assets/img/stk-phone-column.webp" width="780" height="1886" loading="lazy"
                  alt="Phone width: the same form, then the same preview card underneath it in a single column." />
-            <figcaption><b>1024px and below</b>One column, the card under the form.</figcaption>
+            <figcaption><b>Phone</b>One column, the card under the form.</figcaption>
           </figure>
         </div>
 
         <div class="st-lawbox" style="margin-top:28px">
-          <div class="st-law"><b>Above 1024px</b>Two columns — form left, preview card right</div>
+          <div class="st-law"><b>Above 1024px</b>Two columns: form left, preview card right</div>
           <div class="st-law"><b>1024px and below</b>One column, the card drops under the form</div>
           <div class="st-law"><b>601–1024px</b>The same column, held in by 10% margins</div>
           <div class="st-law"><b>600px and below</b>The same column again, with tighter spacing</div>
@@ -287,9 +285,9 @@
         <p class="st-p">
           The build followed the course in order: a Node and Express server serving a static folder,
           then Parcel and SCSS on top of it, then the form and the history. Nine commits between
-          28 May and 7 June 2023, one working step in each. There is no database behind any of it —
-          the whole app is one array in localStorage, redrawn by a single function every time
-          something changes.
+          28 May and 7 June 2023, one working step in each. There is no database behind any of it.
+          The whole app is one array in localStorage, redrawn by one function every time something
+          changes.
         </p>
 
         <div class="st-steps">
@@ -300,7 +298,7 @@
               <h3 class="st-step__t">Nine commits, named for the change</h3>
               <p class="st-step__d">
                 From “add the homepage” to “finish mobile version”. Small enough that any one of
-                them could be the version that worked.
+                them could be the last version that worked.
               </p>
             </div>
           </article>
@@ -312,7 +310,7 @@
               <h3 class="st-step__t">SCSS for the repetitive part</h3>
               <p class="st-step__d">
                 Nested selectors and variables saved the responsive layer from being written out
-                three times by hand. It is also the least tidy code in the project.
+                three times by hand.
               </p>
             </div>
           </article>
@@ -326,11 +324,11 @@
         </div>
 
         <p class="st-p" style="margin-top:20px">
-          The function doing that redraw is <code>updateGameHis()</code>, lines 171 to 253 of a
+          The function that does the redraw is <code>updateGameHis()</code>, lines 171 to 253 of a
           291-line script.js. It empties the list, reads the array back out of localStorage, writes
-          a card per record, then attaches the open and delete handlers to elements that did not
-          exist a moment earlier — the longest function in the file, and the only one I commented
-          line by line.
+          a card for every record, then attaches the open and delete handlers to elements that did
+          not exist a moment earlier. It is the longest function in the file and the only one I
+          commented line by line.
         </p>
       </div>
     </section>
@@ -341,15 +339,15 @@
         <p class="st-eyebrow">07 — Known issues &amp; future versions</p>
         <h2 class="st-h2">Three things left open at the end. The first still bothers me.</h2>
         <p class="st-p">
-          These were the notes I left for myself when the assignment was handed in, in the order I
-          would tackle them. The first one is the feature I actually wanted and never shipped. It
-          failed on the API, not on time.
+          These were the notes I left myself when I handed the assignment in, in the order I would
+          tackle them. The first one is the feature I actually wanted and never shipped. It failed
+          on the API, not on time.
         </p>
 
         <div class="st-issues">
           <article class="st-issue st-issue--wide">
             <div class="st-issue__n">01</div>
-            <h3 class="st-issue__t">Reading your Steam library — wanted, and not built</h3>
+            <h3 class="st-issue__t">The Steam import I wanted and never built</h3>
             <p class="st-issue__d">
               The whole first mockup was built around this: you type a game, the app recognises it,
               pulls the cover art and the hours you have already put in, and the history fills
@@ -359,29 +357,27 @@
             <ul class="st-issue__list">
               <li>
                 <b>It needs a server, and this app has none.</b> Every Steam Web API call requires a
-                developer key, and Steam's responses carry no CORS headers — so a browser on your
-                machine is not allowed to call them directly. The key would have to sit in a small
-                backend that forwards the request, which is exactly the thing this project was built
-                to avoid.
+                developer key, and Steam's responses carry no CORS headers, so the browser is not
+                allowed to call them directly. The key would have to live in a small backend that
+                forwards the request, which is the thing this project was built to avoid.
               </li>
               <li>
                 <b>Steam counts totals, not sessions.</b> The API returns lifetime hours per game and
                 a rolling two-week figure. There is no “this session started” event, so the
                 real-time monitoring people picture when they hear “connect your Steam account” is
-                not something the API can supply. You would have to keep a page open and poll it,
-                then subtract the difference.
+                not something the API can supply. You would have to keep a page open, poll it, and
+                subtract the difference.
               </li>
               <li>
                 <b>It only works if the player is already public.</b> A Steam profile with its game
-                details set to private returns an empty library. The first thing the feature would do
-                is tell half its users that their account does not exist.
+                details set to private returns an empty library. The first thing the feature would
+                do is tell those users their account does not exist.
               </li>
             </ul>
             <p class="st-issue__fix">
-              <b>So it stayed manual:</b> three fields, typed by hand. By the time I understood the
-              constraints I also understood that a tracker you fill in yourself is the only version
-              of this idea that runs as a plain web page — and the typing is what makes the number
-              feel like yours.
+              <b>So it stayed manual:</b> three fields, typed by hand. A tracker you fill in
+              yourself is the only version of this idea that runs as a plain web page, and typing
+              the number is what makes it feel like yours.
             </p>
           </article>
 
@@ -418,7 +414,7 @@
     <div class="st-endnote">
       <div class="st-wrap">
         <span>Advanced Web Design · The University of Sydney · 2023 · solo project</span>
-        <span>HTML, SCSS and JavaScript · bundled with Parcel · served with Express</span>
+        <span>HTML, SCSS and JavaScript · bundled with Parcel · static build on GitHub Pages</span>
       </div>
     </div>
 
@@ -444,8 +440,8 @@
 
   </main>
 
-  <script src="js/content.js?v=42"></script>
-  <script src="js/main.js?v=42"></script>
-  <script src="js/steamtracker.js?v=42"></script>
+  <script src="js/content.js?v=43"></script>
+  <script src="js/main.js?v=43"></script>
+  <script src="js/steamtracker.js?v=43"></script>
 </body>
 </html>
