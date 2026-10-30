@@ -1329,6 +1329,9 @@
   object-fit: cover;
   /* 把偏暖的墙面压一点饱和度，往品牌蓝靠 */
   filter: saturate(0.7) brightness(1.14) contrast(1.03);
+  /* 右边缘化进深色，面板才能整体左移而不露出照片边界 */
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 74%, rgba(0, 0, 0, 0) 97%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 74%, rgba(0, 0, 0, 0) 97%);
 }
 
 /* 面板：四角用单应矩阵贴到墙上那块屏 */
@@ -1336,10 +1339,10 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 1361px;
-  height: 950px;
+  width: 1000px;
+  height: 574px;
   transform-origin: 0 0;
-  transform: matrix3d(0.382634, -0.000123, 0.000000, -0.000002, 0.001946, 0.316039, 0.000000, 0.000002, 0.000000, 0.000000, 1.000000, 0.000000, 443.000000, 348.000000, 0.000000, 1.000000);
+  transform: matrix3d(0.520764, -0.000168, 0.000000, -0.000003, 0.003221, 0.523061, 0.000000, 0.000003, 0.000000, 0.000000, 1.000000, 0.000000, 443.000000, 348.000000, 0.000000, 1.000000);
   overflow: hidden;
   background: #fff;
   filter: drop-shadow(0 0 14px rgba(110, 175, 240, 0.16));
@@ -1348,6 +1351,9 @@
   display: block;
   width: 100%;
   height: 100%;
+  /* 屏幕比界面更宽，所以按原比例裁掉上下的边，而不是把界面拉变形 */
+  object-fit: cover;
+  object-position: 50% 0;
 }
 /* 屏幕玻璃上的一道淡反光 */
 .sl-screen__glare {
@@ -1380,7 +1386,7 @@
   justify-content: space-between;
   align-items: flex-end;
   /* --rail 由脚本按“面板右边缘”算出来，文案永远不会压到屏上 */
-  padding: 116px 40px 104px var(--rail, 720px);
+  padding: 116px max(40px, calc((100vw - 1240px) / 2 + 40px)) 104px var(--rail, 720px);
   text-align: left;
 }
 .sl-hero__copy {
@@ -1392,7 +1398,7 @@
 .sl-hero__title {
   color: #fff;
   /* 跟着可用宽度走：窄窗口自动缩小，不会溢出到照片上 */
-  font-size: clamp(32px, 14.5cqw, 66px);
+  font-size: clamp(32px, 4.4vw, 68px);
 }
 .sl-hero__lede {
   color: rgba(255, 255, 255, 0.86);
@@ -1416,13 +1422,13 @@
 /* 提示贴在右下角，压在信息行下面，不再和它打架 */
 .sl-hero__cue {
   color: rgba(255, 255, 255, 0.58);
-  left: auto;
-  right: 40px;
+  left: 50%;
+  right: auto;
   bottom: 22px;
-  transform: none;
+  transform: translateX(-50%);
 }
 .sl-hero__cue:hover,
-.sl-hero__cue.is-gone { transform: none; }
+.sl-hero__cue.is-gone { transform: translateX(-50%); }
 .sl-hero__cue .scrollcue__line { background: rgba(255, 255, 255, 0.26); }
 
 /* 文案与面板依次浮现 */

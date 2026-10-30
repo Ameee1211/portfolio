@@ -913,9 +913,10 @@
       return;
     }
 
-    /* 桌面 / 横屏：整屏铺满 */
+    /* 桌面 / 横屏：整屏铺满，面板略偏左 */
     const k = Math.max(vw / 1536, vh / 934);
-    const tx = vw / 2 - 768 * k;
+    // 面板右边缘固定在 56% 处，右侧留给文字
+    const tx = vw * 0.56 - 967 * k;
     const ty = vh / 2 - 467 * k;
     stage.style.setProperty("--k", k.toFixed(4));
     stage.style.setProperty("--tx", Math.round(tx) + "px");
