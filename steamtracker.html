@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=45" />
-  <link rel="stylesheet" href="css/steamtracker.css?v=45" />
+  <link rel="stylesheet" href="css/style.css?v=46" />
+  <link rel="stylesheet" href="css/steamtracker.css?v=46" />
 </head>
 <body class="st-page">
 
@@ -29,68 +29,66 @@
 
     <!-- ================= 首屏 ================= -->
     <section class="st-hero" id="top">
-      <span class="st-hero__wash" aria-hidden="true"></span>
 
-        <!-- 一屏之内演一遍：打开页面 → 填三个字段 → Check → Add → 进历史 -->
-      <div class="st-hero__scene" aria-hidden="true">
-        <div class="scene">
-          <div class="scene__chrome">
-            <span class="scene__dots"><i></i><i></i><i></i></span>
-            <span class="scene__url">steamtracker</span>
-          </div>
+      <div class="st-hero__stage" id="stStage" aria-hidden="true">
+        <div class="st-hero__world" id="stWorld">
+          <img class="st-hero__room" src="assets/img/stk-room.webp" width="1536" height="950"
+               alt="" />
 
-          <div class="scene__page">
-            <div class="scene__rule"><span>Let's Begin Tracking!</span></div>
-
-            <div class="scene__cols">
-              <div class="scene__form">
-                <p class="scene__hint">Step 1: Enter the game information.</p>
-
-                <p class="scene__label">Game Name:</p>
-                <div class="fld fld--name"><span class="fld__t">Hollow Knight</span></div>
-
-                <p class="scene__label">Playtime:</p>
-                <div class="fld fld--time"><span class="fld__t">2.0</span><em>Hours</em></div>
-
-                <p class="scene__label">Category:</p>
-                <div class="fld fld--cat"><span class="fld__t">Action</span><i>▾</i></div>
-
-                <div class="scene__actions">
-                  <span class="sbtn sbtn--check">Check</span>
-                  <span class="sbtn sbtn--clear">Clear</span>
+          <!-- 笔电屏幕：表单 → 卡片 → 历史 -->
+          <div class="st-screen st-screen--lap">
+            <div class="lap">
+              <div class="lap__bar"><i></i><i></i><i></i><span>steamtracker</span></div>
+              <div class="lap__grid">
+                <div class="lap__form">
+                  <p class="lap__hint">Enter the game information.</p>
+                  <div class="lf"><span class="lf__t lt-name">Hollow Knight</span></div>
+                  <div class="lf"><span class="lf__t lt-time">2.0</span><em>Hours</em></div>
+                  <div class="lf"><span class="lf__t lt-cat">Action</span><i>▾</i></div>
+                  <div class="lap__btns">
+                    <span class="lb lb--check">Check</span>
+                    <span class="lb lb--clear">Clear</span>
+                  </div>
+                </div>
+                <div class="lap__side">
+                  <div class="lc">
+                    <div class="lc__row"><b class="lc__val lv1">Hollow Knight</b><i class="lc__na ln1">NA</i></div>
+                    <div class="lc__row"><b class="lc__val lv2">Action</b><i class="lc__na ln2">NA</i></div>
+                    <div class="lc__row"><b class="lc__val lv3">2.0 Hours</b><i class="lc__na ln3">NA</i></div>
+                    <div class="lc__row"><b class="lc__val lv4">30/10/2026</b><i class="lc__na ln4">NA</i></div>
+                  </div>
+                  <span class="lb lb--add">Add</span>
                 </div>
               </div>
-
-              <div class="scene__card">
-                <p class="scene__hint">Step 2: Check the information below and add it to your game history.</p>
-                <div class="ccard">
-                  <div class="ccard__row"><span>Game Name:</span><b class="na">NA</b><b class="val v-name">Hollow Knight</b></div>
-                  <div class="ccard__row"><span>Category:</span><b class="na">NA</b><b class="val v-cat">Action</b></div>
-                  <div class="ccard__row"><span>Playtime:</span><b class="na">NA</b><b class="val v-time">2.0 Hours</b></div>
-                  <div class="ccard__row"><span>Total Playtime:</span><b class="na">NA</b><b class="val v-total">2.0 Hours</b></div>
-                  <div class="ccard__row"><span>Date:</span><b class="na">NA</b><b class="val v-date">30/10/2026</b></div>
+              <div class="lap__his">
+                <div class="lhis">
+                  <span>30/10/2026</span>
+                  <b>Hollow Knight</b>
+                  <b class="lhis__t">2.0 Hours</b>
                 </div>
-                <span class="sbtn sbtn--add">Add</span>
-              </div>
-            </div>
-
-            <div class="scene__rule scene__rule--his"><span>My Game History</span></div>
-
-            <div class="his">
-              <div class="his__head"><span>30/10/2026</span><b>2.0 Hours</b></div>
-              <div class="his__row">
-                <div><span>Game Name:</span><b>Hollow Knight</b></div>
-                <div><span>Playtime:</span><b>2.0 Hours</b></div>
-                <i class="his__chev">▾</i>
               </div>
             </div>
           </div>
 
-          <span class="scene__cursor"><svg viewBox="0 0 12 17" width="12" height="17"><path d="M1 1l10 8-4.2.6L8 15l-2 .8-1.3-5.3L1 13z" fill="#10222b" stroke="#fff" stroke-width="1.1"/></svg></span>
+          <!-- 手机屏幕：同一份历史 -->
+          <div class="st-screen st-screen--phone">
+            <div class="ph">
+              <div class="ph__status"><i>9:41</i><i>▮▮</i></div>
+              <div class="ph__title">My Game History</div>
+              <div class="ph__day"><span>30/10/2026</span><b>2.0 Hours</b></div>
+              <div class="ph__card"><span>Hollow Knight</span><b>2.0</b></div>
+              <div class="ph__row"><span>Playtime</span><b>2.0 Hours</b></div>
+              <div class="ph__row"><span>Category</span><b>Action</b></div>
+              <div class="ph__row"><span>Total playtime</span><b>37.5 Hours</b></div>
+              <div class="ph__foot">Clear all history</div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="st-hero__inner st-wrap">
 
+      <span class="st-hero__veil" aria-hidden="true"></span>
+
+      <div class="st-hero__inner">
         <div class="st-hero__copy">
           <p class="st-hero__kicker">Project 03 · Web app, designed and built</p>
           <h1 class="st-hero__title">Steam<br />Tracker</h1>
@@ -99,31 +97,29 @@
             tell you how long you played today. This app keeps every session you add, so
             <em>the total for today</em> is a number you can see.
           </p>
-
           <p class="st-hero__spec">No account · No server · Nothing leaves the browser</p>
-
-          <div class="st-meta">
-            <div>
-              <div class="st-meta__k">Role</div>
-              <div class="st-meta__v">Design &amp; build<br /><span>end to end, on my own</span></div>
-            </div>
-            <div>
-              <div class="st-meta__k">Team</div>
-              <div class="st-meta__v">Solo project<br /><span>one student, nine commits</span></div>
-            </div>
-            <div>
-              <div class="st-meta__k">Course</div>
-              <div class="st-meta__v">Advanced Web Design<br /><span>The University of Sydney, 2023</span></div>
-            </div>
-            <div>
-              <div class="st-meta__k">Tools</div>
-              <div class="st-meta__v">HTML · SCSS · JavaScript<br /><span>Parcel, Express, GitHub</span></div>
-            </div>
-          </div>
         </div>
 
-
+        <div class="st-meta">
+          <div>
+            <div class="st-meta__k">Role</div>
+            <div class="st-meta__v">Design &amp; build<br /><span>end to end, on my own</span></div>
+          </div>
+          <div>
+            <div class="st-meta__k">Team</div>
+            <div class="st-meta__v">Solo project<br /><span>one student, nine commits</span></div>
+          </div>
+          <div>
+            <div class="st-meta__k">Course</div>
+            <div class="st-meta__v">Advanced Web Design<br /><span>The University of Sydney, 2023</span></div>
+          </div>
+          <div>
+            <div class="st-meta__k">Tools</div>
+            <div class="st-meta__v">HTML · SCSS · JavaScript<br /><span>Parcel, Express, GitHub</span></div>
+          </div>
+        </div>
       </div>
+
       <a class="scrollcue st-hero__cue" href="#overview" aria-label="Scroll down to explore more">
         <span class="scrollcue__txt">Scroll down to explore more</span>
         <span class="scrollcue__line" aria-hidden="true"><i></i></span>
@@ -488,8 +484,8 @@
 
   </main>
 
-  <script src="js/content.js?v=45"></script>
-  <script src="js/main.js?v=45"></script>
-  <script src="js/steamtracker.js?v=45"></script>
+  <script src="js/content.js?v=46"></script>
+  <script src="js/main.js?v=46"></script>
+  <script src="js/steamtracker.js?v=46"></script>
 </body>
 </html>

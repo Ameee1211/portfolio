@@ -285,6 +285,37 @@
     window.addEventListener("keydown", onKey);
   }
 
+  /* ---------- 首屏：让 1536×950 的舞台铺满视口 ---------- */
+  function stFitHero() {
+    const stage = document.getElementById("stStage");
+    const hero = document.querySelector(".st-hero");
+    const inner = document.querySelector(".st-hero__inner");
+    if (!stage || !hero) return;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    if (vw < 900) {
+      // 窄屏：文字在上、设备在下，首屏随内容变高
+      hero.style.minHeight = "";            // 先复位，量到真实的文字底边
+      const k = vw / 560;
+      const heroTop = hero.getBoundingClientRect().top;
+      const base = inner
+        ? inner.getBoundingClientRect().bottom - heroTop + 28
+        : vh * 0.6;
+      hero.style.minHeight = Math.round(base + 214 * k + 110) + "px";
+      stage.style.setProperty("--k", k.toFixed(4));
+      stage.style.setProperty("--tx", Math.round(vw / 2 - 1072 * k) + "px");
+      stage.style.setProperty("--ty", Math.round(base - 352 * k) + "px");
+      return;
+    }
+
+    hero.style.minHeight = "";
+    const k = Math.max(vw / 1536, vh / 950);
+    stage.style.setProperty("--k", k.toFixed(4));
+    stage.style.setProperty("--tx", Math.round(vw / 2 - 768 * k) + "px");
+    stage.style.setProperty("--ty", Math.round(vh / 2 - 475 * k) + "px");
+  }
+
   /* ---------- 首屏：鼠标带动的轻微 3D 视角 ---------- */
   function stHeroTilt() {
     const hero = document.querySelector(".st-hero");
@@ -368,7 +399,25 @@
     stInitIndex(stRenderIndex());
     stInitPager();
     stInitEmbed();
-    stHeroTilt();
+    stFitHero();
+    window.addEventListener("resize", stFitHero);
+    // 字体加载完 / 内容回流之后再量一次，避免量到旧高度
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => setTimeout(stFitHero, 60));
+    }
+    [200, 600, 1200, 2400].forEach((t) => setTimeout(stFitHero, t));
+    const innerEl = document.querySelector(".st-hero__inner");
+    if (innerEl && window.ResizeObserver) {
+      let locked = false;
+      new ResizeObserver(() => {
+        if (locked) return;
+        locked = true;
+        requestAnimationFrame(() => {
+          stFitHero();
+          locked = false;
+        });
+      }).observe(innerEl);
+    }
   }
 
   if (document.readyState === "loading") {
