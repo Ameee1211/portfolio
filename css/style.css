@@ -153,9 +153,17 @@ img { display: block; max-width: 100%; }
   justify-content: center;
   padding: 92px 0 48px;
 }
-.wordsearch {
-  width: 86vw;
+.hero__inner {
+  width: 100%;
+  max-width: var(--maxw);
   margin: 0 auto;
+  padding: 0 40px;
+}
+.wordsearch {
+  /* 字母在格子里是居中的，容器边界对齐后首字符还会内缩半格；
+     这里把宽度往外补一点，让首字母的视觉边缘与 logo 对齐 */
+  width: calc(100% + 96px);
+  margin: 0 -48px;
 }
 .ws {
   display: block;
@@ -979,7 +987,8 @@ section[id] { scroll-margin-top: 92px; }
   /* 手机端首屏：竖版迷宫（7 行 × 6 列），撑满整屏而不是把桌面版缩小。
      留一点下一屏露头，用户能看出还可以往下滑（手机端没有翻页接管）。 */
   .hero { min-height: 92vh; min-height: 92svh; padding: 84px 0 34px; }
-  .wordsearch { width: 86vw; }
+  .hero__inner { padding: 0 24px; }
+  .wordsearch { width: 100%; margin: 0; }
   .about { padding: 68px 0; }
   .about__inner { grid-template-columns: 1fr; gap: 46px; padding: 0 24px; }
   .about__stage { padding: 20px 0; }
