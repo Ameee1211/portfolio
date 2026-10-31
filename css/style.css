@@ -651,51 +651,151 @@ img { display: block; max-width: 100%; }
   box-shadow: 0 12px 26px rgba(116, 105, 182, 0.34);
 }
 
-/* ================= Featured Projects ================= */
-.projects { padding: 104px 0 110px; }
-.projects__head {
-  max-width: var(--maxw);
-  margin: 0 auto 52px;
-  padding: 0 40px;
-  text-align: center;
-}
-.projects__title { font-size: 40px; font-weight: 700; color: var(--navy); }
-.projects__rule {
-  display: block;
-  width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--purple);
-  margin: 18px auto 22px;
-}
-.projects__intro p { font-size: 15px; color: var(--muted); line-height: 1.85; }
-.projects__intro p:first-child {
-  font-size: 21px;
-  font-weight: 600;
-  color: var(--navy);
-  margin-bottom: 6px;
-}
-.projects__grid {
-  max-width: var(--maxw);
-  margin: 0 auto;
-  padding: 0 40px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 36px;
-}
-
-.card {
-  background: var(--white);
-  border-radius: 24px;
-  overflow: hidden;
+/* ================= Featured Projects — 3D deck ================= */
+/* 一屏一件：卡片沿透视横向排开，滚轮/箭头切换，文字在卡下方。 */
+.projects {
+  position: relative;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 40px rgba(51, 61, 109, 0.07);
-  transition: transform 0.4s ease, box-shadow 0.4s ease, opacity 0.6s ease;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 40px 56px;
+  overflow: hidden;
 }
-.card:hover { transform: translateY(-6px); box-shadow: 0 18px 50px rgba(51, 61, 109, 0.13); }
-.card__body { padding: 28px 30px 26px; }
-.card__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.projects__note {
+  position: absolute;
+  bottom: 58px;
+  left: max(28px, calc((100vw - var(--maxw)) / 2));
+  width: 248px;
+}
+.projects__kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--purple);
+  margin-bottom: 10px;
+}
+.projects__intro p {
+  font-size: 12.5px;
+  line-height: 1.72;
+  color: var(--muted);
+}
+.projects__intro p:first-child {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 5px;
+}
+
+.deck { width: min(1200px, 100%); }
+.deck__stage {
+  position: relative;
+  height: calc(min(34vw, 520px) * 0.75 + 26px);
+  perspective: 1600px;
+  perspective-origin: 50% 44%;
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, #000 7%, #000 93%, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, #000 7%, #000 93%, rgba(0, 0, 0, 0) 100%);
+}
+.deck__item {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(320px, 34vw, 520px);
+  aspect-ratio: 4 / 3;
+  transform-style: preserve-3d;
+  transition: transform 0.82s cubic-bezier(0.22, 0.68, 0.2, 1), opacity 0.55s ease, filter 0.6s ease;
+  will-change: transform, opacity, filter;
+}
+.deck__link {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #14101f;
+  box-shadow: 0 34px 68px -34px rgba(20, 16, 34, 0.6);
+  transition: transform 0.45s ease, box-shadow 0.45s ease;
+}
+.deck__item.is-current .deck__link:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 46px 84px -36px rgba(20, 16, 34, 0.66);
+}
+.deck__link img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(112deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.04) 38%, rgba(255, 255, 255, 0) 60%);
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+.deck__item.is-current .deck__link:hover .deck__shine { opacity: 1; }
+.deck__num {
+  position: absolute;
+  left: 16px;
+  top: 13px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.deck__meta {
+  margin-top: 34px;
+  text-align: center;
+  min-height: 108px;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.deck__meta.is-out { opacity: 0; transform: translateY(7px); }
+.deck__meta-t {
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+.deck__meta-d {
+  margin: 8px auto 0;
+  max-width: 560px;
+  font-size: 13.4px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.deck__tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0 0; padding: 0; list-style: none; }
+
+.deck__nav {
+  position: absolute;
+  right: max(28px, calc((100vw - var(--maxw)) / 2));
+  bottom: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.deck__btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--navy);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
+}
+.deck__btn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(51, 61, 109, 0.14); border-color: rgba(116, 105, 182, 0.5); }
+.deck__btn:disabled { opacity: 0.28; cursor: default; transform: none; box-shadow: none; }
+.deck__count {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  min-width: 54px;
+  text-align: center;
+}
+
 /* 标签：平面浅底 + 方角(7px) + 小字号 + 无边框无阴影无悬停位移。
    这是全站统一的「这只是一个词，不是按钮」的视觉语言。 */
 .tag {
@@ -720,23 +820,6 @@ img { display: block; max-width: 100%; }
   background: currentColor;
   opacity: 0.55;
 }
-.card__title { font-size: 22px; font-weight: 700; color: var(--navy); }
-.card__desc {
-  margin: 12px 0 22px;
-  font-size: 14px;
-  color: var(--muted);
-  line-height: 1.75;
-}
-.card__media {
-  background: var(--tint);
-  min-height: 250px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.card__media img { width: 100%; height: 100%; object-fit: cover; }
-.card__placeholder { font-size: 14px; font-weight: 600; color: rgba(51, 61, 109, 0.4); }
 
 /* ================= 页脚 ================= */
 .footer__banner {
@@ -820,6 +903,14 @@ section[id] { scroll-margin-top: 92px; }
 .nav.is-open .nav__link.is-active { color: #fff !important; }
 .nav.is-open .nav__drop-link.is-active { color: var(--purple) !important; }
 
+/* 中等宽度：左下注释会挤到居中的说明文字，收窄两边 */
+@media (max-width: 1200px) and (min-width: 901px) {
+  .projects__note { width: 206px; }
+  .projects__intro p { font-size: 11.8px; }
+  .projects__intro p:first-child { font-size: 12.8px; }
+  .deck__meta-d { max-width: 420px; }
+}
+
 @media (max-width: 900px) {
   .nav__inner { padding: 16px 24px; }
   .nav__burger { display: flex; }
@@ -879,10 +970,16 @@ section[id] { scroll-margin-top: 92px; }
   .about__row dt { min-width: 98px; }
   .about__intro { margin-top: 26px; line-height: 1.95; }
   .skills__title { margin-top: 32px; }
-  .projects { padding: 64px 0 72px; }
-  .projects__head { padding: 0 24px; margin-bottom: 36px; }
-  .projects__title { font-size: 30px; }
-  .projects__grid { grid-template-columns: 1fr; gap: 26px; padding: 0 24px; }
+  .projects { padding: 84px 22px 44px; justify-content: center; }
+  .projects__note { position: static; width: 100%; max-width: 520px; margin-bottom: 14px; }
+  .deck__stage { height: 268px; }
+  .deck__item { width: min(84vw, 360px); }
+  /* 手机屏幕窄，侧卡只留主卡，避免边缘露半张 */
+  .deck__item:not(.is-current) { opacity: 0 !important; }
+  .deck__meta { margin-top: 18px; min-height: 104px; }
+  .deck__meta-d { font-size: 12.6px; }
+  .deck__nav { position: static; margin-top: 6px; }
+  .deck__count { min-width: 50px; }
   .footer__banner { padding: 54px 24px; }
   .footer__thanks { font-size: 21px; }
 }
