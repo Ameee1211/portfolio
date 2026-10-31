@@ -997,6 +997,10 @@
   max-height: 320px;
 }
 .bs-el__fig img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* 竖图（时刻表界面）要完整看到按钮，不能裁 */
+.bs-el__panel--tall { grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr); }
+.bs-el__fig--tall { max-height: none; }
+.bs-el__fig--tall img { width: auto; height: 340px; max-width: 100%; object-fit: contain; }
 .bs-el__copy h3 {
   margin: 0 0 10px;
   font-size: clamp(19px, 1.7vw, 23px);
@@ -1104,6 +1108,8 @@
   .bs-el__tab span { font-size: 13px; }
   .bs-el__panel.is-active { display: block; padding: 16px; }
   .bs-el__fig { max-height: 210px; margin-bottom: 14px; }
+  .bs-el__fig--tall { max-height: none; }
+  .bs-el__fig--tall img { width: 100%; height: auto; }
   .bs-el__copy p { font-size: 13.6px; }
 
   .bs-poster { grid-template-columns: 1fr; gap: 18px; }
