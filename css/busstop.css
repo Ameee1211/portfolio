@@ -90,27 +90,38 @@
   display: flex;
   align-items: center;
   padding: 104px 0 40px;
-  /* 棚拍式背景：对角紫调 + 模型后方柔光 + 左上冷光 + 右下暖反光 + 暗角 */
-  background:
-    radial-gradient(46% 42% at 72% 44%, rgba(138, 108, 255, 0.32) 0%, rgba(120, 92, 235, 0.13) 42%, rgba(110, 86, 220, 0) 68%),
-    radial-gradient(38% 40% at 14% 6%, rgba(120, 152, 255, 0.16) 0%, rgba(120, 152, 255, 0) 66%),
-    radial-gradient(62% 54% at 84% 94%, rgba(255, 178, 92, 0.16) 0%, rgba(255, 160, 72, 0) 62%),
-    radial-gradient(120% 104% at 50% 42%, rgba(6, 3, 16, 0) 52%, rgba(6, 3, 16, 0.5) 100%),
-    linear-gradient(158deg, #170f30 0%, #221a45 30%, #2b2158 52%, #1d1541 74%, #120b26 100%);
+  background: #120b26;
   color: #fff;
   overflow: hidden;
 }
-/* 极细噪点：避免大渐变出现色带，也让纯色区域有质感 */
+/* 背景照片：悉尼街头，压暗 + 模糊；放大一点点避免模糊露边 */
+.bs-hero::before {
+  content: "";
+  position: absolute;
+  inset: -7%;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("../assets/img/bs-street.webp");
+  background-size: cover;
+  background-position: 50% 44%;
+  background-repeat: no-repeat;
+  filter: blur(7px) brightness(0.62) saturate(0.8) contrast(1.06);
+  transform: scale(1.03);
+}
+/* 色层：左重右轻的压暗（文字侧更深）+ 紫调统一 + 暗角 */
 .bs-hero::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
+  background-image:
+    linear-gradient(96deg, rgba(13, 8, 30, 0.9) 0%, rgba(15, 9, 34, 0.74) 22%, rgba(19, 12, 40, 0.42) 42%, rgba(22, 14, 46, 0.1) 58%, rgba(18, 11, 38, 0.28) 100%),
+    radial-gradient(44% 40% at 72% 44%, rgba(138, 108, 255, 0.22) 0%, rgba(120, 92, 235, 0) 70%),
+    radial-gradient(56% 50% at 84% 94%, rgba(255, 178, 92, 0.1) 0%, rgba(255, 160, 72, 0) 64%),
+    radial-gradient(120% 108% at 50% 42%, rgba(6, 3, 16, 0) 46%, rgba(6, 3, 16, 0.58) 100%),
+    linear-gradient(158deg, rgba(26, 17, 52, 0.42) 0%, rgba(30, 22, 62, 0.26) 40%, rgba(15, 9, 32, 0.5) 100%);
+  background-size: cover;
 }
 /* 身后一团黄光，把产品托起来 */
 .bs-hero__glow {
@@ -838,6 +849,11 @@
     width: 92vw;
     height: 92vw;
     transform: translateX(-50%);
+  }
+  .bs-hero::before {
+    background-image: url("../assets/img/bs-street-m.webp");
+    background-position: 50% 38%;
+    filter: blur(6px) brightness(0.58) saturate(0.8) contrast(1.06);
   }
   .bs-hero__art {
     right: auto;
