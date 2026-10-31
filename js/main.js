@@ -644,15 +644,14 @@ function initDeck() {
       if (off < -n / 2) off += n;
       const a = Math.abs(off);
       const spread = window.innerWidth < 900 ? 0.52 : 1;
-      const x = (off > 0 ? 156 : 148) * off * spread;
-      const y = off * -66 * spread;      // 右侧往上、左侧往下 → 右上到左下的一条斜线
-      // 中间那张永远最靠前：右侧只退一点点，左侧明显后退，形成近大远小
-      const z = (off === 0 ? 62 : off > 0 ? -40 : off * 260) * spread;
+      const x = off * 148 * spread;      // 左右等距，以中间那张为轴镜像
+      const y = a * 66 * spread;         // 两侧同时下沉，中间是最高点
+      const z = (off === 0 ? 62 : -260) * spread; // 两侧同深度 → 一样大
       const ry = off * -17;
       el.style.transform = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) translateZ(${z}px) rotateX(3deg) rotateY(${ry}deg)`;
       el.style.opacity = a > 1 ? "0" : String(1 - a * 0.16);
       el.style.zIndex = String(10 - a);
-      el.style.filter = a === 0 ? "none" : `brightness(${off > 0 ? 0.72 : 0.6}) blur(0.7px)`;
+      el.style.filter = "none";
       el.style.pointerEvents = a > 1 ? "none" : "auto";
       el.classList.toggle("is-current", a === 0);
       el.tabIndex = a === 0 ? 0 : -1;
