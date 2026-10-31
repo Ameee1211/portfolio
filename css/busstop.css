@@ -1113,7 +1113,7 @@
   .bs-el__copy p { font-size: 13.6px; }
 
   .bs-poster { grid-template-columns: 1fr; gap: 18px; }
-  .bs-poster__fig { order: -1; height: auto; max-height: none; }
+  .bs-poster__fig { height: auto; max-height: none; }
   .bs-poster__fig img { width: 100%; height: auto; }
   .bs-poster__facts { gap: 22px; margin-top: 18px; }
   .bs-issues { grid-template-columns: 1fr; }
