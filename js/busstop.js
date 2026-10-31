@@ -225,6 +225,39 @@
   }
 
 
+  /* ---------- 04 模型缩放：滚轮会带走页面滚动，改用滑杆 ---------- */
+  function bsInitZoom() {
+    const mv = document.querySelector("#product model-viewer");
+    const range = document.getElementById("bsZoom");
+    if (!mv || !range) return;
+    const NEAR = 8; // 与 min-radius 对齐
+    const FAR = 14; // 与 max-radius 对齐（再远会被 model-viewer 的包围球钳住）
+
+    const apply = () => {
+      const t = Number(range.value) / 100;
+      const radius = FAR - t * (FAR - NEAR);
+      let theta = 62;
+      let phi = 74;
+      try {
+        if (typeof mv.getCameraOrbit === "function") {
+          const o = mv.getCameraOrbit();
+          if (o && isFinite(o.theta) && isFinite(o.phi)) {
+            theta = (o.theta * 180) / Math.PI;
+            phi = (o.phi * 180) / Math.PI;
+          }
+        }
+      } catch (e) {
+        /* 模型还没升级成自定义元素时按默认机位算 */
+      }
+      const orbit = theta.toFixed(2) + "deg " + phi.toFixed(2) + "deg " + radius.toFixed(2) + "m";
+      mv.setAttribute("camera-orbit", orbit);
+      if (typeof mv.jumpCameraToGoal === "function") mv.jumpCameraToGoal();
+    };
+
+    range.addEventListener("input", apply);
+  }
+
+
   /* ---------- 05 元素切换（Bench / Desk / Sign / Screen / Club）---------- */
   function bsInitElements() {
     const root = document.getElementById("bsEl");
@@ -256,6 +289,7 @@
   function boot() {
     bsInitElements();
     bsInitModels();
+    bsInitZoom();
     bsInitIndex(bsRenderIndex());
     bsInitPager();
     bsInitCue();
