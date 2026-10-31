@@ -15,12 +15,10 @@
     { id: "top", label: "Intro" },
     { id: "overview", label: "Short" },
     { id: "problem", label: "Why" },
-    { id: "direction", label: "Direction" },
-    { id: "interface", label: "Interface" },
-    { id: "usage", label: "Usage" },
-    { id: "film", label: "Film" },
-    { id: "hardware", label: "Object" },
-    { id: "build", label: "Build" },
+    { id: "direction", label: "Insights" },
+    { id: "product", label: "Product" },
+    { id: "elements", label: "Elements" },
+    { id: "poster", label: "Poster" },
     { id: "issues", label: "Issues" },
   ];
 
@@ -226,7 +224,37 @@
     });
   }
 
+
+  /* ---------- 05 元素切换（Bench / Desk / Sign / Screen / Club）---------- */
+  function bsInitElements() {
+    const root = document.getElementById("bsEl");
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll(".bs-el__tab"));
+    const panels = Array.from(root.querySelectorAll(".bs-el__panel"));
+
+    const select = (key) => {
+      tabs.forEach((t) => {
+        const on = t.dataset.el === key;
+        t.classList.toggle("is-active", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      panels.forEach((p) => p.classList.toggle("is-active", p.id === "el-" + key));
+    };
+
+    tabs.forEach((t, i) => {
+      t.addEventListener("click", () => select(t.dataset.el));
+      t.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+        e.preventDefault();
+        const next = tabs[(i + (e.key === "ArrowDown" ? 1 : tabs.length - 1)) % tabs.length];
+        next.focus();
+        select(next.dataset.el);
+      });
+    });
+  }
+
   function boot() {
+    bsInitElements();
     bsInitModels();
     bsInitIndex(bsRenderIndex());
     bsInitPager();

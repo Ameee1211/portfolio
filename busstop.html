@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=85" />
-  <link rel="stylesheet" href="css/busstop.css?v=85" />
+  <link rel="stylesheet" href="css/style.css?v=87" />
+  <link rel="stylesheet" href="css/busstop.css?v=87" />
   <link rel="preload" as="image" href="assets/img/3d/busstop-poster-2.webp" />
   <!-- 3D 库：优先公共 CDN（本机到 GitHub Pages 只有 ~50KB/s），失败自动回落本地副本 -->
   <script>
@@ -171,160 +171,98 @@
     <section class="bs-sec" id="direction">
       <div class="bs-wrap">
         <p class="bs-eyebrow">03 — Choosing a direction</p>
-        <h2 class="bs-h2">Four insights, then a lot of ideas we threw away.</h2>
+        <h2 class="bs-h2">Four things a stop has to do better.</h2>
         <p class="bs-p">
-          The research came down to four things a stop needs to do better: catch the driver’s
-          attention, make the sign easy to find, make the information board worth reading, and give
-          people something to do while they wait.
+          The research came down to four problems, and almost everything we drew answers one of them: catch the
+          driver’s attention, make the sign easy to find, make the board worth reading, and give people something
+          to do while they wait.
         </p>
 
         <ol class="bs-insights">
-          <li><b>01</b><span>Give the stop a better way to catch a driver’s attention.</span></li>
-          <li><b>02</b><span>Redesign the signage so people can locate it quickly.</span></li>
-          <li><b>03</b><span>Make the information board actually informative.</span></li>
-          <li><b>04</b><span>Give people something to do while they wait.</span></li>
+          <li><b>01</b><span>Give the stop a way to catch a driver’s attention without anyone waving.</span></li>
+          <li><b>02</b><span>Make the sign findable from across the road, and readable from a moving bus.</span></li>
+          <li><b>03</b><span>Make the board tell you something you can act on: which bus, when, how full.</span></li>
+          <li><b>04</b><span>Give the wait something to hold on to — a seat, a table, a screen.</span></li>
         </ol>
 
         <p class="bs-p">
-          Each of us ran a Crazy 8s round, then we pooled everything: a swing, a game screen, a
-          timetable, a public social website, short videos, a DIY board. Two rounds of the tutor’s
-          feedback removed the ones that could not survive a footpath — the swing and the game
-          screen were both safety problems, and the social website was somebody else’s product.
+          Each of us ran a Crazy 8s round, then we pooled everything: a swing, a game screen, a timetable, a public
+          social site, short videos, a DIY board, an interactive camera. Two rounds of feedback removed what could
+          not survive a footpath — the swing and the game screen were safety problems, the social site was somebody
+          else’s product, and the camera never found a problem to solve.
         </p>
 
         <div class="bs-kill">
           <span class="bs-kill__item bs-kill__item--out">Swing</span>
           <span class="bs-kill__item bs-kill__item--out">Game screen</span>
           <span class="bs-kill__item bs-kill__item--out">Public social website</span>
+          <span class="bs-kill__item bs-kill__item--out">Interactive camera</span>
           <span class="bs-kill__item bs-kill__item--out">DIY flags</span>
-          <span class="bs-kill__item">Bus stop shape</span>
+          <span class="bs-kill__item">Bus-shaped shelter</span>
           <span class="bs-kill__item">Timetable screen</span>
-          <span class="bs-kill__item">Signage screen</span>
-          <span class="bs-kill__item">Siteview screen</span>
-          <span class="bs-kill__item">Interactive camera</span>
+          <span class="bs-kill__item">Roadside sign</span>
+          <span class="bs-kill__item">Long bench</span>
+          <span class="bs-kill__item">Foldable desk</span>
+          <span class="bs-kill__item">MetaClub</span>
         </div>
 
         <p class="bs-p">
-          What survived was not one idea but a combination — a stop that looks like a bus, tells
-          you exactly when the next four buses arrive, and can tell the driver you are there.
+          What survived was not one idea but a set of them that fit together: a stop shaped like a bus, a board that
+          tells you the next four buses, and a sign that tells the driver you are there.
         </p>
       </div>
     </section>
 
     <!-- ================= 04 界面 ================= -->
-    <section class="bs-sec bs-sec--alt" id="interface">
-      <div class="bs-wrap">
-        <p class="bs-eyebrow">04 — The interface</p>
-        <h2 class="bs-h2">Four buses, one decision, one tap.</h2>
-        <p class="bs-p">
-          The timetable is not a list of every route that passes here. It is the next four buses,
-          in order of arrival, with how full each one is. You read it once and you know whether to
-          wait, walk, or take a different route.
-        </p>
-
-        <div class="bs-ui">
-          <div class="bs-ui__frame">
-            <div class="bs-panel">
-              <div class="bs-panel__top"><span class="bs-panel__b">B</span><span>USYD Stop</span><em>BUS STOP 205038</em></div>
-              <div class="bs-panel__head"><span>Route</span><span>Destination</span><span>Time</span><span>Capacity</span></div>
-              <div class="bs-panel__row"><b>423</b><span>Martin Place Station</span><i>1 min</i><em>●●</em></div>
-              <div class="bs-panel__row"><b>426</b><span>Martin Place Station</span><i>9 min</i><em>●●</em></div>
-              <div class="bs-panel__row"><b>370</b><span>Bicentennial Park</span><i>17 min</i><em>●●</em></div>
-              <div class="bs-panel__row"><b>430</b><span>Martin Place Station</span><i>22 min</i><em>●●</em></div>
-              <p class="bs-panel__hint">Select the bus you want to take to hail the bus.</p>
-              <div class="bs-panel__tags"><span>not hailed</span><span>hailed</span></div>
-              <div class="bs-panel__btns">
-                <span>423</span><span>426</span><span>428</span><span>430</span><span class="is-on">370</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="bs-ui__notes">
-            <h3>What the screen is doing</h3>
-            <ul class="bs-list">
-              <li><b>Arrival, not a grid.</b> The next four buses sorted by minutes, not a printed timetable nobody can parse at a glance.</li>
-              <li><b>Capacity, before you commit.</b> The dots show how full each bus is, so you can decide to wait for the next one.</li>
-              <li><b>The buttons are the hail.</b> Pressing a route replaces the whole interaction of stepping into the road and waving.</li>
-              <li><b>One state, two audiences.</b> The same selection turns the roadside sign into a message for the driver.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
+    
 
     <!-- ================= 05 怎么用 ================= -->
-    <section class="bs-sec" id="usage">
-      <div class="bs-wrap">
-        <p class="bs-eyebrow">05 — How it behaves</p>
-        <h2 class="bs-h2">Four steps, and the third one happens without you.</h2>
-
-        <div class="bs-steps">
-          <article class="bs-step">
-            <span class="bs-step__n">01</span>
-            <h3>Read the board</h3>
-            <p>Four buses, arrival times and how full they are. The board updates as they move.</p>
-          </article>
-          <article class="bs-step">
-            <span class="bs-step__n">02</span>
-            <h3>Tap your route</h3>
-            <p>Choose 370. The button locks on, and the board says what will happen next.</p>
-          </article>
-          <article class="bs-step">
-            <span class="bs-step__n">03</span>
-            <h3>The sign answers</h3>
-            <p>The roadside sign switches from the stop name to <b>B 370</b>, large enough to read from a moving bus.</p>
-          </article>
-          <article class="bs-step">
-            <span class="bs-step__n">04</span>
-            <h3>Board and reset</h3>
-            <p>The driver stops, you get on, and the sign clears itself for the next person.</p>
-          </article>
-        </div>
-
-        <p class="bs-p">
-          The sign is the whole idea. Everything before it is a normal bus stop; the sign is the
-          part that turns waiting into a message.
-        </p>
-      </div>
-    </section>
+    
 
     <!-- ================= 06 视频（深色） ================= -->
-    <section class="bs-sec bs-sec--ink" id="film">
+    <section class="bs-sec bs-sec--ink" id="product">
       <div class="bs-wrap">
-        <p class="bs-eyebrow">06 — The prototype, on one page</p>
-        <h2 class="bs-h2" style="color:#fff">Built out of cardboard, presented like a product.</h2>
+        <p class="bs-eyebrow">04 — Product display</p>
+        <h2 class="bs-h2" style="color:#fff">The object, at one-fifth scale.</h2>
         <p class="bs-p">
-          The class brief was a physical prototype, so the stop exists at one-fifth scale: foam
-          board frame, cardboard panels, a phone standing in for the timetable screen, and an
-          Arduino driving the sign. The poster below is the version we submitted — the product, the
-          timetable, the sign and the small parts in one place.
+          Foam board frame, printed panels, a phone behind acrylic standing in for the timetable, an Arduino driving
+          the sign — three rounds from paper to build, each one removing a detail that could not survive a knife.
         </p>
 
-        <figure class="bs-film" id="bsFilm">
-          <button class="bs-film__gate" id="bsFilmGate" type="button" aria-label="Play the prototype video">
-            <span class="bs-film__play" aria-hidden="true"></span>
-            <span class="bs-film__label">Watch the prototype</span>
-          </button>
-        </figure>
+        <div class="bs-prod">
+          <div class="bs-model3d">
+            <model-viewer
+              src="https://testingcf.jsdelivr.net/gh/Ameee1211/portfolio@8aadd773ebd4477ed7893e36bc427fec0d633d48/assets/img/3d/busstop.glb"
+              data-local-src="assets/img/3d/busstop.glb?v=5"
+              alt="The Auto-Signaled Bus Stop as an interactive 3D model. Drag to rotate it."
+              camera-controls
+              touch-action="pan-y"
+              interaction-prompt="auto"
+              camera-orbit="62deg 74deg 13m"
+              camera-target="0.45m 1.2m -0.63m"
+              min-radius="8m"
+              max-radius="30m"
+              environment-image="neutral"
+              exposure="1.2"
+              shadow-intensity="1"
+              shadow-softness="0.7">
+            </model-viewer>
+            <p class="bs-model3d__hint">Drag to rotate · Scroll to zoom — built in Adobe Dimension, ported to the web.</p>
+          </div>
 
-        <div class="bs-model3d">
-          <model-viewer
-            src="https://testingcf.jsdelivr.net/gh/Ameee1211/portfolio@8aadd773ebd4477ed7893e36bc427fec0d633d48/assets/img/3d/busstop.glb"
-            data-local-src="assets/img/3d/busstop.glb?v=5"
-            alt="The Auto-Signaled Bus Stop as an interactive 3D model. Drag to rotate it."
-            camera-controls
-            touch-action="pan-y"
-            interaction-prompt="auto"
-            camera-orbit="62deg 74deg 13m"
-            camera-target="0.45m 1.2m -0.63m"
-            min-radius="8m"
-            max-radius="30m"
-            environment-image="neutral"
-            exposure="1.2"
-            shadow-intensity="1"
-            shadow-softness="0.7">
-          </model-viewer>
-          <p class="bs-model3d__hint">Drag to rotate · Scroll to zoom — this is the model built in Adobe Dimension, exported for the web.</p>
+          <div class="bs-prod__side">
+            <figure class="bs-film" id="bsFilm">
+              <button class="bs-film__gate" id="bsFilmGate" type="button" aria-label="Play the prototype video">
+                <span class="bs-film__play" aria-hidden="true"></span>
+                <span class="bs-film__label">Watch the prototype</span>
+              </button>
+            </figure>
+            <div class="bs-proto__card">
+              <b>Interactive prototype</b>
+              <p>The interface, clickable — hailing, the sign answering, the club. Opens in a new tab.</p>
+              <a class="bs-proto__btn" href="https://xd.adobe.com/view/cd3b4e89-640e-4615-a4bc-4d989c1aacf2-9868/" target="_blank" rel="noopener">Open the prototype ↗</a>
+            </div>
+          </div>
         </div>
 
         <div class="bs-lawbox bs-lawbox--ink">
@@ -337,131 +275,142 @@
     </section>
 
     <!-- ================= 07 硬件 ================= -->
-    <section class="bs-sec" id="hardware">
-      <div class="bs-wrap">
-        <p class="bs-eyebrow">07 — The object</p>
-        <h2 class="bs-h2">Shaped like a bus, because that is what makes people look up.</h2>
-        <p class="bs-p">
-          The shelter borrows the silhouette of a bus — a rounded nose, a long window band, a roof
-          that lifts at the far end. From across the road it reads as a vehicle, and that is
-          deliberate: a bus stop has to compete with everything else on a Sydney street.
-        </p>
-
-        <div class="bs-views">
-          <figure>
-            <img src="assets/img/bs-front.webp" width="1122" height="783" loading="lazy" alt="Front view of the shelter." />
-            <figcaption><b>Front</b>The timetable on the near pillar, the sign overhead.</figcaption>
-          </figure>
-          <figure>
-            <img src="assets/img/bs-side.webp" width="1122" height="783" loading="lazy" alt="Side view of the shelter." />
-            <figcaption><b>Side</b>The roof lifts, the bench runs the length of the frame.</figcaption>
-          </figure>
-          <figure>
-            <img src="assets/img/bs-back.webp" width="1122" height="783" loading="lazy" alt="Back view with the advertisement board." />
-            <figcaption><b>Back</b>The advertisement panel faces the road, the bench faces the street.</figcaption>
-          </figure>
-          <figure>
-            <img src="assets/img/bs-driver.webp" width="1122" height="783" loading="lazy" alt="View from the driver's seat." />
-            <figcaption><b>Driver</b>What the route 370 driver actually sees.</figcaption>
-          </figure>
-        </div>
-
-        <div class="bs-parts">
-          <div><b>Bench</b>Extends past the shelter so a crowd does not have to stand.</div>
-          <div><b>Foldable desk</b>A tab that pulls down at seat height — bags, laptops, coffee.</div>
-          <div><b>Light strip</b>Under the bench, so the step is visible at night.</div>
-          <div><b>Ad board</b>Faces the road, and pays for the thing.</div>
-        </div>
-      </div>
-    </section>
+    
 
     <!-- ================= 08 从稿到实物 ================= -->
-    <section class="bs-sec bs-sec--alt" id="build">
+    
+
+    <!-- ================= 09 已知问题 ================= -->
+    <section class="bs-sec bs-sec--alt" id="elements">
       <div class="bs-wrap">
-        <p class="bs-eyebrow">08 — From mockup to cardboard</p>
-        <h2 class="bs-h2">The drawing was easy. The corner was not.</h2>
+        <p class="bs-eyebrow">05 — Why these parts</p>
+        <h2 class="bs-h2">Nothing here is decoration.</h2>
         <p class="bs-p">
-          Three rounds: a paper sketch, a Dimension model, then a 1:5 build. Each step removed a
-          detail that looked good on screen and could not survive being cut out of foam board with
-          a knife.
+          The shelter borrows the silhouette of a bus — rounded nose, a long window band, a roof that lifts at the far
+          end — because on a busy road a stop has to look like the thing you are waiting for. The blue came from the
+          bus itself: in the street scene the default vehicle is blue, and a shelter in any other colour read as a
+          separate object rather than part of the road. Everything below the roof was added for a reason we can point at.
         </p>
 
-        <div class="bs-phases">
-          <article class="bs-phase">
-            <span class="bs-phase__n">Sketch</span>
-            <h3>Paper, then a ruler</h3>
-            <p>
-              Every round started on paper — eight boxes, two minutes each. The version that
-              survived had the timetable on the near pillar rather than the far one, because that
-              is the side you walk up to.
-            </p>
-          </article>
-          <article class="bs-phase">
-            <span class="bs-phase__n">Model</span>
-            <h3>Dimension, at full size</h3>
-            <p>
-              The 3D model is where the proportions got tested: how tall the sign sits, how much of
-              the frame is glass, whether the bench reads as part of the structure or an
-              afterthought.
-            </p>
-          </article>
-          <article class="bs-phase">
-            <span class="bs-phase__n">Build</span>
-            <h3>One-fifth, in foam board</h3>
-            <p>
-              The physical version lost the curved roof and gained a visible seam where the panels
-              meet. A phone behind acrylic stood in for the display; the sign ran off an Arduino.
-            </p>
-          </article>
+        <div class="bs-el" id="bsEl">
+          <div class="bs-el__tabs" role="tablist" aria-label="Parts of the stop">
+            <button class="bs-el__tab is-active" type="button" role="tab" aria-selected="true" aria-controls="el-bench" id="tab-bench" data-el="bench"><b>01</b><span>Bench</span></button>
+            <button class="bs-el__tab" type="button" role="tab" aria-selected="false" aria-controls="el-desk" id="tab-desk" data-el="desk"><b>02</b><span>Desk</span></button>
+            <button class="bs-el__tab" type="button" role="tab" aria-selected="false" aria-controls="el-sign" id="tab-sign" data-el="sign"><b>03</b><span>Sign</span></button>
+            <button class="bs-el__tab" type="button" role="tab" aria-selected="false" aria-controls="el-screen" id="tab-screen" data-el="screen"><b>04</b><span>Screen</span></button>
+            <button class="bs-el__tab" type="button" role="tab" aria-selected="false" aria-controls="el-club" id="tab-club" data-el="club"><b>05</b><span>Club</span></button>
+          </div>
+
+          <div class="bs-el__panels">
+            <div class="bs-el__panel is-active" id="el-bench" role="tabpanel" aria-labelledby="tab-bench">
+              <figure class="bs-el__fig"><img src="assets/img/bs-el-bench.webp" width="662" height="324" alt="Three people sitting along the long bench of the shelter." loading="lazy" /></figure>
+              <div class="bs-el__copy">
+                <h3>The bench runs both ways.</h3>
+                <p>Most stops along this route seat two or three people. This one seats five or six, and it faces the road and the shelter at once — so someone who is not catching a bus can still sit down, with a coffee or out of the sun.</p>
+              </div>
+            </div>
+
+            <div class="bs-el__panel" id="el-desk" role="tabpanel" aria-labelledby="tab-desk">
+              <figure class="bs-el__fig"><img src="assets/img/bs-el-desk.webp" width="316" height="316" alt="The foldable desk on the shelter wall, with a pull-down tab." loading="lazy" /></figure>
+              <div class="bs-el__copy">
+                <h3>People arrive carrying things.</h3>
+                <p>A foldable desk takes a cup or a bag while you check the board. Two smaller parts ride along: a light strip under the roof for the evening, and an ad panel on the end post that makes the shelter read as street furniture rather than a model.</p>
+              </div>
+            </div>
+
+            <div class="bs-el__panel" id="el-sign" role="tabpanel" aria-labelledby="tab-sign">
+              <figure class="bs-el__fig"><img src="assets/img/bs-el-sign.webp" width="518" height="336" alt="The roadside sign showing a route number, B 370." loading="lazy" /></figure>
+              <div class="bs-el__copy">
+                <h3>The sign does the waving.</h3>
+                <p>Pick a route on the screen and the sign over the shelter switches from the stop name to that number — sized to be read from a moving bus, which is the only audience that matters.</p>
+              </div>
+            </div>
+
+            <div class="bs-el__panel" id="el-screen" role="tabpanel" aria-labelledby="tab-screen">
+              <figure class="bs-el__fig"><img src="assets/img/bs-el-screen.webp" width="485" height="780" alt="The timetable screen: four buses with arrival times and capacity, and the hail buttons." loading="lazy" /></figure>
+              <div class="bs-el__copy">
+                <h3>Four buses, one tap.</h3>
+                <p>The board shows the next four buses in order of arrival with how full each one is — not the whole network, only what you can act on. Tapping a row hails that bus; Seek Help reaches a person when it does not work.</p>
+              </div>
+            </div>
+
+            <div class="bs-el__panel" id="el-club" role="tabpanel" aria-labelledby="tab-club">
+              <figure class="bs-el__fig"><img src="assets/img/bs-el-club.webp" width="662" height="420" alt="The MetaClub screen: a virtual club with characters and a stage." loading="lazy" /></figure>
+              <div class="bs-el__copy">
+                <h3>Twenty minutes of nothing to do.</h3>
+                <p>MetaClub is a public club built on a metaverse idea: scan the QR on the right of the screen, get a character, talk to whoever else is waiting, queue a song. The honest problem with a bus stop is not information — it is having nothing to do.</p>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <p class="bs-p">
-          The model is where the hard decisions happened: the roof angle, how far the bench should
-          stick out, whether the sign belongs above the timetable or above the shelter. Dimension
-          lets you rotate a corner until it looks right; cardboard tells you whether a person can
-          actually sit under it.
-        </p>
       </div>
     </section>
 
-    <!-- ================= 09 已知问题 ================= -->
-    <section class="bs-sec" id="issues">
+    <section class="bs-sec" id="poster">
       <div class="bs-wrap">
-        <p class="bs-eyebrow">09 — What it doesn't solve</p>
-        <h2 class="bs-h2">Three things a student prototype cannot answer.</h2>
+        <div class="bs-poster">
+          <div class="bs-poster__copy">
+            <p class="bs-eyebrow">06 — The poster</p>
+            <h2 class="bs-h2">The deliverable was one sheet.</h2>
+            <p class="bs-p">
+              A2, printed: the product at the top with four parts called out, then the timetable, the sign and the
+              club. If the poster does not explain the thing in ten seconds, the project does not read.
+            </p>
+            <ul class="bs-poster__facts">
+              <li><b>A2</b><span>Printed, submitted</span></li>
+              <li><b>4</b><span>Parts called out</span></li>
+              <li><b>3</b><span>Product · interface · club</span></li>
+            </ul>
+            <p class="bs-poster__note">Click the sheet to open it full size.</p>
+          </div>
+          <figure class="bs-poster__fig">
+            <a href="assets/img/bs-poster.webp" target="_blank" rel="noopener" aria-label="Open the poster at full size">
+            <img src="assets/img/bs-poster.webp" width="1600" height="2263"
+                 alt="The A2 prototype poster: the shelter rendered at the top with the bench, light, foldable desk and ad board called out, then the timetable and signage, then MetaClub." loading="lazy" />
+            </a>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="bs-sec bs-sec--alt" id="issues">
+      <div class="bs-wrap">
+        <p class="bs-eyebrow">07 — What it doesn’t solve</p>
+        <h2 class="bs-h2">Five things the prototype does not answer.</h2>
 
         <div class="bs-issues">
           <article class="bs-issue">
-            <div class="bs-issue__n">01</div>
+            <p class="bs-issue__n">01</p>
             <h3 class="bs-issue__t">A driver still has to look</h3>
-            <p class="bs-issue__d">
-              The sign only works if the driver scans it. At 40 km/h on a busy road that is a real
-              assumption, and we never tested it with an actual driver.
-            </p>
+            <p class="bs-issue__d">The sign only works if the driver scans it. At 40 km/h on a busy road that is a real assumption, and we never tested it with an actual driver.</p>
           </article>
           <article class="bs-issue">
-            <div class="bs-issue__n">02</div>
+            <p class="bs-issue__n">02</p>
             <h3 class="bs-issue__t">Hailing is not the same as fitting</h3>
-            <p class="bs-issue__d">
-              Telling the driver you are there does not create a seat. The capacity dots help you
-              decide, but the bus can still arrive full.
-            </p>
+            <p class="bs-issue__d">Telling the driver you are there does not create a seat. The capacity dots help you decide, but the bus can still arrive full.</p>
           </article>
           <article class="bs-issue">
-            <div class="bs-issue__n">03</div>
-            <h3 class="bs-issue__t">Power, vandalism, weather</h3>
-            <p class="bs-issue__d">
-              A lit sign and a touchscreen on a public footpath need power, a data connection and a
-              housing that survives being leaned on. None of that was in scope.
-            </p>
+            <p class="bs-issue__n">03</p>
+            <h3 class="bs-issue__t">Every bus would need a locator</h3>
+            <p class="bs-issue__d">The board shows whichever bus is arriving first, in arrival order — which means the stop has to know where every vehicle on the route actually is. That is a GPS unit and a data link on every bus, not on the stop. It turns a street-furniture project into a fleet project, and the cost lands on the operator rather than the council.</p>
+          </article>
+          <article class="bs-issue">
+            <p class="bs-issue__n">04</p>
+            <h3 class="bs-issue__t">Power and upkeep</h3>
+            <p class="bs-issue__d">LED sign, screen and club all draw power around the clock on a public footpath. Who pays for the connection, and who replaces a broken panel, is unsolved.</p>
+          </article>
+          <article class="bs-issue bs-issue--wide">
+            <p class="bs-issue__n">05</p>
+            <h3 class="bs-issue__t">The club is the weakest part</h3>
+            <p class="bs-issue__d">MetaClub was fun to prototype, but “chat with strangers at a bus stop” is a thin reason to add a screen — and a screen that asks you to log in competes with the phone already in your hand. A better version would use the wait itself: something tied to the buses that are actually arriving, rather than a separate place to go.</p>
           </article>
         </div>
 
         <div class="bs-endnote">
           <p>
-            Built for DECO2014 Design Thinking at the University of Sydney, 2023, with two
-            teammates. The screens, the sign and the shelter are one system; the cardboard version
-            is the only one that ever existed in the same room as a person.
+            Built for DECO2014 Design Thinking at the University of Sydney, 2023, with two teammates. The screens, the
+            sign and the shelter are one system; the cardboard version is the only one that ever existed in the same
+            room as a person.
           </p>
         </div>
 
@@ -477,8 +426,8 @@
 
   <aside class="bs-index" id="bsIndex" aria-label="Section index"></aside>
 
-  <script src="js/content.js?v=85"></script>
-  <script src="js/main.js?v=85"></script>
-  <script src="js/busstop.js?v=85"></script>
+  <script src="js/content.js?v=87"></script>
+  <script src="js/main.js?v=87"></script>
+  <script src="js/busstop.js?v=87"></script>
 </body>
 </html>
