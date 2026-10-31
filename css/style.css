@@ -660,33 +660,32 @@ img { display: block; max-width: 100%; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 96px 40px 56px;
+  padding: 88px 40px 46px;
   overflow: hidden;
 }
 .projects__note {
-  position: absolute;
-  bottom: 58px;
-  left: max(28px, calc((100vw - var(--maxw)) / 2));
-  width: 248px;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto 16px;
+  text-align: center;
 }
 .projects__kicker {
-  font-size: 11px;
+  font-size: clamp(26px, 2.5vw, 36px);
   font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--purple);
-  margin-bottom: 10px;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+  margin-bottom: 8px;
 }
 .projects__intro p {
-  font-size: 12.5px;
-  line-height: 1.72;
+  font-size: 12.8px;
+  line-height: 1.7;
   color: var(--muted);
 }
 .projects__intro p:first-child {
   font-size: 13.5px;
   font-weight: 600;
   color: var(--navy);
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .deck { width: min(1200px, 100%); }
@@ -744,7 +743,7 @@ img { display: block; max-width: 100%; }
 }
 
 .deck__meta {
-  margin-top: 34px;
+  margin-top: 26px;
   text-align: center;
   min-height: 108px;
   transition: opacity 0.28s ease, transform 0.28s ease;
@@ -902,14 +901,6 @@ section[id] { scroll-margin-top: 92px; }
 /* 当前页那颗紫色胶囊本来就是白字，别被上面的规则改掉 */
 .nav.is-open .nav__link.is-active { color: #fff !important; }
 .nav.is-open .nav__drop-link.is-active { color: var(--purple) !important; }
-
-/* 中等宽度：左下注释会挤到居中的说明文字，收窄两边 */
-@media (max-width: 1200px) and (min-width: 901px) {
-  .projects__note { width: 206px; }
-  .projects__intro p { font-size: 11.8px; }
-  .projects__intro p:first-child { font-size: 12.8px; }
-  .deck__meta-d { max-width: 420px; }
-}
 
 @media (max-width: 900px) {
   .nav__inner { padding: 16px 24px; }
