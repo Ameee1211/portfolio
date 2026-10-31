@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chocolate 3D Model — Tong Zhang (Amy)</title>
+  <meta name="description" content="A chocolate flower designed backwards from the mould: Fusion 360 modelling, two 3D prints, a vacuum-formed mould, four flavours, and a folded paper box. DECO2018, 2023." />
   <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=110" />
+  <link rel="stylesheet" href="css/style.css?v=111" />
+  <link rel="stylesheet" href="css/chocolate.css?v=110" />
 </head>
-<body>
+<body class="ch-page">
 
   <!-- ================= 导航（与首页一致） ================= -->
   <header class="nav" id="nav">
@@ -23,9 +25,372 @@
     </div>
   </header>
 
-  <main class="blank-page"></main>
+  <main id="chMain">
 
-  <script src="js/content.js?v=110"></script>
-  <script src="js/main.js?v=110"></script>
+    <!-- ================= 首屏 ================= -->
+    <section class="ch-hero" id="top">
+      <span class="ch-hero__glow" aria-hidden="true"></span>
+
+      <div class="ch-hero__art">
+        <img class="ch-hero__shot" src="assets/img/choc/cho-four.webp" width="1280" height="1280"
+             alt="Four chocolate flowers in brown, blueberry, strawberry and lavender on a dark plate." decoding="async" />
+      </div>
+
+      <div class="ch-hero__inner">
+        <div class="ch-hero__copy">
+          <p class="ch-hero__kicker">Project 04 · 3D modelling &amp; making</p>
+          <h1 class="ch-hero__title">The flower<br />the mould<br />could make.</h1>
+          <p class="ch-hero__lede">
+            A flower drawn from a real rose could not be moulded: the petals were too deep for a
+            vacuum-formed sheet to follow. So the shape was rebuilt from the mould's side — shallower
+            petals, a draft angle on every one — and what came out was a chocolate you could turn
+            over in your hand.
+          </p>
+          <p class="ch-hero__spec">Fusion 360 · 3D print · vacuum forming · packaging</p>
+        </div>
+
+        <div class="ch-meta">
+          <div>
+            <div class="ch-meta__k">Role</div>
+            <div class="ch-meta__v">3D modelling, mould making<br /><span>casting, packaging</span></div>
+          </div>
+          <div>
+            <div class="ch-meta__k">Team</div>
+            <div class="ch-meta__v">Tong Zhang<br /><span>Solo</span></div>
+          </div>
+          <div>
+            <div class="ch-meta__k">Course</div>
+            <div class="ch-meta__v">3D Modelling<br /><span>The University of Sydney, 2023</span></div>
+          </div>
+          <div>
+            <div class="ch-meta__k">Tools</div>
+            <div class="ch-meta__v">Fusion 360 · Cura<br /><span>Ultimaker 2, vacuum former</span></div>
+          </div>
+        </div>
+      </div>
+
+      <a class="scrollcue ch-hero__cue" href="#overview" aria-label="Scroll down to explore more">
+        <span class="scrollcue__txt">Scroll down to explore more</span>
+        <span class="scrollcue__line" aria-hidden="true"><i></i></span>
+      </a>
+    </section>
+
+    <!-- ================= 01 ================= -->
+    <section class="ch-sec" id="overview">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">01 — The short version</p>
+        <h2 class="ch-h2">A flower you could eat, made in a mould that refused to hold a flower.</h2>
+        <p class="ch-p">
+          The brief asked for a gift. The gift became a chocolate flower — four colours, four
+          flavours, each one cast in a mould pulled from a 3D print. The interesting part is not the
+          casting. It is that the flower was drawn three times before one version could be moulded
+          at all.
+        </p>
+
+        <div class="ch-lawbox">
+          <div class="ch-law"><b>Sketch</b>Three shapes before one was printable</div>
+          <div class="ch-law"><b>Print</b>Two masters — 15mm petals, then 4mm</div>
+          <div class="ch-law"><b>Mould</b>One vacuum-formed sheet, two cavities</div>
+          <div class="ch-law"><b>Finish</b>Four flavours, trimmed by hand, folded into a star</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 02 ================= -->
+    <section class="ch-sec ch-sec--alt" id="shapes">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">02 — Three shapes</p>
+        <h2 class="ch-h2">Every version was an answer to the one before it.</h2>
+        <p class="ch-p">
+          The first was a chocolate bar printed with the polka dots from the story. Safe, and
+          forgettable — a bar with a pattern on it is still a bar. The second was a flower, but a
+          symbol of one: flat petals, no depth, nothing to bite into. The third was drawn from a real
+          rose, with petals that overlapped and curled the way they do in life.
+        </p>
+
+        <div class="ch-views">
+          <figure>
+            <img src="assets/img/choc/cho-model-deep.webp" width="1199" height="1600"
+                 alt="The first Fusion 360 model: deep overlapping petals, 15mm at the rim." loading="lazy" />
+            <figcaption><b>Version one</b>Petals at 15mm. Closest to a real rose, and the one the mould rejected.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-model-shallow.webp" width="1199" height="1600"
+                 alt="The second Fusion 360 model: petals cut back to their top curve, 4mm at the rim." loading="lazy" />
+            <figcaption><b>Version two</b>Petals cut back to their top curve, 4mm at the rim. The one that came out.</figcaption>
+          </figure>
+        </div>
+
+        <p class="ch-p ch-p--after">
+          Both screenshots are the same file, a week apart. The difference between them is not a
+          taste decision. It is what the mould could follow.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 03 模具否决 ================= -->
+    <section class="ch-sec" id="mould">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">03 — The mould said no</p>
+        <h2 class="ch-h2">Plastic stretches. It does not fold into a slot.</h2>
+        <p class="ch-p">
+          The mould is made by clamping a sheet of plastic over the printed master, heating it until
+          it sags, then pulling a vacuum underneath. The sheet is dragged down over the model and
+          takes its shape. Where the surface is broad and shallow, it follows. Where a petal drops
+          into a narrow gap, it bridges straight across the top.
+        </p>
+        <p class="ch-p">
+          On version one the petals were 15mm deep. The sheet closed over the gaps instead of
+          entering them, and the mould came out with the outline of a flower and none of its depth.
+          Version two cut the petals back to their top curve — 4mm at the rim, a −10° draft on every
+          one so it could release. The second version is not prettier. It is the one that fills.
+        </p>
+
+        <figure class="ch-video">
+          <video src="assets/img/choc/cho-mould.mp4" muted loop playsinline preload="metadata"
+                 aria-label="Vacuum forming: the heated plastic sheet is pulled down over both printed masters."></video>
+          <figcaption>The vacuum former, with both masters on the bed. The black one is version one; the white one is version two.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================= 04 两版打印 ================= -->
+    <section class="ch-sec ch-sec--alt" id="prints">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">04 — Two prints</p>
+        <h2 class="ch-h2">Same printer, same file, two hours apart.</h2>
+        <p class="ch-p">
+          Both masters were printed at 0.15mm layers on an Ultimaker 2, a couple of hours each. The
+          only thing that changed between them is the depth of the petals — and whether the sheet can
+          get in.
+        </p>
+
+        <div class="ch-views">
+          <figure>
+            <img src="assets/img/choc/cho-print-black.webp" width="960" height="1280"
+                 alt="The first print in black PLA: deep petals with visible gaps between them." loading="lazy" />
+            <figcaption><b>Print one</b>15mm petals. The gaps between them are the problem.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-print-white.webp" width="960" height="1280"
+                 alt="The second print in white PLA: the same flower with shallow petals." loading="lazy" />
+            <figcaption><b>Print two</b>4mm petals, same outline. The sheet can reach the bottom of every one.</figcaption>
+          </figure>
+        </div>
+
+        <figure class="ch-wide">
+          <img src="assets/img/choc/cho-print-bed.webp" width="960" height="1280"
+               alt="The first print still on the printer bed." loading="lazy" />
+          <figcaption>Print one, still on the bed. The layer lines transfer straight into the mould, and from the mould into the chocolate.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================= 05 制作 ================= -->
+    <section class="ch-sec" id="making">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">05 — Making it</p>
+        <h2 class="ch-h2">Eight steps, and one that decides the other seven.</h2>
+        <p class="ch-p">
+          Slice in Cura. Print the master. Vacuum-form the mould. Melt the chocolate. Colour and
+          flavour it. Pour, then tap the mould until the bubbles come up. Chill. Trim the flash off
+          the rim with a knife. The last step is the one that makes it look like something you would
+          give away rather than something you made.
+        </p>
+
+        <div class="ch-steps">
+          <figure>
+            <img src="assets/img/choc/cho-mix.webp" width="1199" height="1600"
+                 alt="Blue colouring stirred into melted white chocolate." loading="lazy" />
+            <figcaption><b>05</b>Colour and flavour, mixed until the streak disappears.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-pour.webp" width="1199" height="1600"
+                 alt="Chocolate poured from the pan into a cavity in the mould." loading="lazy" />
+            <figcaption><b>06</b>Pour, then lift and tap the mould to knock the bubbles out.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-chill.webp" width="1199" height="1600"
+                 alt="The filled mould resting in a fridge." loading="lazy" />
+            <figcaption><b>07</b>Fifteen minutes in the fridge. Too long and the surface goes dull.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-trim.webp" width="1199" height="1600"
+                 alt="Trimming the flash from the edge of a set chocolate with a knife." loading="lazy" />
+            <figcaption><b>08</b>Trim the flash. Every single one, by hand, on a paper towel.</figcaption>
+          </figure>
+        </div>
+
+        <figure class="ch-wide">
+          <img src="assets/img/choc/cho-mould-filled.webp" width="1199" height="1600"
+               alt="Two poured chocolates setting in the vacuum-formed mould." loading="lazy" />
+          <figcaption>Two cavities per sheet. The ribbed texture on the plastic is the vacuum former's own surface, not a design choice — it ends up on the back of every piece.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================= 06 四色（深色） ================= -->
+    <section class="ch-sec ch-sec--ink" id="colours">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">06 — Four colours</p>
+        <h2 class="ch-h2" style="color:#fff">Four flavours, one shape.</h2>
+        <p class="ch-p" style="color:rgba(255,255,255,.74)">
+          Brown is chocolate. Pink is strawberry. The blue one is blueberry — white chocolate plus
+          blue colouring, which reads closer to mint than to blue. Purple is lavender: the only one
+          where the shape and the flavour are the same thing. All four come from the same place as
+          the dots on the box.
+        </p>
+
+        <div class="ch-swatches">
+          <figure>
+            <img src="assets/img/choc/cho-brown.webp" width="960" height="1280" alt="The brown chocolate flower." loading="lazy" />
+            <figcaption><b>Chocolate</b>Dark, 55%</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-pink.webp" width="960" height="1280" alt="The pink chocolate flower." loading="lazy" />
+            <figcaption><b>Strawberry</b>White chocolate base</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-blue.webp" width="960" height="1280" alt="The blue-green chocolate flower." loading="lazy" />
+            <figcaption><b>Blueberry</b>Optimistically blue</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-purple.webp" width="960" height="1280" alt="The lavender chocolate flower." loading="lazy" />
+            <figcaption><b>Lavender</b>The shape and the flavour match</figcaption>
+          </figure>
+        </div>
+
+        <p class="ch-p" style="color:rgba(255,255,255,.58);margin-top:24px">
+          The four sit on the same plate as a silver leaf — the only prop in the photographs, and the
+          only thing on the table that is not edible.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 07 参数 ================= -->
+    <section class="ch-sec ch-sec--alt" id="params">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">07 — Under the hood</p>
+        <h2 class="ch-h2">Every petal needed its own fillet value.</h2>
+        <p class="ch-p">
+          Rounded edges read as a flower petal rather than a gear tooth, but a generous fillet makes
+          Fusion refuse to build the edge at all. Each petal was filleted separately, checked, and
+          adjusted when it failed.
+        </p>
+
+        <dl class="ch-params">
+          <div><dt>Base</dt><dd>50 mm circle</dd></div>
+          <div><dt>Height</dt><dd>20 mm</dd></div>
+          <div><dt>Inner petals</dt><dd>4 mm high</dd></div>
+          <div><dt>Outer ring</dt><dd>Higher than the rest</dd></div>
+          <div><dt>Stamen</dt><dd>7 mm sphere, sunk for demoulding</dd></div>
+          <div><dt>Air holes</dt><dd>1 mm, for the vacuum</dd></div>
+          <div><dt>Draft</dt><dd>−10° on every petal</dd></div>
+          <div><dt>Layer height</dt><dd>0.15 mm, PLA</dd></div>
+        </dl>
+
+        <p class="ch-p ch-p--after">
+          The draft angle is the quiet one. Without it the chocolate grips the petal walls and tears
+          on the way out. With it, the piece releases with a knock.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 08 包装 ================= -->
+    <section class="ch-sec" id="box">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">08 — The box</p>
+        <h2 class="ch-h2">The chocolate is three-dimensional, so the box had to be too.</h2>
+        <p class="ch-p">
+          A flat carton would have flattened the whole idea. The box is folded from one die-cut sheet
+          into an eight-pointed star, and when the points close it reads as a paper flower — the same
+          object as the chocolate inside, in a different material.
+        </p>
+        <p class="ch-p">
+          The pattern is the polka dots again, in the four colours of the flavours, so the box says
+          what is inside before you open it. The dieline was the only part that had to be exact: a
+          millimetre off and the points miss each other.
+        </p>
+
+        <div class="ch-views">
+          <figure>
+            <img src="assets/img/choc/cho-box.webp" width="1199" height="1600"
+                 alt="The folded paper box: an eight-pointed star with a polka dot pattern." loading="lazy" />
+            <figcaption><b>Folded</b>One sheet, eight points, closed by tucking the last flap under the first.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/img/choc/cho-dieline.webp" width="1158" height="1638"
+                 alt="The packaging dieline: cut lines solid, fold lines dashed, with the polka dot print." loading="lazy" />
+            <figcaption><b>Dieline</b>Solid is cut, dashed is fold. The print is placed so the dots land on every point.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 09 会改什么 ================= -->
+    <section class="ch-sec ch-sec--alt" id="changes">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">09 — What I would change</p>
+        <h2 class="ch-h2">Two things I would do differently.</h2>
+
+        <div class="ch-issues">
+          <article class="ch-issue">
+            <p class="ch-issue__n">01</p>
+            <h3 class="ch-issue__t">Vacuum forming eats the fine detail</h3>
+            <p class="ch-issue__d">
+              Pulling a sheet over the master only holds the outline. Layer lines and small surface
+              texture get stretched away, so the chocolate comes out with the shape of the flower but
+              not the grain of one. A platinum-cure silicone mould — the master buried in silicone,
+              cured, then cut open — would have kept that detail, and would not have needed the
+              petals flattened at all: the depth limit only exists because this mould is a sheet.
+            </p>
+          </article>
+          <article class="ch-issue">
+            <p class="ch-issue__n">02</p>
+            <h3 class="ch-issue__t">The box has no inner tray</h3>
+            <p class="ch-issue__d">
+              The star holds the chocolate on a table and looks right doing it, but nothing fixes the
+              piece in place. Tilt it and the chocolate slides into a point. One folded platform and
+              an extra score line would have solved it without adding material.
+            </p>
+          </article>
+        </div>
+
+        <figure class="ch-wide ch-wide--tight">
+          <img src="assets/img/choc/cho-back.webp" width="1199" height="1600"
+               alt="The flat back of a chocolate flower." loading="lazy" />
+          <figcaption>The back is flat and ribbed. That is the vacuum former's own texture, not a decision — see the first note above.</figcaption>
+        </figure>
+
+        <div class="ch-endnote">
+          <span>3D Modelling · The University of Sydney · 2023 · solo</span>
+          <span>DECO2018</span>
+        </div>
+
+        <a class="ch-nextcard" href="sunlink.html">
+          <div class="ch-nextcard__now">
+            <div class="ch-nextcard__k">You are here</div>
+            <div class="ch-nextcard__now-t">Chocolate 3D Model</div>
+            <div class="ch-nextcard__now-d">Project 04 of 04 · 3D modelling, mould making, packaging</div>
+          </div>
+          <div class="ch-nextcard__next">
+            <div class="ch-nextcard__k">Back to the start</div>
+            <div class="ch-nextcard__next-t">
+              SunLink Neighbours
+              <svg width="26" height="14" viewBox="0 0 30 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 8h26M20 1l7 7-7 7"/></svg>
+            </div>
+            <div class="ch-nextcard__now-d">Project 01 of 04</div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="ch-index" id="chIndex" aria-label="Section index"></aside>
+
+  <script src="js/content.js?v=111"></script>
+  <script src="js/main.js?v=111"></script>
+  <script src="js/chocolate.js?v=110"></script>
 </body>
 </html>

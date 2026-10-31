@@ -423,7 +423,7 @@ const SITE = {
         tags: ["3D Modelling", "3D Printing"],
         description:
           "A form exploration project with custom chocolate moulds developed through 3D modelling, 3D printing and hand chocolate crafting.",
-        cover: "",
+        cover: "assets/img/choc/cho-cover.webp",
         tint: "#FFE9C7",
         link: "chocolate.html",
       },
