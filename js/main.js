@@ -619,6 +619,7 @@ function initDeck() {
   if (!n) return;
 
   let cur = 0;
+  const tiltRect = new Map();   // 每张卡悬停开始时缓存的矩形
 
   const select = (i) => {
     cur = ((i % n) + n) % n;
@@ -643,6 +644,7 @@ function initDeck() {
       el.setAttribute("aria-label", a === 0 ? `Open ${data[k].title}` : `Bring ${data[k].title} to the front`);
     });
 
+    tiltRect.clear();   // 卡片换位了，缓存的矩形作废
     if (tags) {
       tags.innerHTML = data[cur].tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("");
     }
@@ -678,12 +680,21 @@ function initDeck() {
   if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     cards.forEach((el) => {
       const face = el.querySelector(".pcard__face");
+      // 悬停开始时缓存一次矩形：倾斜会改变外接矩形，实时读会让坐标来回抖动
+      el.addEventListener("pointerenter", () => {
+        tiltRect.set(el, el.getBoundingClientRect());
+      });
       el.addEventListener("pointermove", (e) => {
-        const r = el.getBoundingClientRect();
-        const px = (e.clientX - r.left) / r.width;
-        const py = (e.clientY - r.top) / r.height;
+        let rect = tiltRect.get(el);
+        if (!rect) {
+          rect = el.getBoundingClientRect();
+          tiltRect.set(el, rect);
+        }
+        const px = (e.clientX - rect.left) / rect.width;
+        const py = (e.clientY - rect.top) / rect.height;
         const MAX = 12;
-        const ry = -(px - 0.5) * 2 * MAX;
+        // 指针所在的角要往屏幕里压：右侧 → rotateY 正，下方 → rotateX 负
+        const ry = (px - 0.5) * 2 * MAX;
         const rx = -(py - 0.5) * 2 * MAX;
         face.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(1.02)`;
         el.style.setProperty("--gx", `${(px * 100).toFixed(1)}%`);
@@ -691,6 +702,7 @@ function initDeck() {
       });
       el.addEventListener("pointerleave", () => {
         face.style.transform = "";
+        tiltRect.delete(el);
       });
     });
   }
