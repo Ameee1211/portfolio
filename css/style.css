@@ -726,17 +726,10 @@ img { display: block; max-width: 100%; }
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 24px 48px -24px rgba(26, 20, 50, 0.42), 0 2px 6px rgba(26, 20, 50, 0.05);
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.4s ease;
 }
 .pcard:hover .pcard__face {
   box-shadow: 0 38px 70px -26px rgba(26, 20, 50, 0.52), 0 3px 8px rgba(26, 20, 50, 0.06);
-  animation: cardFloat 2.6s ease-in-out infinite;
-}
-@keyframes cardFloat {
-  0%, 100% { transform: rotateX(0deg) rotateY(0deg) translateZ(0); }
-  22% { transform: rotateX(2.4deg) rotateY(-2.8deg) translateZ(10px); }
-  48% { transform: rotateX(-1.6deg) rotateY(1.9deg) translateZ(2px); }
-  74% { transform: rotateX(1.8deg) rotateY(2.4deg) translateZ(7px); }
 }
 .pcard__img {
   aspect-ratio: 6 / 5;
@@ -790,6 +783,21 @@ img { display: block; max-width: 100%; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.pcard__shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.32s ease;
+  background: radial-gradient(
+    circle at var(--gx, 50%) var(--gy, 50%),
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0) 55%
+  );
+}
+.pcard:hover .pcard__shine { opacity: 1; }
+
 .pcard__corner {
   position: absolute;
   right: 13px;

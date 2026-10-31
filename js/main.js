@@ -601,6 +601,7 @@ function renderProjects() {
             <p class="pcard__d">${esc(it.description)}</p>
           </div>
           <span class="pcard__corner" aria-hidden="true">${no}</span>
+          <span class="pcard__shine" aria-hidden="true"></span>
         </div>
         <svg class="pcard__ink" viewBox="0 0 100 133" preserveAspectRatio="none" aria-hidden="true">
           <defs>
@@ -688,6 +689,27 @@ function initDeck() {
     },
     { passive: true }
   );
+
+  /* 悬停：卡片跟着指针做 3D 倾斜 + 光斑跟随，参数与 About 页照片一致 */
+  if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    cards.forEach((el) => {
+      const face = el.querySelector(".pcard__face");
+      el.addEventListener("pointermove", (e) => {
+        const r = el.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width;
+        const py = (e.clientY - r.top) / r.height;
+        const MAX = 10;
+        const ry = (px - 0.5) * 2 * MAX;
+        const rx = -(py - 0.5) * 2 * MAX;
+        face.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(1.02)`;
+        el.style.setProperty("--gx", `${(px * 100).toFixed(1)}%`);
+        el.style.setProperty("--gy", `${(py * 100).toFixed(1)}%`);
+      });
+      el.addEventListener("pointerleave", () => {
+        face.style.transform = "";
+      });
+    });
+  }
 
   cards.forEach((el, i) => {
     el.addEventListener("click", () => go(i));
