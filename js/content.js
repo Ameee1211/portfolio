@@ -18,8 +18,8 @@ const SITE = {
         href: "sunlink.html",
         dropdown: [
           { label: "SunLink Neighbours", href: "sunlink.html" },
-          { label: "Auto-Signaled Bus Stop", href: "busstop.html" },
           { label: "SteamTracker", href: "steamtracker.html" },
+          { label: "Auto-Signaled Bus Stop", href: "busstop.html" },
           { label: "Chocolate 3D Model", href: "chocolate.html" },
         ],
       },
