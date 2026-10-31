@@ -197,7 +197,37 @@
   }
 
   /* ---------- 启动 ---------- */
+
+  /* ---------- 3D 模型：占位图淡出 / CDN 失败回落本地 ---------- */
+  function bsInitModels() {
+    const list = document.querySelectorAll("model-viewer");
+    list.forEach((mv) => {
+      const local = mv.getAttribute("data-local-src");
+      const poster = mv.parentElement && mv.parentElement.querySelector(".bs-hero__poster");
+
+      const hidePoster = () => { if (poster) poster.classList.add("is-hidden"); };
+      if (mv.loaded) hidePoster();
+      mv.addEventListener("load", hidePoster);
+
+      // CDN 偶发失败：先重试一次，再退回仓库本地文件
+      let retried = false;
+      mv.addEventListener("error", () => {
+        if (!local) return;
+        const cur = mv.getAttribute("src") || "";
+        if (cur.indexOf("jsdelivr") !== -1 && !retried) {
+          retried = true;
+          const again = cur;
+          mv.removeAttribute("src");
+          setTimeout(() => mv.setAttribute("src", again + (again.indexOf("?") === -1 ? "?retry=1" : "&retry=1")), 1500);
+          return;
+        }
+        if (cur !== local) mv.setAttribute("src", local);
+      });
+    });
+  }
+
   function boot() {
+    bsInitModels();
     bsInitIndex(bsRenderIndex());
     bsInitPager();
     bsInitCue();
