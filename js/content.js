@@ -396,7 +396,7 @@ const SITE = {
         tags: ["UI/UX", "Dashboard", "Product Design"],
         description:
           "A community platform that solves the imbalance of solar energy usage by enabling neighbors to share surplus power.",
-        cover: "assets/img/proj-sunlink.webp",
+        cover: "assets/img/card-sunlink.webp",
         tint: "#D2FFF1",
         link: "sunlink.html",
       },
@@ -405,7 +405,7 @@ const SITE = {
         tags: ["Web Design", "Web App"],
         description:
           "A lightweight web app for Steam users that enables custom tracking of game time through active input, ensuring privacy and offline access.",
-        cover: "assets/img/proj-steamtracker.webp",
+        cover: "assets/img/card-steamtracker.webp",
         tint: "#DBFFD2",
         link: "steamtracker.html",
       },
@@ -414,7 +414,7 @@ const SITE = {
         tags: ["UI", "UX", "Interactive Installation"],
         description:
           "A smart bus stop prototype designed for Sydney's 'wave-to-board' culture, combining schedule info, intent signal, and a social space to improve waiting experience.",
-        cover: "assets/img/proj-busstop.webp",
+        cover: "assets/img/card-busstop.webp",
         tint: "#7EB5EC",
         link: "busstop.html",
       },
@@ -423,7 +423,7 @@ const SITE = {
         tags: ["3D Modelling", "3D Printing"],
         description:
           "A form exploration project with custom chocolate moulds developed through 3D modelling, 3D printing and hand chocolate crafting.",
-        cover: "assets/img/proj-chocolate.webp",
+        cover: "",
         tint: "#FFE9C7",
         link: "chocolate.html",
       },

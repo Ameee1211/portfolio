@@ -581,149 +581,115 @@ function renderProjects() {
   $("projectsTitle").textContent = p.title;
   $("projectsIntro").innerHTML = p.intro.map((t) => `<p>${esc(t)}</p>`).join("");
 
+  const INK_A = "M3.4 4.2 C24 2.2 58 2.9 96.6 3.7 C98.4 42 97.1 92 96.6 129.2 C70 130.8 30 130.2 3.8 129.4 C2 92 2.7 40 3.4 4.2 Z";
+  const INK_B = "M5 6 C25 4.2 57 4.8 95 5.6 C96.4 43 95.2 91 94.8 128 C69 129.4 31 128.8 5.4 128 C3.9 91 4.5 41 5 6 Z";
+
   stage.innerHTML = p.items
-    .map(
-      (it, i) => `
-      <div class="deck__item" data-i="${i}">
-        <a class="deck__link" href="${esc(it.link)}" aria-label="${esc(it.title)}">
-          <img src="${esc(it.cover)}" alt="${esc(it.title)}" width="1200" height="900" loading="eager" decoding="async" />
-          <span class="deck__num">${String(i + 1).padStart(2, "0")}</span>
-          <span class="deck__shine" aria-hidden="true"></span>
-        </a>
-      </div>`
-    )
+    .map((it, i) => {
+      const no = String(i + 1).padStart(2, "0");
+      const media = it.cover
+        ? `<img src="${esc(it.cover)}" alt="${esc(it.title)}" width="720" height="600" loading="eager" decoding="async" />`
+        : `<div class="pcard__empty"><span>Image coming</span></div>`;
+      return `
+      <div class="pcard" data-i="${i}" style="--tint:${esc(it.tint)}" tabindex="-1" role="button" aria-label="${esc(it.title)}">
+        <div class="pcard__face">
+          <div class="pcard__img">${media}</div>
+          <div class="pcard__body">
+            <span class="pcard__no">${no} / 04</span>
+            <h3 class="pcard__t">${esc(it.title)}</h3>
+            <p class="pcard__d">${esc(it.description)}</p>
+          </div>
+          <span class="pcard__corner" aria-hidden="true">${no}</span>
+        </div>
+        <svg class="pcard__ink" viewBox="0 0 100 133" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${INK_A}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          <path d="${INK_B}" fill="none" stroke="currentColor" stroke-width="1.1" stroke-opacity="0.55" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+        </svg>
+      </div>`;
+    })
     .join("");
 
   initDeck();
 }
 
-/* 3D 卡片轮播：滚轮/箭头/滑动切换，到两端把滚动交还给整页翻页 */
+/* 扑克牌堆：中间那张可进项目页，点两侧的牌把它换到中间；不支持滚轮切换 */
 function initDeck() {
-  const root = $("projects");
   const stage = $("deckStage");
-  const meta = $("deckMeta");
-  const count = $("deckCount");
-  const prev = $("deckPrev");
-  const next = $("deckNext");
-  if (!root || !stage || !meta) return;
+  const tags = $("deckTags");
+  if (!stage) return;
 
-  const items = Array.from(stage.querySelectorAll(".deck__item"));
+  const cards = Array.from(stage.querySelectorAll(".pcard"));
   const data = SITE.projects.items;
-  const n = items.length;
+  const n = cards.length;
   if (!n) return;
 
   let cur = 0;
-  let lockUntil = 0;
-  let metaTimer = 0;
-  let metaFirst = true;
 
-  const pad = (v) => String(v).padStart(2, "0");
-
-  const paintMeta = (i) => {
-    const it = data[i];
-    meta.innerHTML = `
-      <h3 class="deck__meta-t">${esc(it.title)}</h3>
-      <p class="deck__meta-d">${esc(it.description)}</p>
-      <ul class="deck__tags">${it.tags.map((t) => `<li class="tag">${esc(t)}</li>`).join("")}</ul>`;
-    if (count) count.textContent = `${pad(i + 1)} / ${pad(n)}`;
-    if (prev) prev.disabled = i === 0;
-    if (next) next.disabled = i === n - 1;
-  };
-
-  const render = () => {
-    items.forEach((el, i) => {
-      const off = i - cur;
+  const select = (i) => {
+    cur = ((i % n) + n) % n;
+    cards.forEach((el, k) => {
+      // 环形排列：最前面那张的左侧是最后一张，三张永远对称
+      let off = k - cur;
+      if (off > n / 2) off -= n;
+      if (off < -n / 2) off += n;
       const a = Math.abs(off);
-      const x = off * 68;
-      const z = -a * 150;
-      const ry = off * -17;
-      const sc = Math.max(0.58, 1 - a * 0.16);
-      el.style.transform = `translate(-50%, -50%) translateX(${x}%) translateZ(${z}px) rotateY(${ry}deg) scale(${sc})`;
-      el.style.opacity = a > 2 ? "0" : Math.max(0, 1 - a * 0.34).toFixed(3);
-      el.style.zIndex = String(20 - a);
-      el.style.filter = a === 0 ? "none" : `brightness(${(1 - a * 0.28).toFixed(2)}) blur(${(a * 0.45).toFixed(1)}px)`;
+      const gap = window.innerWidth < 900 ? 0.98 : 1;
+      const x = off * 100 * gap;
+      const y = a * 30;
+      const rot = off * 6;
+      const sc = Math.max(0.74, 1 - a * 0.15);
+      el.style.transform = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) rotate(${rot}deg) scale(${sc})`;
+      el.style.opacity = a > 1 ? "0" : String(1 - a * 0.16);
+      el.style.zIndex = String(10 - a);
+      el.style.filter = a === 0 ? "none" : "brightness(0.97)";
+      el.style.pointerEvents = a > 1 ? "none" : "auto";
       el.classList.toggle("is-current", a === 0);
-      const link = el.querySelector(".deck__link");
-      if (link) link.tabIndex = a === 0 ? 0 : -1;
+      el.tabIndex = a === 0 ? 0 : -1;
+      el.setAttribute("aria-label", a === 0 ? `Open ${data[k].title}` : `Bring ${data[k].title} to the front`);
     });
 
-    if (metaFirst) {
-      metaFirst = false;
-      paintMeta(cur);
+    if (tags) {
+      tags.innerHTML = data[cur].tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("");
+    }
+  };
+
+  const go = (i) => {
+    if (i === cur) {
+      window.location.href = data[i].link;
       return;
     }
-    meta.classList.add("is-out");
-    clearTimeout(metaTimer);
-    metaTimer = setTimeout(() => {
-      paintMeta(cur);
-      meta.classList.remove("is-out");
-    }, 150);
+    select(i);
   };
 
-  const move = (dir) => {
-    const t = Math.max(0, Math.min(n - 1, cur + dir));
-    if (t === cur) return false;
-    cur = t;
-    render();
-    return true;
-  };
-
-  render();
-
-  if (prev) prev.addEventListener("click", () => move(-1));
-  if (next) next.addEventListener("click", () => move(1));
-
-  /* 板块内先吃滚轮；到头了就不拦，让 initPinPager 翻到下一屏 */
-  root.addEventListener(
-    "wheel",
-    (e) => {
-      if (e.ctrlKey) return;
-      const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-      if (!d) return;
-      const dir = d > 0 ? 1 : -1;
-      const can = dir > 0 ? cur < n - 1 : cur > 0;
-      if (!can) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const now = performance.now();
-      if (now < lockUntil) return;
-      lockUntil = now + 560;
-      move(dir);
-    },
-    { passive: false }
-  );
-
+  /* 手机上没有侧卡可点，用横向滑动换牌 */
   let tx = 0;
-  let ty = 0;
-  root.addEventListener(
+  stage.addEventListener(
     "touchstart",
     (e) => {
-      const t = e.touches[0];
-      tx = t.clientX;
-      ty = t.clientY;
+      tx = e.touches[0].clientX;
     },
     { passive: true }
   );
-  root.addEventListener(
+  stage.addEventListener(
     "touchend",
     (e) => {
-      const t = e.changedTouches[0];
-      const dx = t.clientX - tx;
-      const dy = t.clientY - ty;
-      if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? 1 : -1);
+      const dx = e.changedTouches[0].clientX - tx;
+      if (Math.abs(dx) > 40) select(cur + (dx < 0 ? 1 : -1));
     },
     { passive: true }
   );
 
-  /* section 本身不可聚焦，键盘事件挂到 document，只在轮到这一屏时响应 */
-  document.addEventListener("keydown", (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    const r = root.getBoundingClientRect();
-    if (r.top < -8 || r.top > 80) return;
-    if (e.key === "ArrowRight" && move(1)) e.preventDefault();
-    else if (e.key === "ArrowLeft" && move(-1)) e.preventDefault();
+  cards.forEach((el, i) => {
+    el.addEventListener("click", () => go(i));
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        go(i);
+      }
+    });
   });
+
+  select(0);
 }
 
 /* ============================================================
