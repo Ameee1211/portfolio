@@ -883,6 +883,7 @@
 
 /* ---------- 04 产品展示：模型 + 视频 + 原型入口 ---------- */
 #product { padding: 76px 0 92px; }
+#product .bs-h2 { max-width: 40ch; }
 .bs-prod {
   display: grid;
   grid-template-columns: minmax(0, 1.16fr) minmax(0, 0.84fr);
