@@ -265,9 +265,10 @@
   font-size: 13px;
   line-height: 1.5;
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.74);
 }
-.bs-meta__v span { display: block; color: rgba(255, 255, 255, 0.6); }
+/* 两行同色同重：不再用透明度区分主次，避免看起来像加粗 */
+.bs-meta__v span { display: block; color: inherit; }
 
 .bs-hero__cue {
   position: absolute;
