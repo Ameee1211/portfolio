@@ -164,20 +164,41 @@
 .bs-hero__art {
   position: absolute;
   z-index: 2;
-  right: -1vw;
-  bottom: 0;
-  width: min(980px, 58vw);
+  right: -2vw;
+  bottom: 6px;
+  width: min(1180px, 74vw);
   pointer-events: none;
 }
+/* 模型会轻微压到文字：模型整体压暗 + 文字身后一团软晕保证白字可读（不留直角接缝） */
 .bs-hero__product {
   display: block;
   width: 100%;
-  height: min(560px, 38vw);
+  height: min(880px, 61vw);
   background: transparent;
   --poster-color: transparent;
   --progress-bar-color: transparent;
   pointer-events: none;
-  filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.4));
+  filter: brightness(0.86) saturate(0.96) drop-shadow(0 40px 60px rgba(0, 0, 0, 0.45));
+  /* 左缘渐隐：模型压到文字一侧时淡入背景，任何旋转角度都不会有亮色堆在字后 */
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.22) 10%, rgba(0, 0, 0, 0.8) 22%, #000 34%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.22) 10%, rgba(0, 0, 0, 0.8) 22%, #000 34%);
+}
+
+/* 文字身后的软晕：椭圆渐变，在框内就完全淡出，不留边缘接缝 */
+.bs-hero__inner::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -10% -16% -12% -18%;
+  pointer-events: none;
+  background: radial-gradient(
+    58% 56% at 34% 50%,
+    rgba(17, 10, 36, 0.88) 0%,
+    rgba(17, 10, 36, 0.74) 40%,
+    rgba(17, 10, 36, 0.4) 66%,
+    rgba(17, 10, 36, 0.13) 84%,
+    rgba(17, 10, 36, 0) 100%
+  );
 }
 
 /* 元信息四格 */
@@ -792,9 +813,13 @@
     left: 50%;
     transform: translateX(-50%);
     bottom: 0;
-    width: 102vw;
+    width: 116vw;
   }
-  .bs-hero__product { height: 50vw; }
+  .bs-hero__product {
+    height: 92vw;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
   .bs-hero__cue {
     position: absolute;
     left: 50%;
