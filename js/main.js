@@ -634,7 +634,9 @@ function initDeck() {
       const y = a * 66 * spread;         // 两侧同时下沉，中间是最高点
       const z = (off === 0 ? 62 : -260) * spread; // 两侧同深度 → 一样大
       const ry = off * -17;
-      el.style.transform = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) translateZ(${z}px) rotateX(3deg) rotateY(${ry}deg)`;
+      const base = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) translateZ(${z}px) rotateX(3deg) rotateY(${ry}deg)`;
+      el.dataset.base = base;
+      if (!el.dataset.tilting) el.style.transform = base;
       el.style.opacity = a > 1 ? "0" : String(1 - a * 0.16);
       el.style.zIndex = String(10 - a);
       el.style.filter = "none";
@@ -679,8 +681,7 @@ function initDeck() {
   /* 悬停：卡片跟着指针做 3D 倾斜 + 光斑跟随，参数与 About 页照片一致 */
   if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     cards.forEach((el) => {
-      const face = el.querySelector(".pcard__face");
-      // 悬停开始时缓存一次矩形：倾斜会改变外接矩形，实时读会让坐标来回抖动
+      // 倾斜加在外层 .pcard 上：它才是被 .pdeck 透视的元素，方向不会失真
       el.addEventListener("pointerenter", () => {
         tiltRect.set(el, el.getBoundingClientRect());
       });
@@ -693,15 +694,17 @@ function initDeck() {
         const px = (e.clientX - rect.left) / rect.width;
         const py = (e.clientY - rect.top) / rect.height;
         const MAX = 12;
-        // 指针所在的角要往屏幕里压：右侧 → rotateY 正，下方 → rotateX 负
+        // 指针所在的角往屏幕里压：右侧 → rotateY 正，下方 → rotateX 负
         const ry = (px - 0.5) * 2 * MAX;
         const rx = -(py - 0.5) * 2 * MAX;
-        face.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(1.02)`;
+        el.dataset.tilting = "1";
+        el.style.transform = `${el.dataset.base || ""} rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`;
         el.style.setProperty("--gx", `${(px * 100).toFixed(1)}%`);
         el.style.setProperty("--gy", `${(py * 100).toFixed(1)}%`);
       });
       el.addEventListener("pointerleave", () => {
-        face.style.transform = "";
+        el.dataset.tilting = "";
+        el.style.transform = el.dataset.base || "";
         tiltRect.delete(el);
       });
     });
