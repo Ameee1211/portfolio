@@ -843,7 +843,7 @@
   }
   .bs-meta__k { font-size: 8.5px; margin-bottom: 3px; }
   .bs-meta__v { font-size: 11.4px; line-height: 1.38; }
-  .bs-meta__v span { font-size: 10.4px; }
+  .bs-meta__v span { font-size: inherit; }
 
   .bs-hero__glow {
     right: auto;
