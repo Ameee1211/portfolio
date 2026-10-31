@@ -154,7 +154,7 @@ img { display: block; max-width: 100%; }
   padding: 92px 0 48px;
 }
 .wordsearch {
-  width: 94vw;
+  width: 86vw;
   margin: 0 auto;
 }
 .ws {
@@ -979,7 +979,7 @@ section[id] { scroll-margin-top: 92px; }
   /* 手机端首屏：竖版迷宫（7 行 × 6 列），撑满整屏而不是把桌面版缩小。
      留一点下一屏露头，用户能看出还可以往下滑（手机端没有翻页接管）。 */
   .hero { min-height: 92vh; min-height: 92svh; padding: 84px 0 34px; }
-  .wordsearch { width: 92vw; }
+  .wordsearch { width: 86vw; }
   .about { padding: 68px 0; }
   .about__inner { grid-template-columns: 1fr; gap: 46px; padding: 0 24px; }
   .about__stage { padding: 20px 0; }
