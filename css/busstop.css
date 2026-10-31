@@ -90,13 +90,27 @@
   display: flex;
   align-items: center;
   padding: 104px 0 40px;
+  /* 棚拍式背景：对角紫调 + 模型后方柔光 + 左上冷光 + 右下暖反光 + 暗角 */
   background:
-    /* 右下角转暖，接住产品图里的地面，边界才不会露 */
-    radial-gradient(78% 62% at 74% 92%, rgba(72, 58, 40, 0.55) 0%, rgba(72, 58, 40, 0) 62%),
-    radial-gradient(120% 90% at 78% 44%, #2a1f52 0%, rgba(23, 15, 51, 0) 62%),
-    linear-gradient(160deg, #1c1438 0%, #241c45 52%, #150e2c 100%);
+    radial-gradient(46% 42% at 72% 44%, rgba(138, 108, 255, 0.32) 0%, rgba(120, 92, 235, 0.13) 42%, rgba(110, 86, 220, 0) 68%),
+    radial-gradient(38% 40% at 14% 6%, rgba(120, 152, 255, 0.16) 0%, rgba(120, 152, 255, 0) 66%),
+    radial-gradient(62% 54% at 84% 94%, rgba(255, 178, 92, 0.16) 0%, rgba(255, 160, 72, 0) 62%),
+    radial-gradient(120% 104% at 50% 42%, rgba(6, 3, 16, 0) 52%, rgba(6, 3, 16, 0.5) 100%),
+    linear-gradient(158deg, #170f30 0%, #221a45 30%, #2b2158 52%, #1d1541 74%, #120b26 100%);
   color: #fff;
   overflow: hidden;
+}
+/* 极细噪点：避免大渐变出现色带，也让纯色区域有质感 */
+.bs-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
 }
 /* 身后一团黄光，把产品托起来 */
 .bs-hero__glow {
@@ -165,8 +179,10 @@
   position: absolute;
   z-index: 2;
   right: -2vw;
-  bottom: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   width: min(1180px, 74vw);
+  height: min(880px, 61vw);
   pointer-events: none;
 }
 /* 占位图：与模型同机位，CDN 下载期间先显示，加载完淡出 */
@@ -189,7 +205,7 @@
 .bs-hero__product {
   display: block;
   width: 100%;
-  height: min(880px, 61vw);
+  height: 100%;
   background: transparent;
   --poster-color: transparent;
   --progress-bar-color: transparent;
@@ -200,22 +216,21 @@
   mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.22) 10%, rgba(0, 0, 0, 0.8) 22%, #000 34%);
 }
 
-/* 文字身后的软晕：椭圆渐变，在框内就完全淡出，不留边缘接缝 */
+/* 模型不再压到文字，晕影移除，避免在新渐变底上露出矩形边界 */
 .bs-hero__inner::before {
   content: "";
   position: absolute;
   z-index: -1;
-  inset: -10% -16% -12% -18%;
+  inset: -12% -14% -14% -16%;
   pointer-events: none;
-  background: radial-gradient(
-    58% 56% at 34% 50%,
-    rgba(17, 10, 36, 0.88) 0%,
-    rgba(17, 10, 36, 0.74) 40%,
-    rgba(17, 10, 36, 0.4) 66%,
-    rgba(17, 10, 36, 0.13) 84%,
-    rgba(17, 10, 36, 0) 100%
-  );
+  background: rgba(11, 7, 26, 0.6);
+  /* 用 mask 收边，而不是渐变：mask 一定在框内淡到 0，不会露出矩形 */
+  -webkit-mask-image: radial-gradient(62% 56% at 34% 52%, #000 0%, rgba(0, 0, 0, 0.78) 46%, rgba(0, 0, 0, 0.34) 72%, rgba(0, 0, 0, 0) 100%);
+  mask-image: radial-gradient(62% 56% at 34% 52%, #000 0%, rgba(0, 0, 0, 0.78) 46%, rgba(0, 0, 0, 0.34) 72%, rgba(0, 0, 0, 0) 100%);
 }
+
+
+
 
 /* 元信息四格 */
 .bs-meta {
@@ -827,9 +842,11 @@
   .bs-hero__art {
     right: auto;
     left: 50%;
-    transform: translateX(-50%);
+    top: auto;
     bottom: 0;
+    transform: translateX(-50%);
     width: 116vw;
+    height: auto;
   }
   .bs-hero__product {
     height: 92vw;
