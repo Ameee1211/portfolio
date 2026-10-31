@@ -682,8 +682,8 @@ function initDeck() {
         const r = el.getBoundingClientRect();
         const px = (e.clientX - r.left) / r.width;
         const py = (e.clientY - r.top) / r.height;
-        const MAX = 10;
-        const ry = (px - 0.5) * 2 * MAX;
+        const MAX = 12;
+        const ry = -(px - 0.5) * 2 * MAX;
         const rx = -(py - 0.5) * 2 * MAX;
         face.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(1.02)`;
         el.style.setProperty("--gx", `${(px * 100).toFixed(1)}%`);
