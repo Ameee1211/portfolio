@@ -1471,3 +1471,9 @@ body.ch-page { background: var(--ch-cream); }
 .ch-swatches img { height: auto; object-position: 50% 50%; }
 .ch-steps figure { align-self: start; }
 .ch-steps img { height: auto; }
+
+/* 矮屏（1280×800 这类）：内容本来就占满，隐藏滚动提示避免压到信息格 */
+@media (max-height: 840px) {
+  .ch-hero { padding: 92px 40px 40px; }
+  .ch-hero__cue { display: none; }
+}
