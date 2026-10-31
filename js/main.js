@@ -586,7 +586,7 @@ function renderProjects() {
       (it, i) => `
       <div class="deck__item" data-i="${i}">
         <a class="deck__link" href="${esc(it.link)}" aria-label="${esc(it.title)}">
-          <img src="${esc(it.cover)}" alt="${esc(it.title)}" width="1200" height="900" loading="${i <= 1 ? "eager" : "lazy"}" decoding="async" />
+          <img src="${esc(it.cover)}" alt="${esc(it.title)}" width="1200" height="900" loading="eager" decoding="async" />
           <span class="deck__num">${String(i + 1).padStart(2, "0")}</span>
           <span class="deck__shine" aria-hidden="true"></span>
         </a>
