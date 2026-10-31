@@ -280,6 +280,7 @@
 .bs-hero__cue:hover,
 .bs-hero__cue.is-gone { transform: translateX(-50%); }
 .bs-hero__cue .scrollcue__line { background: rgba(255, 255, 255, 0.38); }
+.bs-hero__cue .scrollcue__txt { color: rgba(255, 255, 255, 0.82); }
 
 /* 深色首屏：导航收起时转白，展开菜单时回深色 */
 .bs-page .nav:not(.is-solid):not(.is-open) .nav__link { color: rgba(255, 255, 255, 0.82); }
