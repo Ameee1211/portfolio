@@ -809,31 +809,6 @@ img { display: block; max-width: 100%; }
   transform: rotate(180deg);
 }
 
-/* 悬停：手绘笔触框从一头描出，然后持续轻微抖动 */
-.pcard__ink {
-  position: absolute;
-  inset: -26px;
-  width: calc(100% + 52px);
-  height: calc(100% + 52px);
-  color: var(--purple-deep);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.28s ease;
-  transform-origin: 50% 50%;
-}
-.pcard__ink path {
-  stroke-dasharray: 2200;
-  stroke-dashoffset: 2200;
-  transition: stroke-dashoffset 0.5s ease;
-}
-.pcard:hover .pcard__ink { opacity: 1; }
-.pcard:hover .pcard__ink path { stroke-dashoffset: 0; }
-.pcard:hover .pcard__ink { animation: inkWobble 0.62s ease-in-out infinite alternate; }
-@keyframes inkWobble {
-  from { transform: rotate(-0.45deg) translate(0.5px, -0.5px) scale(1.002); }
-  to { transform: rotate(0.45deg) translate(-0.5px, 0.5px) scale(0.998); }
-}
-
 .pdeck__tags {
   display: flex;
   flex-wrap: wrap;

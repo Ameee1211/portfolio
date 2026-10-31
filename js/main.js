@@ -581,9 +581,6 @@ function renderProjects() {
   $("projectsTitle").textContent = p.title;
   $("projectsIntro").innerHTML = p.intro.map((t) => `<p>${esc(t)}</p>`).join("");
 
-  const INK_A = "M2.8 3.4 C21 1.1 61 2.7 96.9 2.9 C98.7 43 96.7 94.5 96.1 129.7 C67 131.8 30 130.1 3.3 129.3 C1.3 91.5 2.1 38.5 2.9 3.4 Z";
-  const INK_B = "M5.7 5.6 C26 3.3 56 4.9 94.5 5.3 C96.3 44.2 94.7 89.6 94.3 127.9 C67 129.5 30 128.7 5.9 128.1 C3.9 89.6 4.5 40.6 5.7 5.6 Z";
-  const INK_C = "M2.1 6.3 C23 3 58 4.1 97.6 4.7 C98.3 44.4 97.7 89.4 96.7 131.2 C68 132.4 28 131.2 2.7 130.6 C1.1 89 1.5 41.5 2.1 6.3 Z";
 
   stage.innerHTML = p.items
     .map((it, i) => {
@@ -603,19 +600,6 @@ function renderProjects() {
           <span class="pcard__corner" aria-hidden="true">${no}</span>
           <span class="pcard__shine" aria-hidden="true"></span>
         </div>
-        <svg class="pcard__ink" viewBox="0 0 100 133" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <filter id="inkRough${i}" x="-12%" y="-12%" width="124%" height="124%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="3" seed="${i * 7 + 3}" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="4.2" xChannelSelector="R" yChannelSelector="G" />
-            </filter>
-          </defs>
-          <g filter="url(#inkRough${i})">
-            <path d="${INK_A}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-opacity="0.9" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-            <path d="${INK_B}" fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.55" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-            <path d="${INK_C}" fill="none" stroke="currentColor" stroke-width="0.8" stroke-opacity="0.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-          </g>
-        </svg>
       </div>`;
     })
     .join("");
