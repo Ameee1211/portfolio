@@ -1854,3 +1854,6 @@ body.ch-page { background: var(--ch-cream); }
 
 /* 07 段：文案变长，底部留白收 18px 保持一屏 */
 #colours { padding-bottom: 138px; }
+
+/* 09 段：删图后略高 11px，底部留白收一点 */
+#changes { padding-bottom: 145px; }
