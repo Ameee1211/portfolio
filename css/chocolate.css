@@ -1820,3 +1820,34 @@ body.ch-page { background: var(--ch-cream); }
 .ch-prints-row img,
 .ch-prints-row model-viewer { height: 350px; }
 .ch-prints-row figcaption { font-size: 12px; line-height: 1.5; }
+
+/* 06 段：两版成品对比（左图右文） */
+.ch-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+  gap: clamp(20px, 3vw, 44px);
+  align-items: center;
+  margin: 30px 0 4px;
+}
+.ch-compare figure { margin: 0; }
+.ch-compare img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+}
+.ch-compare figcaption {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ch-muted);
+}
+.ch-compare__copy p {
+  font-size: 15px;
+  line-height: 1.72;
+  color: var(--ch-ink);
+}
+.ch-compare__copy p + p { margin-top: 14px; }
+@media (max-width: 1000px) {
+  .ch-compare { grid-template-columns: 1fr; gap: 16px; }
+}
