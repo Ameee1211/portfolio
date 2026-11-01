@@ -20,7 +20,7 @@
     { id: "mould", label: "Mould" },
     { id: "making", label: "Making" },
     { id: "colours", label: "Flavours" },
-    { id: "box", label: "Box" },
+    { id: "box", label: "Package" },
     { id: "changes", label: "Changes" },
   ];
 
