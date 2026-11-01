@@ -1733,3 +1733,7 @@ body.ch-page { background: var(--ch-cream); }
 /* 滚动提示：亮度略提，仍在暗背景里不抢眼 */
 .ch-hero .scrollcue__txt { color: rgba(255, 255, 255, 0.66); }
 .ch-hero .scrollcue__line { background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.4)); }
+
+/* 滚动提示再提一档 */
+.ch-hero .scrollcue__txt { color: rgba(255, 255, 255, 0.78); }
+.ch-hero .scrollcue__line { background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.46)); }
