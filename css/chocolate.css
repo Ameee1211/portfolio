@@ -1805,7 +1805,7 @@ body.ch-page { background: var(--ch-cream); }
 
 /* 3D 未加载完成时，用静态模型图兜底 */
 .ch-prints-row model-viewer {
-  background: #f7f3ec url("../assets/img/choc/cho-model-poster.webp") center/cover no-repeat;
+  background: #f7f3ec url("../assets/img/choc/cho-model-poster.webp?v=2") center/cover no-repeat;
 }
 
 .ch-prints-row model-viewer.is-ready { background-image: none; }
@@ -1814,3 +1814,9 @@ body.ch-page { background: var(--ch-cream); }
 .ch-prints-row img,
 .ch-prints-row model-viewer { height: 380px; }
 .ch-prints-row model-viewer { background-color: #f3eee4; --poster-color: #f3eee4; }
+
+/* 说明变长后，把图与模型高度收到 350，整段回到一屏 */
+.ch-prints-row { margin: 24px 0 0; }
+.ch-prints-row img,
+.ch-prints-row model-viewer { height: 350px; }
+.ch-prints-row figcaption { font-size: 12px; line-height: 1.5; }
