@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=118" />
-  <link rel="stylesheet" href="css/chocolate.css?v=114" />
+  <link rel="stylesheet" href="css/chocolate.css?v=115" />
 </head>
 <body class="ch-page">
 
@@ -141,14 +141,12 @@
     <section class="ch-sec" id="prints">
       <div class="ch-wrap">
         <p class="ch-eyebrow">03 — Two prints</p>
-        <h2 class="ch-h2">Same printer, same file, two hours apart.</h2>
+        <h2 class="ch-h2">Same printer. Two prints.</h2>
         <p class="ch-p">
-          Both masters were printed at 0.15mm layers on an Ultimaker 2, a couple of hours each. The
-          only thing that changed between them is the depth of the petals — and whether the sheet can
-          get in.
+          Both masters were printed at 0.15mm layers on an Ultimaker 2, a couple of hours each.
         </p>
 
-        <div class="ch-views">
+        <div class="ch-prints-row">
           <figure>
             <img src="assets/img/choc/cho-print-black.webp" width="960" height="1280"
                  alt="The first print in black PLA: deep petals with visible gaps between them." loading="lazy" />
@@ -159,13 +157,25 @@
                  alt="The second print in white PLA: the same flower with shallow petals." loading="lazy" />
             <figcaption><b>Print two</b>4mm petals, same outline. The sheet can reach the bottom of every one.</figcaption>
           </figure>
+          <figure class="ch-prints-row__model">
+            <model-viewer src="assets/img/3d/choc.glb"
+              alt="An interactive 3D model of the chocolate flower: a round base with shallow overlapping petals."
+              camera-orbit="34deg 55deg 112%"
+              auto-rotate
+              auto-rotate-delay="0"
+              rotation-per-second="16deg"
+              environment-image="neutral"
+              exposure="0.9"
+              shadow-intensity="1.0"
+              shadow-softness="0.8"
+              interaction-prompt="none"
+              poster="assets/img/choc/cho-model-poster.webp"
+              loading="lazy">
+            </model-viewer>
+            <figcaption><b>The model</b>Drag to turn it. Same file that went to the printer.</figcaption>
+          </figure>
         </div>
 
-        <figure class="ch-wide">
-          <img src="assets/img/choc/cho-print-bed.webp" width="960" height="1280"
-               alt="The first print still on the printer bed." loading="lazy" />
-          <figcaption>Print one, still on the bed. The layer lines transfer straight into the mould, and from the mould into the chocolate.</figcaption>
-        </figure>
       </div>
     </section>
 
@@ -398,6 +408,33 @@
 
   <aside class="ch-index" id="chIndex" aria-label="Section index"></aside>
 
+  <script>
+    // 3D 查看器：优先公共 CDN；2.5 秒没就绪就回落本地副本（本机到 GitHub Pages 很慢）
+    (function () {
+      function loadLocal() {
+        if (document.querySelector("script[data-mv-local]")) return;
+        var l = document.createElement("script");
+        l.type = "module";
+        l.dataset.mvLocal = "1";
+        l.src = "assets/js/model-viewer.min.js";
+        document.head.appendChild(l);
+      }
+      var s = document.createElement("script");
+      s.type = "module";
+      s.src = "https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js";
+      s.onerror = loadLocal;
+      document.head.appendChild(s);
+      setTimeout(function () {
+        if (!(window.customElements && customElements.get("model-viewer"))) loadLocal();
+      }, 2500);
+      // 模型加载完成后去掉静态兜底图，避免和 canvas 叠影
+      document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".ch-prints-row model-viewer").forEach(function (mv) {
+          mv.addEventListener("load", function () { mv.classList.add("is-ready"); });
+        });
+      });
+    })();
+  </script>
   <script src="js/content.js?v=118"></script>
   <script src="js/main.js?v=118"></script>
   <script src="js/chocolate.js?v=112"></script>
