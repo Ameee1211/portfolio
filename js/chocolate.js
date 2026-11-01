@@ -19,7 +19,7 @@
     { id: "params", label: "Params" },
     { id: "mould", label: "Mould" },
     { id: "making", label: "Making" },
-    { id: "colours", label: "Colours" },
+    { id: "colours", label: "Flavours" },
     { id: "box", label: "Box" },
     { id: "changes", label: "Changes" },
   ];
