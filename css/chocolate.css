@@ -1477,3 +1477,207 @@ body.ch-page { background: var(--ch-cream); }
   .ch-hero { padding: 92px 40px 40px; }
   .ch-hero__cue { display: none; }
 }
+
+/* ============================================================
+   首屏（v2）：深色巧克力实景铺满整屏，成品整盘站在左侧
+   ============================================================ */
+.ch-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: clamp(14px, 2.2vw, 34px);
+  min-height: 100svh;
+  max-width: none;
+  margin: 0;
+  padding: 106px 0 46px;
+  background: #150c09;
+  color: #fff;
+  overflow: hidden;
+}
+/* 背景：深色巧克力实景，轻虚化，压暗 */
+.ch-hero::before {
+  content: "";
+  position: absolute;
+  inset: -5%;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+  background: url("../assets/img/choc/ch-dark-bg.webp") 50% 46% / cover no-repeat;
+  filter: blur(2.5px) brightness(0.74) saturate(1.02) contrast(1.03);
+  transform: scale(1.03);
+}
+/* 可读性遮罩：右侧压暗给文字，上下轻压 */
+.ch-hero__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(18, 10, 7, 0.34) 0%, rgba(18, 10, 7, 0.06) 24%, rgba(18, 10, 7, 0) 42%, rgba(18, 10, 7, 0.58) 66%, rgba(18, 10, 7, 0.9) 100%),
+    linear-gradient(180deg, rgba(18, 10, 7, 0.52) 0%, rgba(18, 10, 7, 0.1) 20%, rgba(18, 10, 7, 0) 44%, rgba(18, 10, 7, 0.46) 100%);
+}
+.ch-hero__glow { display: none; }
+
+.ch-hero__art {
+  position: relative;
+  z-index: 2;
+  grid-column: 1;
+  padding-left: max(30px, calc((100vw - 1240px) / 2 + 40px));
+}
+.ch-hero__shot {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ch-hero__inner {
+  position: relative;
+  z-index: 3;
+  grid-column: 2;
+  padding-right: max(30px, calc((100vw - 1240px) / 2 + 40px));
+}
+.ch-hero__kicker { color: #d9a273; }
+.ch-hero__title { color: #fff; font-size: clamp(33px, 3.6vw, 54px); }
+.ch-hero__lede { color: rgba(255, 255, 255, 0.76); }
+.ch-hero__spec { color: rgba(255, 255, 255, 0.46); }
+
+.ch-hero .ch-meta {
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 22px;
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: none;
+}
+.ch-hero .ch-meta__k { color: rgba(255, 255, 255, 0.42); }
+.ch-hero .ch-meta__v { color: #fff; font-weight: 400; }
+.ch-hero .ch-meta__v span { color: rgba(255, 255, 255, 0.52); }
+
+.ch-hero .scrollcue__txt { color: rgba(255, 255, 255, 0.5); }
+.ch-hero .scrollcue__line { background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.32)); }
+.ch-hero .scrollcue__line i { background: #d9a273; }
+.ch-hero__cue { bottom: 22px; }
+
+/* 导航在深色首屏上转白（与 Bus Stop 页同一套） */
+.ch-page .nav:not(.is-solid):not(.is-open) .nav__link { color: rgba(255, 255, 255, 0.82); }
+.ch-page .nav:not(.is-solid):not(.is-open) .nav__link:hover,
+.ch-page .nav:not(.is-solid):not(.is-open) .nav__link.is-active { color: #fff; }
+.ch-page .nav:not(.is-solid) .nav__burger span { background: #fff; }
+
+/* 矮屏：收紧上下留白，隐藏滚动提示 */
+@media (max-height: 840px) {
+  .ch-hero { padding: 92px 0 34px; }
+  .ch-hero__shot { max-width: 560px; }
+  .ch-hero__cue { display: none; }
+}
+
+/* 窄屏：图在上、文在下 */
+@media (max-width: 1000px) {
+  .ch-hero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 96px 24px 46px;
+    gap: 20px;
+    min-height: 0;
+  }
+  .ch-hero__art { padding: 0; width: 100%; max-width: 520px; }
+  .ch-hero__inner { padding: 0; width: 100%; max-width: 620px; }
+  .ch-hero__shot { max-width: none; }
+  .ch-hero .ch-meta { margin-top: 20px; }
+  .ch-hero__cue { display: none; }
+}
+
+/* 首屏 v3：提亮背景，压缩文字块让出底部提示位 */
+.ch-hero { padding: 100px 0 86px; }
+.ch-hero::before { filter: blur(1.8px) brightness(0.94) saturate(1.04) contrast(1.04); }
+.ch-hero__veil {
+  background:
+    linear-gradient(90deg, rgba(18, 10, 7, 0.2) 0%, rgba(18, 10, 7, 0.05) 24%, rgba(18, 10, 7, 0.1) 40%, rgba(18, 10, 7, 0.66) 56%, rgba(18, 10, 7, 0.9) 76%, rgba(18, 10, 7, 0.95) 100%),
+    linear-gradient(180deg, rgba(18, 10, 7, 0.55) 0%, rgba(18, 10, 7, 0.12) 18%, rgba(18, 10, 7, 0) 46%, rgba(18, 10, 7, 0.55) 100%);
+}
+.ch-hero__title { font-size: clamp(32px, 3.25vw, 48px); line-height: 1.04; margin-bottom: 16px; }
+.ch-hero__lede { font-size: clamp(14.5px, 1.16vw, 16.5px); line-height: 1.6; max-width: 36ch; margin-bottom: 12px; }
+.ch-hero__spec { margin-bottom: 22px; }
+.ch-hero .ch-meta { margin-top: 20px; padding-top: 14px; gap: 12px 20px; }
+
+/* 盘子：略微放大，加接地阴影把它压在桌面上 */
+.ch-hero__shot {
+  max-width: 690px;
+  filter: drop-shadow(0 26px 44px rgba(0, 0, 0, 0.62)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+}
+@media (max-height: 840px) {
+  .ch-hero__shot { max-width: 600px; }
+}
+
+/* 窄屏：清掉从 Bus Stop 继承的绝对定位与旧背景图 */
+@media (max-width: 1000px) {
+  .ch-hero::before {
+    display: block;
+    background: url("../assets/img/choc/ch-dark-bg.webp") 50% 42% / cover no-repeat;
+    filter: blur(2.2px) brightness(0.92) saturate(1.04);
+    transform: none;
+    inset: 0;
+  }
+  .ch-hero__art {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    transform: none;
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 0;
+    height: auto;
+  }
+  .ch-hero__shot { width: 100%; max-width: none; }
+}
+
+/* 窄屏 v2：改 flex 单列，图片在上、文案在下 */
+@media (max-width: 1000px) {
+  .ch-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    min-height: 100svh;
+    padding: 92px 24px 56px;
+  }
+  .ch-hero__art {
+    width: 100%;
+    max-width: 420px;
+    margin: 0;
+    padding: 0;
+    align-self: center;
+  }
+  .ch-hero__inner {
+    width: 100%;
+    max-width: 560px;
+    margin: 0;
+    padding: 0;
+    align-self: center;
+  }
+}
+
+/* 窄屏 v3：图略小、字号略收，尽量贴近一屏 */
+@media (max-width: 1000px) {
+  .ch-hero { padding: 84px 22px 42px; gap: 16px; }
+  .ch-hero__art { max-width: 336px; }
+  .ch-hero__kicker { font-size: 9.5px; margin-bottom: 8px; }
+  .ch-hero__title { font-size: clamp(27px, 8.4vw, 38px); line-height: 1.06; margin-bottom: 10px; }
+  .ch-hero__lede { font-size: 12.8px; line-height: 1.55; margin-bottom: 9px; }
+  .ch-hero__spec { font-size: 8.5px; letter-spacing: 0.1em; margin-bottom: 12px; }
+  .ch-hero .ch-meta { margin-top: 0; padding-top: 10px; gap: 8px 14px; }
+  .ch-hero .ch-meta__k { font-size: 8px; margin-bottom: 2px; }
+  .ch-hero .ch-meta__v { font-size: 11px; line-height: 1.34; }
+}
+
+@media (max-width: 1000px) {
+  .ch-hero { padding: 76px 22px 30px; }
+  .ch-hero__lede { max-width: none; }
+}
