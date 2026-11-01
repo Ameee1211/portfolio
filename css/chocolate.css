@@ -1757,3 +1757,6 @@ body.ch-page { background: var(--ch-cream); }
 #shapes { padding-bottom: 108px; }
 #shapes .ch-views--four { margin: 24px 0 16px; }
 #shapes .ch-p--after { margin-top: 14px; }
+
+/* 02 段结尾多了一行，再压一次间距 */
+#shapes { padding-bottom: 78px; }
