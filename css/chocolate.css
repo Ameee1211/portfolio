@@ -1729,3 +1729,7 @@ body.ch-page { background: var(--ch-cream); }
 @media (max-width: 1000px) {
   .ch-hero__spec { font-size: 9px; letter-spacing: 0.06em; }
 }
+
+/* 滚动提示：亮度略提，仍在暗背景里不抢眼 */
+.ch-hero .scrollcue__txt { color: rgba(255, 255, 255, 0.66); }
+.ch-hero .scrollcue__line { background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.4)); }
