@@ -1708,3 +1708,24 @@ body.ch-page { background: var(--ch-cream); }
   row-gap: 14px;
 }
 .ch-hero__spec { text-wrap: balance; }
+
+/* 首屏文案调整（v116）：右边缘严格对齐 + 技术标签一行 + 信息值全白 */
+.ch-hero__lede {
+  max-width: none;
+  margin-left: auto;
+  text-align: right;
+}
+.ch-hero__spec {
+  font-size: 10px;
+  letter-spacing: 0.085em;
+  white-space: nowrap;
+  text-wrap: nowrap;
+  text-align: right;
+}
+.ch-hero .ch-meta__v,
+.ch-hero .ch-meta__v span { color: #fff; }
+
+/* 窄屏：技术标签一行放得下，字号略收避免顶满两边 */
+@media (max-width: 1000px) {
+  .ch-hero__spec { font-size: 9px; letter-spacing: 0.06em; }
+}
