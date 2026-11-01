@@ -75,7 +75,7 @@
   font-size: clamp(38px, 6.2vw, 92px);
   font-weight: 700;
   color: var(--navy);
-  opacity: 0.05;
+  opacity: 0.085;
   -webkit-mask-image: radial-gradient(ellipse 66% 62% at 54% 44%, #000 10%, transparent 78%);
   mask-image: radial-gradient(ellipse 66% 62% at 54% 44%, #000 10%, transparent 78%);
 }

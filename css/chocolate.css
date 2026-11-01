@@ -1569,7 +1569,8 @@ body.ch-page { background: var(--ch-cream); }
 
 /* 矮屏：收紧上下留白，隐藏滚动提示 */
 @media (max-height: 840px) {
-  .ch-hero { padding: 92px 0 34px; }
+  /* 矮屏：首屏不顶满，底部露出下一段的 40px，避免被当成"只有这一屏" */
+  .ch-hero { padding: 92px 0 34px; min-height: calc(100svh - 40px); }
   .ch-hero__shot { max-width: 560px; }
   .ch-hero__cue { display: none; }
 }
