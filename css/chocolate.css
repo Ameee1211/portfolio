@@ -1851,3 +1851,6 @@ body.ch-page { background: var(--ch-cream); }
 @media (max-width: 1000px) {
   .ch-compare { grid-template-columns: 1fr; gap: 16px; }
 }
+
+/* 07 段：文案变长，底部留白收 18px 保持一屏 */
+#colours { padding-bottom: 138px; }
