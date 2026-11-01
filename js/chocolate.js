@@ -295,18 +295,34 @@
     chInitVideo();
   }
 
-  /* ---------- 06 成型视频：进视口才播，离开就停 ---------- */
+  /* ---------- 06 成型视频：按引擎选源，进视口才播，离开就停 ---------- */
   function chInitVideo() {
     const v = document.querySelector(".ch-video video");
     if (!v) return;
+
+    // Safari / iOS 对 VP9 WebM 支持不可靠（选了 webm 却解不出画面），改给 HEVC mp4
+    const ua = navigator.userAgent;
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/.test(ua);
+    const pick = isIOS || isSafari ? v.dataset.mp4 : v.dataset.webm;
+    if (pick && v.getAttribute("src") !== pick) v.src = pick;
+
+    // 自动播放被拒（iOS 省电模式等）时露出控件，至少能点一下
+    const play = () => {
+      const pr = v.play();
+      if (pr && pr.catch) pr.catch(() => { v.controls = true; });
+    };
+
     if (!("IntersectionObserver" in window)) {
-      v.play().catch(() => {});
+      play();
       return;
     }
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
-          if (e.isIntersecting) v.play().catch(() => {});
+          if (e.isIntersecting) play();
           else v.pause();
         });
       },
