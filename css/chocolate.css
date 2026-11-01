@@ -1484,7 +1484,7 @@ body.ch-page { background: var(--ch-cream); }
 .ch-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
   align-items: center;
   gap: clamp(14px, 2.2vw, 34px);
   min-height: 100svh;
@@ -1681,3 +1681,30 @@ body.ch-page { background: var(--ch-cream); }
   .ch-hero { padding: 76px 22px 30px; }
   .ch-hero__lede { max-width: none; }
 }
+
+/* 文字右对齐（与 SunLink Neighbours 首屏一致） */
+.ch-hero__inner { text-align: right; }
+.ch-hero__copy { margin-left: auto; }
+.ch-hero__kicker,
+.ch-hero__title,
+.ch-hero__lede,
+.ch-hero__spec { text-align: right; }
+.ch-hero .ch-meta { justify-items: end; text-align: right; }
+
+/* 信息格改成两列贴右，避免右对齐后两列之间空太大 */
+.ch-hero .ch-meta {
+  grid-template-columns: auto auto;
+  justify-content: end;
+  column-gap: 64px;
+  row-gap: 14px;
+}
+
+/* 修正：信息格回到等宽两列（auto 列宽在 1024 会挤到换行）；
+   spec 那行用 balance，避免只剩一个词掉到第二行 */
+.ch-hero .ch-meta {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  justify-content: normal;
+  column-gap: 28px;
+  row-gap: 14px;
+}
+.ch-hero__spec { text-wrap: balance; }
