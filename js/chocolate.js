@@ -310,7 +310,7 @@
           else v.pause();
         });
       },
-      { threshold: 0.45 }
+      { threshold: 0.2 }
     );
     io.observe(v);
   }
