@@ -182,10 +182,39 @@
       </div>
     </section>
 
-    <!-- ================= 04 模具否决 ================= -->
-    <section class="ch-sec ch-sec--alt" id="mould">
+    <!-- ================= 04 参数 ================= -->
+    <section class="ch-sec ch-sec--alt" id="params">
       <div class="ch-wrap">
-        <p class="ch-eyebrow">04 — The mould said no</p>
+        <p class="ch-eyebrow">04 — Under the hood</p>
+        <h2 class="ch-h2">Every petal needed its own fillet value.</h2>
+        <p class="ch-p">
+          Rounded edges read as a flower petal rather than a gear tooth, but a generous fillet makes
+          Fusion refuse to build the edge at all. Each petal was filleted separately, checked, and
+          adjusted when it failed.
+        </p>
+
+        <dl class="ch-params">
+          <div><dt>Base</dt><dd>50 mm circle</dd></div>
+          <div><dt>Height</dt><dd>20 mm</dd></div>
+          <div><dt>Inner petals</dt><dd>4 mm high</dd></div>
+          <div><dt>Outer ring</dt><dd>Higher than the rest</dd></div>
+          <div><dt>Stamen</dt><dd>7 mm sphere, sunk for demoulding</dd></div>
+          <div><dt>Air holes</dt><dd>1 mm, for the vacuum</dd></div>
+          <div><dt>Draft</dt><dd>−10° on every petal</dd></div>
+          <div><dt>Layer height</dt><dd>0.15 mm, PLA</dd></div>
+        </dl>
+
+        <p class="ch-p ch-p--after">
+          The draft angle is the quiet one. Without it the chocolate grips the petal walls and tears
+          on the way out. With it, the piece releases with a knock.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= 05 模具否决 ================= -->
+    <section class="ch-sec" id="mould">
+      <div class="ch-wrap">
+        <p class="ch-eyebrow">05 — The mould said no</p>
         <h2 class="ch-h2">Plastic stretches. It does not fold into a slot.</h2>
         <p class="ch-p">
           The mould is made by clamping a sheet of plastic over the printed master, heating it until
@@ -208,10 +237,10 @@
       </div>
     </section>
 
-    <!-- ================= 05 制作 ================= -->
-    <section class="ch-sec" id="making">
+    <!-- ================= 06 制作 ================= -->
+    <section class="ch-sec ch-sec--alt" id="making">
       <div class="ch-wrap">
-        <p class="ch-eyebrow">05 — Making it</p>
+        <p class="ch-eyebrow">06 — Making it</p>
         <h2 class="ch-h2">Eight steps, and one that decides the other seven.</h2>
         <p class="ch-p">
           Slice in Cura. Print the master. Vacuum-form the mould. Melt the chocolate. Colour and
@@ -251,10 +280,10 @@
       </div>
     </section>
 
-    <!-- ================= 06 四色（深色） ================= -->
+    <!-- ================= 07 四色（深色） ================= -->
     <section class="ch-sec ch-sec--ink" id="colours">
       <div class="ch-wrap">
-        <p class="ch-eyebrow">06 — Four colours</p>
+        <p class="ch-eyebrow">07 — Four colours</p>
         <h2 class="ch-h2" style="color:#fff">Four flavours, one shape.</h2>
         <p class="ch-p" style="color:rgba(255,255,255,.74)">
           Brown is chocolate. Pink is strawberry. The blue one is blueberry — white chocolate plus
@@ -285,35 +314,6 @@
         <p class="ch-p" style="color:rgba(255,255,255,.58);margin-top:24px">
           The four sit on the same plate as a silver leaf — the only prop in the photographs, and the
           only thing on the table that is not edible.
-        </p>
-      </div>
-    </section>
-
-    <!-- ================= 07 参数 ================= -->
-    <section class="ch-sec ch-sec--alt" id="params">
-      <div class="ch-wrap">
-        <p class="ch-eyebrow">07 — Under the hood</p>
-        <h2 class="ch-h2">Every petal needed its own fillet value.</h2>
-        <p class="ch-p">
-          Rounded edges read as a flower petal rather than a gear tooth, but a generous fillet makes
-          Fusion refuse to build the edge at all. Each petal was filleted separately, checked, and
-          adjusted when it failed.
-        </p>
-
-        <dl class="ch-params">
-          <div><dt>Base</dt><dd>50 mm circle</dd></div>
-          <div><dt>Height</dt><dd>20 mm</dd></div>
-          <div><dt>Inner petals</dt><dd>4 mm high</dd></div>
-          <div><dt>Outer ring</dt><dd>Higher than the rest</dd></div>
-          <div><dt>Stamen</dt><dd>7 mm sphere, sunk for demoulding</dd></div>
-          <div><dt>Air holes</dt><dd>1 mm, for the vacuum</dd></div>
-          <div><dt>Draft</dt><dd>−10° on every petal</dd></div>
-          <div><dt>Layer height</dt><dd>0.15 mm, PLA</dd></div>
-        </dl>
-
-        <p class="ch-p ch-p--after">
-          The draft angle is the quiet one. Without it the chocolate grips the petal walls and tears
-          on the way out. With it, the piece releases with a knock.
         </p>
       </div>
     </section>
@@ -440,6 +440,6 @@
   </script>
   <script src="js/content.js?v=118"></script>
   <script src="js/main.js?v=118"></script>
-  <script src="js/chocolate.js?v=112"></script>
+  <script src="js/chocolate.js?v=113"></script>
 </body>
 </html>

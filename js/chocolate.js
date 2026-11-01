@@ -16,10 +16,10 @@
     { id: "overview", label: "Short" },
     { id: "shapes", label: "Shapes" },
     { id: "prints", label: "Prints" },
+    { id: "params", label: "Params" },
     { id: "mould", label: "Mould" },
     { id: "making", label: "Making" },
     { id: "colours", label: "Colours" },
-    { id: "params", label: "Params" },
     { id: "box", label: "Box" },
     { id: "changes", label: "Changes" },
   ];
