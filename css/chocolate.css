@@ -1592,7 +1592,7 @@ body.ch-page { background: var(--ch-cream); }
 
 /* 首屏 v3：提亮背景，压缩文字块让出底部提示位 */
 .ch-hero { padding: 100px 0 86px; }
-.ch-hero::before { filter: blur(1.8px) brightness(0.94) saturate(1.04) contrast(1.04); }
+.ch-hero::before { filter: blur(3.4px) brightness(1.0) saturate(1.05) contrast(1.02); }
 .ch-hero__veil {
   background:
     linear-gradient(90deg, rgba(18, 10, 7, 0.2) 0%, rgba(18, 10, 7, 0.05) 24%, rgba(18, 10, 7, 0.1) 40%, rgba(18, 10, 7, 0.66) 56%, rgba(18, 10, 7, 0.9) 76%, rgba(18, 10, 7, 0.95) 100%),
