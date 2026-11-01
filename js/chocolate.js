@@ -21,7 +21,7 @@
     { id: "making", label: "Making" },
     { id: "colours", label: "Flavours" },
     { id: "box", label: "Package" },
-    { id: "changes", label: "Changes" },
+    { id: "changes", label: "Known Issues" },
   ];
 
   /* ---------- 索引 ---------- */
