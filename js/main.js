@@ -289,6 +289,19 @@ function renderWordSearch() {
     (r < half ? glyphParts.top : glyphParts.bottom).push(html);
   });
 
+  // 填充行：平时透明，裂开时淡入，让字母一直铺到屏幕上下边缘
+  const pool = letters.join("").replace(/\s/g, "");
+  const fillRow = (r) =>
+    Array.from({ length: cols }, (_, c) => {
+      const ch = pool[Math.abs(r * 37 + c * 17 + 11) % pool.length];
+      return `<text class="ws__letter ws__letter--fill" x="${c * g.cw + g.cw / 2}" y="${r * g.ch + g.ch / 2}">${esc(ch)}</text>`;
+    }).join("");
+
+  const topFill = Array.from({ length: 4 }, (_, i) => fillRow(i - 4)).join("");
+  const botFill = Array.from({ length: 10 }, (_, i) => fillRow(rows + i)).join("");
+  glyphParts.top.unshift(topFill);
+  glyphParts.bottom.push(botFill);
+
   host.innerHTML = `
     <svg class="ws" viewBox="0 0 ${cols * g.cw} ${rows * g.ch}" role="img"
          aria-label="A word search puzzle: drag across the letters to find them">
