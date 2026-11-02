@@ -1221,14 +1221,31 @@ function initHomeScenes() {
   // 时间轴（单位：1 = 一个视口高度）。A→B 是转场区间，其余是停留区
   const TL = {
     splitA: 0.12, splitB: 1.1,
-    morphA: 1.8, morphB: 2.5,
-    shrinkA: 2.9, shrinkB: 3.5,
-    end: 3.8,
+    info: 1.45, intro: 1.8, skills: 2.15, btn: 2.5,
+    morphA: 3.0, morphB: 3.7,
+    shrinkA: 4.1, shrinkB: 4.7,
+    end: 5.0,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
 
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+  // 回弹缓动：末尾会冲过头再退回来，形成"弹出来"的手感
+  const backOut = (x) => {
+    const c1 = 1.15;
+    const c3 = c1 + 1;
+    const u = x - 1;
+    return 1 + c3 * u * u * u + c1 * u * u;
+  };
+
+  // 从右侧滑入：位移用回弹曲线，透明度前 60% 就走完，避免"半透明卡住"
+  const slideIn = (el, p, from) => {
+    if (!el) return;
+    const e = backOut(clamp01(p));
+    el.style.transform = `translateX(${((1 - e) * from).toFixed(2)}px)`;
+    el.style.opacity = String(Math.min(1, clamp01(p) * 1.8));
+  };
 
   let els = null;
   const grab = () => {
@@ -1241,6 +1258,10 @@ function initHomeScenes() {
       found: [...hero.querySelectorAll(".ws__found")],
       cue: hero.querySelector(".hero__cue"),
       aboutInner: document.querySelector(".about__inner"),
+      info: document.querySelector(".about__info"),
+      intro: document.querySelector(".about__intro"),
+      skills: document.querySelector(".skills"),
+      btn: document.querySelector(".about__btn"),
       splitRatio: (() => {
         const gs = hero.querySelector('.ws__letters[data-half="top"]');
         const rows = SITE.wordsearch.desktop.letters.length;
@@ -1309,6 +1330,12 @@ function initHomeScenes() {
       els.aboutInner.style.opacity = String(0.2 + 0.8 * p1);
       els.aboutInner.style.transform = "none";
     }
+
+    // —— About 内部：信息 / 简介 / 技能 / 按钮 依次从右侧弹出 ——
+    slideIn(els.info, (t - TL.info) / 0.3, 90);
+    slideIn(els.intro, (t - TL.intro) / 0.3, 90);
+    slideIn(els.skills, (t - TL.skills) / 0.34, 120);
+    slideIn(els.btn, (t - TL.btn) / 0.3, 70);
 
     // —— About → Projects（本步先用淡出占位，下一步换成照片 morph）——
     const p2 = clamp01((t - TL.morphA) / (TL.morphB - TL.morphA));

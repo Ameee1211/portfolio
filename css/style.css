@@ -1022,7 +1022,12 @@ body.hs-on .footer {
 }
 
 body.hs-on .hero { z-index: 40; }
-body.hs-on .about { z-index: 30; background: var(--cream); }
+body.hs-on .about { z-index: 30; background: var(--cream); overflow: hidden; }
+/* 分步出现的四块：初始藏在右侧，由滚动进度驱动滑入 */
+body.hs-on .about__info,
+body.hs-on .about__intro,
+body.hs-on .skills,
+body.hs-on .about__btn { will-change: transform, opacity; }
 body.hs-on .projects { z-index: 20; background: var(--bg); }
 body.hs-on .footer { z-index: 10; }
 
