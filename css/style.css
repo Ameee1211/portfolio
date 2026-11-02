@@ -1008,6 +1008,8 @@ section[id] { scroll-margin-top: 92px; }
   height: 300vh;
   pointer-events: none;
 }
+/* 没接转场（手机端）时，这个时间轴占位块不参与布局 */
+body:not(.hs-on) .hs-stage { display: none; }
 
 body.hs-on .hero,
 body.hs-on .about,
@@ -1082,6 +1084,9 @@ body.hs-on .footer { z-index: 10; }
 }
 .hero__veil--top { top: 0; height: 62%; }
 .hero__veil--bottom { bottom: 0; height: 38%; }
+/* 没接转场（手机端）时，这两片裂开用的遮罩不该出现：
+   它们是不透明的背景色、还带 z-index，会把首屏的字母迷宫整个盖住 */
+body:not(.hs-on) .hero__veil { display: none; }
 
 body.hs-on .hero__inner { position: relative; z-index: 1; }
 body.hs-on .hero__seam { z-index: 2; }

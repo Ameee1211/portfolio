@@ -1034,6 +1034,19 @@ initHomeScenes();
 // 桌面 / 手机切换时换一套迷宫（两套题布局与字数都不同）
 WS_MQ.addEventListener("change", () => renderWordSearch());
 
+// 跨过 900px 断点 = 电脑端转场 / 手机端普通滚动 互换。
+// 转场会往元素上写大量 inline 样式，中途换模式收不干净，重载最稳。
+// 但要避开加载瞬间视口还没定下来的那一下（手机会先按 980 宽算一遍再收敛到设备宽度），
+// 否则会自己触发自己、反复重载
+const SCENE_MQ = window.matchMedia("(min-width: 901px)");
+let mqReady = false;
+setTimeout(() => { mqReady = true; }, 1600);
+SCENE_MQ.addEventListener("change", () => {
+  if (!mqReady) return;
+  mqReady = false;
+  setTimeout(() => window.location.reload(), 350);
+});
+
 /* ============================================================
    分屏吸附（项目页通用）：一屏一段，段内可滚，段末再滚翻页
    由各项目页调用 initSectionPager({ main, sections, hero })
@@ -1224,6 +1237,9 @@ function initHomeScenes() {
   const stage = document.querySelector(".hs-stage");
   const hero = document.querySelector(".hero");
   if (!stage || !hero) return;
+  // 手机端（与字母迷宫同一个断点）不做转场：保持普通文档流，
+  // 一屏一屏往下滑，hero / About / Projects / 页脚各自就在原位，没有任何位移动画
+  if (window.matchMedia("(max-width: 900px)").matches) return;
 
   const about = document.querySelector(".about");
   const projects = document.querySelector(".projects");
@@ -1538,15 +1554,10 @@ function initHomeScenes() {
       t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.revealA ? "card" : t < TL.shrinkA ? "projects" : "thanks";
   };
 
-  // 一次滚动就跨掉整段停留区（滚得太猛）时，先把页面按回 About 末尾，
-  // 让人至少看清一次；需要再滚一下才真的进 Projects
+  // 滚动位置只当时间轴用：手一动就开始播放，所以这里不再记"停留点"
   let prevT = 0;
-  let guardArmed = true;   // 防暴滚只拦一次
   let playing = false;
   let playRaf = 0;
-  let restY = null;        // 停住时的位置：只有"停下来再滑"才算一次
-  let restT = 0;           // 停住时在时间轴上的位置
-  let restTimer = 0;
   let lastY = window.scrollY;
 
 
@@ -1574,7 +1585,6 @@ function initHomeScenes() {
     const dur = 760 + 1650 * Math.min(1, dist / (full || 1));
 
     playing = true;
-    restY = null;
     const t0 = performance.now();
     const tick = (now) => {
       const k = Math.min(1, (now - t0) / dur);
@@ -1584,11 +1594,9 @@ function initHomeScenes() {
       } else {
         playing = false;
         root.style.scrollBehavior = prevBehavior;
+        // 播完就等于"用户刚滚到这里"，下一次滚动可以从这里接着判断方向
         lastY = window.scrollY;
         prevT = window.scrollY / (window.innerHeight || 1);
-        // 播完等同于"刚停在这里"，下一次滑动可以直接接上
-        restY = window.scrollY;
-        restT = window.scrollY / (window.innerHeight || 1);
       }
     };
     playRaf = requestAnimationFrame(tick);
@@ -1621,6 +1629,7 @@ function initHomeScenes() {
   const onScroll = () => {
     const vh = window.innerHeight || 1;
     const t = window.scrollY / vh;
+    const step = window.scrollY - lastY;   // 这一次事件滚了多少（px）
 
     if (playing) {
       lastY = window.scrollY;
@@ -1629,52 +1638,27 @@ function initHomeScenes() {
       return;
     }
 
-    // 停手 300ms 才记录"停在哪"，这样按钮刚出现时的惯性不会直接把页面带走
-    clearTimeout(restTimer);
-    restTimer = setTimeout(() => {
-      if (playing) return;
-      const y = window.scrollY / (window.innerHeight || 1);
-      const inAbout = y >= TL.btn - 0.02 && y < TL.revealB - 0.02;
-      const inProjects = y >= TL.revealB - 0.02 && y < TL.shrinkA;
-      if (inAbout || inProjects) {
-        restY = window.scrollY;
-        restT = y;
-      } else {
-        restY = null;
-      }
-    }, 300);
-
-    if (restY !== null) {
-      const dy = window.scrollY - restY;
-      // About 完整后，往下滑一下 → 整段自动播完
-      if (restT < TL.morphA + 0.02 && dy > 8) {
-        playForward();
-        lastY = window.scrollY;
-        if (!raf) raf = requestAnimationFrame(apply);
-        return;
-      }
-      // Projects 里往上滑一下 → 自动倒放回 About
-      if (restT >= TL.revealB - 0.02 && dy < -8) {
-        playBack();
-        lastY = window.scrollY;
-        if (!raf) raf = requestAnimationFrame(apply);
-        return;
-      }
-    }
-
-    if (!window.__hsNoAuto && guardArmed && t - lastY > 1.1 && lastY / vh < TL.morphA && t > TL.morphA) {
-      guardArmed = false;
-      const back = (TL.morphA - 0.03) * vh;
-      lastY = TL.morphA - 0.03;
-      const root = document.documentElement;
-      const b = root.style.scrollBehavior;
-      root.style.scrollBehavior = "auto";
-      window.scrollTo(0, back);
-      root.style.scrollBehavior = b;
+    // 不再等"手停下来 300ms 再滑一次"：滚轮一动，动画就跟着开始。
+    // 前进：滑到动画起点（About 完整后再往下 0.35 屏）就自己走完整个转场，
+    // 手不用停、也不用再滚第二下。playForward 会先把页面对齐到动画起点，
+    // 这段区间（2.75~3.10）画面完全没变化，所以对齐那一下看不出跳
+    if (step > 2 && prevT < TL.morphA + 0.02 && t >= TL.morphA - 0.03 && t < TL.revealB) {
+      playForward();
+      lastY = window.scrollY;
+      prevT = window.scrollY / vh;
       if (!raf) raf = requestAnimationFrame(apply);
       return;
     }
-    if (t < TL.morphA - 0.4) guardArmed = true;
+    // 后退：在 Projects 这一屏里往上动一点就自动倒放回 About
+    // （上界卡在 shrinkA：已经翻到 Thanks 页脚时，先让它正常滚回 Projects，别直接弹回去）
+    if (step < -2 && prevT >= TL.revealB - 0.02 && prevT < TL.shrinkA) {
+      playBack();
+      lastY = window.scrollY;
+      prevT = window.scrollY / vh;
+      if (!raf) raf = requestAnimationFrame(apply);
+      return;
+    }
+
     lastY = window.scrollY;
     prevT = t;
     if (!raf) raf = requestAnimationFrame(apply);
