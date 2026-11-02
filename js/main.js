@@ -1469,10 +1469,60 @@ function initHomeScenes() {
   // 一次滚动就跨掉整段停留区（滚得太猛）时，先把页面按回 About 末尾，
   // 让人至少看清一次；需要再滚一下才真的进 Projects
   let prevT = 0;
-  let guardArmed = true;   // 只拦一次：退回 About 内部才会重新武装
+  let guardArmed = true;   // 防暴滚只拦一次
+  let playArmed = true;    // "滑一下走完"是否武装
+  let playing = false;
+  let playRaf = 0;
+
+  // About 四块都出来之后，再往下滑一下就自动把整段转场播完（滚多滚少都一样）
+  const triggerY = () => TL.btn + 0.1;
+
+  const playThrough = () => {
+    const vh = window.innerHeight || 1;
+    const total = (TL.revealB - TL.morphA) * vh;
+    const to = TL.revealB * vh;
+    // 停留区画面完全静止，直接对齐到动画起点，看不出来
+    const from = Math.max(window.scrollY, TL.morphA * vh);
+    if (to - from < 40) return;
+
+    playing = true;
+    playArmed = false;
+    if (window.scrollY !== from) window.scrollTo(0, from);
+
+    const dur = 900 + 2100 * Math.min(1, (to - from) / (total || 1));
+    const t0 = performance.now();
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / dur);
+      const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      window.scrollTo(0, Math.round(from + (to - from) * e));
+      if (k < 1) {
+        playRaf = requestAnimationFrame(tick);
+      } else {
+        playing = false;
+        prevT = window.scrollY / (window.innerHeight || 1);
+      }
+    };
+    playRaf = requestAnimationFrame(tick);
+  };
+
   const onScroll = () => {
     const vh = window.innerHeight || 1;
     const t = window.scrollY / vh;
+
+    if (playing) {
+      prevT = t;
+      if (!raf) raf = requestAnimationFrame(apply);
+      return;
+    }
+
+    // 越过触发线就自己播完，不需要用户继续滚
+    if (playArmed && prevT <= triggerY() && t > triggerY() && t < TL.revealB) {
+      playThrough();
+      prevT = t;
+      if (!raf) raf = requestAnimationFrame(apply);
+      return;
+    }
+    if (t < triggerY() - 0.3) playArmed = true;   // 退回 About 内部才重新武装
 
     if (guardArmed && t - prevT > 1.1 && prevT < TL.morphA && t > TL.morphA) {
       guardArmed = false;
@@ -1486,6 +1536,13 @@ function initHomeScenes() {
     prevT = t;
     if (!raf) raf = requestAnimationFrame(apply);
   };
+
+  // 自动播放期间不让滚轮 / 手指插进来打断
+  const blockInput = (e) => {
+    if (playing) e.preventDefault();
+  };
+  window.addEventListener("wheel", blockInput, { passive: false });
+  window.addEventListener("touchmove", blockInput, { passive: false });
   prevT = window.scrollY / (window.innerHeight || 1);   // 刷新时可能带着滚动位置回来，别误判成"跳了一大下"
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", () => {
