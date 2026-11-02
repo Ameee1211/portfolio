@@ -1780,39 +1780,36 @@ function initHomeScenes() {
   window.addEventListener("touchmove", blockInput, { passive: false });
 
   /* ——— Projects 屏：滚轮翻牌 ———
-     这一屏是最后一屏，滚轮在这里不再带动时间轴，改成翻牌：
-     往下 = 下一张，往上 = 上一张；翻到第一张再往上才退回 About。
-     到边不循环，否则"往上退出去"和"上一张"会打架。
+     这一屏是最后一屏，滚轮在这里不再带动时间轴：
+     · 往下 = 下一张（右边的卡转到中间，中间的转到左边）
+     · 往上 = 直接退回 About Me（不做"上一张"，这样退出永远只有一种手势）
+     到边不循环：已经是最后一张时再往下就没有更多了。
      手感的关键是"不丢格"：滚轮事件按 110px 折算成一格放进队列，
      锁着的时候继续攒，锁一松就一张接一张地翻，所以连滚三下就是三张。 */
   const W_GATE = 110;      // 一格 = 110px 的滚动量（鼠标一格约 110~120）
   const W_LOCK = 300;      // 两次翻牌的最小间隔（换牌过渡 0.72s，这里允许接上去）
   let wAcc = 0;            // 还没攒够一格的零头
-  let wQueue = 0;          // 攒下的格数（正=往下，负=往上）
+  let wQueue = 0;          // 攒下还没翻的格数（只往下翻，所以不会为负）
   let wLock = 0;
   let wPump = 0;
 
   const deckStep = () => {
     const deck = els.pdeck;
-    if (!deck || !deck.__deck || !wQueue) return;
-    const dir = wQueue > 0 ? 1 : -1;
-    if (deck.__deck.step(dir)) {
-      wQueue -= dir;
+    if (!deck || !deck.__deck || wQueue <= 0) return;
+    if (deck.__deck.step(1)) {
+      wQueue -= 1;
       wLock = performance.now() + W_LOCK;
-    } else if (dir < 0) {
-      wQueue = 0;
-      playBack();                              // 已经是第一张，再往上 → 倒放回 About
     } else {
-      wQueue = 0;                              // 已经是最后一张，往下没有更多了
+      wQueue = 0;                              // 已经是最后一张，没有更多了
     }
   };
 
   const pumpWheel = () => {
     wPump = 0;
-    if (playing || !wQueue) return;
+    if (playing || wQueue <= 0) return;
     if (performance.now() < wLock) { wPump = setTimeout(pumpWheel, 60); return; }
     deckStep();
-    if (wQueue && !playing) wPump = setTimeout(pumpWheel, 60);
+    if (wQueue > 0 && !playing) wPump = setTimeout(pumpWheel, 60);
   };
 
   const onDeckWheel = (e) => {
@@ -1823,13 +1820,19 @@ function initHomeScenes() {
     if (window.scrollY / vh < TL.revealB - 0.01) return;   // 还没到 Projects 屏，正常滚动
     e.preventDefault();                        // 这一屏的滚轮全部由我们接管
 
+    // 往上：不翻上一张，直接退回 About
+    if (e.deltaY < 0) {
+      wQueue = 0;
+      wAcc = 0;
+      playBack();
+      return;
+    }
+    // 往下：翻下一张
     wAcc += e.deltaY;
     const gates = Math.trunc(wAcc / W_GATE);
-    if (gates) {
-      // 中途反向就把没翻的旧账清掉，免得"往上滚一下先翻了两张"
-      if (wQueue && Math.sign(wQueue) !== Math.sign(gates)) wQueue = 0;
+    if (gates > 0) {
       wAcc -= gates * W_GATE;
-      wQueue = Math.max(-3, Math.min(3, wQueue + gates));   // 一次最多排三张，防手一抖飞过去
+      wQueue = Math.min(3, wQueue + gates);    // 一次最多排三张，防手一抖飞过去
     }
     if (!wPump) wPump = setTimeout(pumpWheel, 0);
   };
