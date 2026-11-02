@@ -1222,9 +1222,10 @@ function initHomeScenes() {
   const TL = {
     splitA: 0.12, splitB: 1.1,
     info: 1.55, intro: 1.95, skills: 2.35, btn: 2.75,
-    morphA: 3.25, morphB: 3.95,
-    shrinkA: 4.35, shrinkB: 4.95,
-    end: 5.2,
+    // btn 到 morphA 之间是纯停留区：四块都出现了，画面不动，让人看得清
+    morphA: 3.85, morphB: 4.55,
+    shrinkA: 4.95, shrinkB: 5.55,
+    end: 5.8,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
@@ -1276,7 +1277,7 @@ function initHomeScenes() {
 
   let raf = 0;
   // 导航里的 #home / #about / #projects 在叠屏布局下没有位置可跳，改成滚到对应时间点
-  const ANCHORS = { home: 0, about: 0.9, projects: 1.8, contact: 2.5 };
+  const ANCHORS = { home: 0, about: 1.2, projects: 3.95, contact: 5.7 };
   document.querySelectorAll('a[href^="#"]').forEach((a) => {
     const id = (a.getAttribute("href") || "").slice(1);
     if (!(id in ANCHORS)) return;
@@ -1355,9 +1356,27 @@ function initHomeScenes() {
     stage.dataset.phase = t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.shrinkA ? "projects" : "thanks";
   };
 
+  // 一次滚动就跨掉整段停留区（滚得太猛）时，先把页面按回 About 末尾，
+  // 让人至少看清一次；需要再滚一下才真的进 Projects
+  let prevT = 0;
+  let guardArmed = true;   // 只拦一次：退回 About 内部才会重新武装
   const onScroll = () => {
+    const vh = window.innerHeight || 1;
+    const t = window.scrollY / vh;
+
+    if (guardArmed && t - prevT > 1.1 && prevT < TL.morphA && t > TL.morphA) {
+      guardArmed = false;
+      const back = (TL.morphA - 0.03) * vh;
+      prevT = TL.morphA - 0.03;
+      window.scrollTo(0, back);
+      if (!raf) raf = requestAnimationFrame(apply);
+      return;
+    }
+    if (t < TL.morphA - 0.4) guardArmed = true;
+    prevT = t;
     if (!raf) raf = requestAnimationFrame(apply);
   };
+  prevT = window.scrollY / (window.innerHeight || 1);   // 刷新时可能带着滚动位置回来，别误判成"跳了一大下"
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
   apply();
