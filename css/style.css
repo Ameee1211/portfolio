@@ -1023,7 +1023,18 @@ body.hs-on .footer {
 }
 
 body.hs-on .hero { z-index: 40; }
-body.hs-on .about { z-index: 30; background: var(--cream); overflow: hidden; }
+body.hs-on .about { z-index: 30; background: transparent; overflow: hidden; }
+/* 底色单独一层：文字先退、背景后走，卡片移动时还是暖黄的 */
+body.hs-on .about::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--cream);
+  opacity: var(--about-bg, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+body.hs-on .about__inner { position: relative; z-index: 1; }
 /* 分步出现的四块：平时藏在右侧，滚过各自那条线后整套动画自己播完 */
 body.hs-on .about__info,
 body.hs-on .about__intro,

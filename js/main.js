@@ -1410,8 +1410,15 @@ function initHomeScenes() {
     const pM = clamp01((t - TL.morphA) / (TL.morphB - TL.morphA));
     // 翻牌卡与原照片位置重合，所以在这里把原图让出来，看不出替换
     if (els.photo) els.photo.style.opacity = pM > 0.001 ? "0" : "";
-    // 文字先退场（前四成），卡片再起步，不然两者同时动会互相抢
-    if (about) about.style.opacity = String(Math.max(0, 1 - pM * 2.1));
+    // 文字先退场，底色慢一拍再走：卡片移动时画面还是暖的，不是一片白
+    if (about) {
+      about.style.setProperty("--about-bg", Math.max(0, 1 - pM * 1.15).toFixed(3));
+      about.style.opacity = "1";
+    }
+    // 只在进入这一阶段后接管，否则会盖掉裂开时的 0.2→1 渐显
+    if (els.aboutInner && pM > 0) {
+      els.aboutInner.style.opacity = String(Math.max(0, 1 - pM * 2.1));
+    }
 
     // 进入翻牌前同步一次背面（用户可能已经在 Projects 里换过卡）
     if (pM > 0 && !backSynced) {
