@@ -262,7 +262,7 @@ function renderWordSearch() {
     const rect = `<rect class="ws__hl" data-w="${i}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${b.rx}" />`;
     const rot = b.rot ? ` transform="rotate(${b.rot.toFixed(2)} ${b.cx} ${b.cy})"` : "";
     const html = `<g class="ws__band" style="animation-delay:${(i * 0.55).toFixed(2)}s"${rot}>${rect}</g>`;
-    (b.cy < midY ? bandParts.top : bandParts.bottom).push(html);
+    ((b.y + b.h / 2) < midY ? bandParts.top : bandParts.bottom).push(html);
   });
 
   const hitParts = { top: [], bottom: [] };
