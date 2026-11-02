@@ -1120,7 +1120,6 @@ body.hs-on .hero__seam { z-index: 2; }
   transform: translate(-50%, -50%);
   will-change: transform, opacity;
 }
-/* 透视只在真正翻面时打开：平时保持纯 2D 变换，和照片走同一条渲染路径 */
 .abcard.is-flipping {
   perspective: 1500px;
   transform-style: preserve-3d;

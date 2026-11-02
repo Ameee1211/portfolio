@@ -669,9 +669,12 @@ function initDeck() {
       const spread = window.innerWidth < 900 ? 0.52 : 1;
       const x = off * 148 * spread;      // 左右等距，以中间那张为轴镜像
       const y = a * 66 * spread;         // 两侧同时下沉，中间是最高点
-      const z = (off === 0 ? 62 : -260) * spread; // 两侧同深度 → 一样大
+      const z = (off === 0 ? 0 : -260) * spread; // 两侧同深度 → 一样大
+      // 中间那张保持纯平面（不做 Z 位移和后仰）：它是翻牌动画的落点，
+      // 一旦带透视，卡片里的图片和文字会被压出梯形，和翻牌卡差 2~4px，交接就会"跳"
+      const rx = off === 0 ? 0 : 3;
       const ry = off * -17;
-      const base = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) translateZ(${z}px) rotateX(3deg) rotateY(${ry}deg)`;
+      const base = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) translateZ(${z}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
       el.dataset.base = base;
       if (!el.dataset.tilting) el.style.transform = base;
       el.style.opacity = a > 1 ? "0" : String(1 - a * 0.16);
@@ -722,13 +725,9 @@ function initDeck() {
     cards.forEach((el) => {
       // 倾斜加在外层 .pcard 上：它才是被 .pdeck 透视的元素，方向不会失真
       el.addEventListener("pointerenter", () => {
-        // 首页是分屏转场，卡片会从照片位置飞过来并落位；
-        // 如果这时卡片跟着鼠标倾斜，落位/交接那一下就会被看成"跳"，所以首页不做倾斜
-        if (document.body.classList.contains("hs-on")) return;
         tiltRect.set(el, el.getBoundingClientRect());
       });
       el.addEventListener("pointermove", (e) => {
-        if (document.body.classList.contains("hs-on")) return;
         let rect = tiltRect.get(el);
         if (!rect) {
           rect = el.getBoundingClientRect();
@@ -746,7 +745,6 @@ function initDeck() {
         el.style.setProperty("--gy", `${(py * 100).toFixed(1)}%`);
       });
       el.addEventListener("pointerleave", () => {
-        if (document.body.classList.contains("hs-on")) return;
         el.dataset.tilting = "";
         el.style.transform = el.dataset.base || "";
         tiltRect.delete(el);
@@ -1502,18 +1500,18 @@ function initHomeScenes() {
     // —— 翻面：照片（正面）转到 SunLink 卡片（背面）——
     const pF = clamp01((t - TL.flipA) / (TL.flipB - TL.flipA));
     if (els.card) els.card.classList.toggle("is-flipping", pF > 0 && pF < 1);
+    // 终点姿态要和真卡一致（3° 后仰），否则卡片内部内容会因为透视不同而错位
     if (els.cardInner) els.cardInner.style.transform = `rotateY(${(easeIO(pF) * 180).toFixed(2)}deg)`;
 
     // —— Projects 的其他元素：标题、两侧卡、标签一起浮现 ——
     const pR = clamp01((t - TL.revealA) / (TL.revealB - TL.revealA));
-    // 先让真卡在完全相同的位置"垫"上来（pR 0→0.55 就铺满），
-    // 然后再把翻牌卡撤走；同时交叉淡化会让中间态发灰，看着像卡片在动
+    // 真卡先在完全相同的位置"垫"上来（pR 0→0.55 铺满），翻牌卡一直不透明地压在上面，
+    // 等真卡完全就位的那一帧才让位 —— 不做交叉淡化，避免中间态发灰/重影被看成"卡片在动"
     const pIn = Math.min(1, pR / 0.55);
-    const pOut = Math.max(0, (pR - 0.55) / 0.45);
     if (els.pnote) els.pnote.style.opacity = String(pIn);
     if (els.pdeck) els.pdeck.style.opacity = String(pIn);
     if (els.ptags) els.ptags.style.opacity = String(pIn);
-    if (els.card) els.card.style.opacity = String(pM > 0 ? 1 - pOut : 0);
+    if (els.card) els.card.style.opacity = String(pM > 0 && pR <= 0.55 ? 1 : 0);
 
     // —— Projects → Thanks（先用淡出占位）——
     const p3 = clamp01((t - TL.shrinkA) / (TL.shrinkB - TL.shrinkA));
@@ -1543,6 +1541,7 @@ function initHomeScenes() {
 
   // 从当前位置匀速缓入缓出地滚到 toY
   const playTo = (toY) => {
+    if (window.__hsNoAuto) return;   // 调试用：关掉自动播放，便于逐点检查
     const root = document.documentElement;
     const prevBehavior = root.style.scrollBehavior;
     // style.css 是 scroll-behavior: smooth，逐帧 scrollTo 会每帧重启平滑滚动 → 页面几乎不动
@@ -1646,7 +1645,7 @@ function initHomeScenes() {
       }
     }
 
-    if (guardArmed && t - lastY > 1.1 && lastY / vh < TL.morphA && t > TL.morphA) {
+    if (!window.__hsNoAuto && guardArmed && t - lastY > 1.1 && lastY / vh < TL.morphA && t > TL.morphA) {
       guardArmed = false;
       const back = (TL.morphA - 0.03) * vh;
       lastY = TL.morphA - 0.03;
