@@ -251,49 +251,57 @@ function renderWordSearch() {
   host.style.setProperty("--ws-band", String(g.band));
   host.dataset.puzzle = cfg === SITE.wordsearch.mobile ? "mobile" : "desktop";
 
-  // 答案直接可见：每个单词一开始就画出虚线轮廓，未找到时轮流呼吸
-  const foundBands = words
-    .map((w, i) => {
-      const b = wsBand(g, w.cells);
-      const rect = `<rect class="ws__hl" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${b.rx}" />`;
-      const rot = b.rot ? ` transform="rotate(${b.rot.toFixed(2)} ${b.cx} ${b.cy})"` : "";
-      return `<g class="ws__band" style="animation-delay:${(i * 0.55).toFixed(2)}s"${rot}>${rect}</g>`;
-    })
-    .join("");
+  // 上下各成一组：滚动时上半屏上移、下半屏下移，做出「从中线裂开」的转场
+  const half = Math.ceil(rows / 2);
+  const midY = (rows * g.ch) / 2;
 
-  const hits = letters
-    .map((row, r) =>
-      row
-        .split("")
-        .map(
-          (_, c) =>
-            `<rect class="ws__hit" x="${c * g.cw + 6}" y="${r * g.ch + 6}" width="${g.cw - 12}" height="${g.ch - 12}" rx="14" />`
-        )
-        .join("")
-    )
-    .join("");
+  const bandParts = { top: [], bottom: [] };
+  words.forEach((w, i) => {
+    const b = wsBand(g, w.cells);
+    const rect = `<rect class="ws__hl" data-w="${i}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${b.rx}" />`;
+    const rot = b.rot ? ` transform="rotate(${b.rot.toFixed(2)} ${b.cx} ${b.cy})"` : "";
+    const html = `<g class="ws__band" style="animation-delay:${(i * 0.55).toFixed(2)}s"${rot}>${rect}</g>`;
+    (b.cy < midY ? bandParts.top : bandParts.bottom).push(html);
+  });
 
-  const glyphs = letters
-    .map((row, r) =>
-      row
-        .split("")
-        .map(
-          (ch, c) =>
-            `<text class="ws__letter" x="${c * g.cw + g.cw / 2}" y="${r * g.ch + g.ch / 2}">${esc(ch)}</text>`
-        )
-        .join("")
-    )
-    .join("");
+  const hitParts = { top: [], bottom: [] };
+  letters.forEach((row, r) => {
+    const html = row
+      .split("")
+      .map(
+        (_, c) =>
+          `<rect class="ws__hit" x="${c * g.cw + 6}" y="${r * g.ch + 6}" width="${g.cw - 12}" height="${g.ch - 12}" rx="14" />`
+      )
+      .join("");
+    (r < half ? hitParts.top : hitParts.bottom).push(html);
+  });
+
+  const glyphParts = { top: [], bottom: [] };
+  letters.forEach((row, r) => {
+    const html = row
+      .split("")
+      .map(
+        (ch, c) =>
+          `<text class="ws__letter" x="${c * g.cw + g.cw / 2}" y="${r * g.ch + g.ch / 2}">${esc(ch)}</text>`
+      )
+      .join("");
+    (r < half ? glyphParts.top : glyphParts.bottom).push(html);
+  });
 
   host.innerHTML = `
     <svg class="ws" viewBox="0 0 ${cols * g.cw} ${rows * g.ch}" role="img"
          aria-label="A word search puzzle: drag across the letters to find them">
-      <g class="ws__found">${foundBands}</g>
+      <g class="ws__found" data-half="top">${bandParts.top.join("")}</g>
+      <g class="ws__found" data-half="bottom">${bandParts.bottom.join("")}</g>
       <line class="ws__sel" x1="0" y1="0" x2="0" y2="0" />
-      <g class="ws__hits">${hits}</g>
-      <g class="ws__letters">${glyphs}</g>
+      <g class="ws__hits" data-half="top">${hitParts.top.join("")}</g>
+      <g class="ws__hits" data-half="bottom">${hitParts.bottom.join("")}</g>
+      <g class="ws__letters" data-half="top">${glyphParts.top.join("")}</g>
+      <g class="ws__letters" data-half="bottom">${glyphParts.bottom.join("")}</g>
       <circle class="ws__cursor" cx="0" cy="0" r="13" />
     </svg>`;
+
+  if (window.__grabHomeScenes) window.__grabHomeScenes();
 
   // 玩过就直接呈现完成态，不再让人玩第二遍
   if (wsPlayerDone()) {
@@ -311,9 +319,10 @@ function wsPaintSolved(host, cfg) {
   const letterEls = [...host.querySelectorAll(".ws__letter")];
 
   cfg.words.forEach((w, i) => {
-    if (bandEls[i]) {
-      bandEls[i].classList.add("is-found");
-      bandEls[i].parentElement.classList.add("is-done");
+    const el = host.querySelector(`.ws__hl[data-w="${i}"]`);
+    if (el) {
+      el.classList.add("is-found");
+      el.parentElement.classList.add("is-done");
     }
     w.cells.forEach(([r, c]) => {
       const el = letterEls[r * cols + c];
@@ -390,8 +399,11 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
   let completed = false;
 
   function paintFound(i) {
-    bandEls[i].classList.add("is-found");
-    bandEls[i].parentElement.classList.add("is-done");
+    const band = svg.querySelector(`.ws__hl[data-w="${i}"]`);
+    if (band) {
+      band.classList.add("is-found");
+      band.parentElement.classList.add("is-done");
+    }
     words[i].cells.forEach(([r, c]) => letterEls[idx(r, c)].classList.add("is-found"));
   }
 
@@ -992,7 +1004,7 @@ renderFooter();
 initReveal();
 initAboutStage();
 initScrollCue();
-initPinPager();
+initHomeScenes();
 
 // 桌面 / 手机切换时换一套迷宫（两套题布局与字数都不同）
 WS_MQ.addEventListener("change", () => renderWordSearch());
@@ -1177,3 +1189,103 @@ window.initSectionPager = function (opts) {
   window.addEventListener("wheel", onWheel, { passive: false });
   window.addEventListener("keydown", onKey);
 };
+
+/* ============================================================
+   首页 · 四屏转场
+   Hero(字母迷宫) → About → Projects → Thanks
+   四屏固定叠在同一视口，滚动位置只当时间轴用；全部可逆
+   ============================================================ */
+function initHomeScenes() {
+  const stage = document.querySelector(".hs-stage");
+  const hero = document.querySelector(".hero");
+  if (!stage || !hero) return;
+
+  const about = document.querySelector(".about");
+  const projects = document.querySelector(".projects");
+  const footer = document.querySelector(".footer");
+
+  // 时间轴（单位：1 = 一个视口高度）。A→B 是转场区间，其余是停留区
+  const TL = {
+    splitA: 0.2, splitB: 0.65,
+    morphA: 1.05, morphB: 1.5,
+    shrinkA: 1.95, shrinkB: 2.3,
+    end: 2.6,
+  };
+  stage.style.height = (TL.end + 1) * 100 + "vh";
+  document.body.classList.add("hs-on");
+
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+  let els = null;
+  const grab = () => {
+    els = {
+      svg: hero.querySelector(".ws"),
+      top: [...hero.querySelectorAll('[data-half="top"]')],
+      bot: [...hero.querySelectorAll('[data-half="bottom"]')],
+      veilT: hero.querySelector(".hero__veil--top"),
+      veilB: hero.querySelector(".hero__veil--bottom"),
+      found: [...hero.querySelectorAll(".ws__found")],
+      cue: hero.querySelector(".hero__cue"),
+      aboutInner: document.querySelector(".about__inner"),
+    };
+  };
+  grab();
+  window.__grabHomeScenes = grab;
+
+  let raf = 0;
+  // 导航里的 #home / #about / #projects 在叠屏布局下没有位置可跳，改成滚到对应时间点
+  const ANCHORS = { home: 0, about: 0.9, projects: 1.8, contact: 2.5 };
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    const id = (a.getAttribute("href") || "").slice(1);
+    if (!(id in ANCHORS)) return;
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      window.scrollTo({ top: window.innerHeight * ANCHORS[id], behavior: "smooth" });
+    });
+  });
+
+  const apply = () => {
+    raf = 0;
+    const vh = window.innerHeight || 1;
+    const t = window.scrollY / vh;
+
+    // —— Hero → About：字母上下裂开，半屏底色跟着退场 ——
+    const p1 = clamp01((t - TL.splitA) / (TL.splitB - TL.splitA));
+    const svg = els.svg;
+    if (svg && svg.viewBox && svg.viewBox.baseVal.width) {
+      const k = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+      const d = (vh * 0.92 * p1) / (k || 1);
+      els.top.forEach((g) => g.setAttribute("transform", `translate(0 ${-d})`));
+      els.bot.forEach((g) => g.setAttribute("transform", `translate(0 ${d})`));
+    }
+    if (els.veilT) els.veilT.style.transform = `translateY(${(-p1 * 200).toFixed(2)}%)`;
+    if (els.veilB) els.veilB.style.transform = `translateY(${(p1 * 200).toFixed(2)}%)`;
+    // 答案虚线跨在上下两半之间，裂开时没法跟着走，干脆先淡出
+    if (els.found) els.found.forEach((g) => (g.style.opacity = String(Math.max(0, 1 - p1 * 3))));
+    if (els.cue) els.cue.style.opacity = String(Math.max(0, 1 - p1 * 4));
+    // About 的背景不动（否则会露出下一屏），只让里面的内容有个"浮起"的位移
+    if (els.aboutInner) els.aboutInner.style.transform = `translateY(${((1 - p1) * 9).toFixed(2)}vh)`;
+
+    // —— About → Projects（本步先用淡出占位，下一步换成照片 morph）——
+    const p2 = clamp01((t - TL.morphA) / (TL.morphB - TL.morphA));
+    if (about) about.style.opacity = String(1 - p2);
+
+    // —— Projects → Thanks（同上，先淡出占位）——
+    const p3 = clamp01((t - TL.shrinkA) / (TL.shrinkB - TL.shrinkA));
+    if (projects) projects.style.opacity = String(1 - p3);
+
+    // 已经让开的那几屏不能再挡点击（否则 About 的按钮、卡片都点不到）
+    if (hero) hero.style.pointerEvents = p1 > 0.9 ? "none" : "";
+    if (about) about.style.pointerEvents = p2 > 0.9 ? "none" : "";
+    if (projects) projects.style.pointerEvents = p3 > 0.9 ? "none" : "";
+
+    stage.dataset.phase = t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.shrinkA ? "projects" : "thanks";
+  };
+
+  const onScroll = () => {
+    if (!raf) raf = requestAnimationFrame(apply);
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  apply();
+}

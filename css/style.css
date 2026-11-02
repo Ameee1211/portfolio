@@ -984,3 +984,61 @@ section[id] { scroll-margin-top: 92px; }
   .footer__banner { padding: 54px 24px; }
   .footer__thanks { font-size: 21px; }
 }
+
+/* 首屏 → About 转场：中线裂开时涌出的一条主题紫 */
+.hero__seam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 0;
+  transform: translateY(-50%);
+  background: var(--purple);
+  opacity: 0;
+  pointer-events: none;
+  will-change: height, opacity;
+}
+
+/* ============================================================
+   首页 · 四屏转场（Hero / About / Projects / Thanks）
+   四个板块固定叠在同一视口，滚动位置只当作时间轴
+   ============================================================ */
+.hs-stage {
+  height: 300vh;
+  pointer-events: none;
+}
+
+body.hs-on .hero,
+body.hs-on .about,
+body.hs-on .projects,
+body.hs-on .footer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  margin: 0;
+  will-change: transform, opacity;
+}
+
+body.hs-on .hero { z-index: 40; }
+body.hs-on .about { z-index: 30; background: var(--cream); }
+body.hs-on .projects { z-index: 20; background: var(--bg); }
+body.hs-on .footer { z-index: 10; }
+
+/* 首屏的上下两片底色：裂开时跟着字母一起退场，缝里才看得见 About */
+.hero__veil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50.5%;
+  background: var(--bg);
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.hero__veil--top { top: 0; }
+.hero__veil--bottom { bottom: 0; }
+
+body.hs-on .hero__inner { position: relative; z-index: 1; }
+body.hs-on .hero__seam { z-index: 2; }
