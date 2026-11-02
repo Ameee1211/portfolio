@@ -657,6 +657,7 @@ function initDeck() {
 
   let cur = 0;
   const tiltRect = new Map();   // 每张卡悬停开始时缓存的矩形
+  let tiltUntil = 0;            // 换牌位移期间不接悬停倾斜
 
   const select = (i) => {
     cur = ((i % n) + n) % n;
@@ -676,7 +677,11 @@ function initDeck() {
       const ry = off * -17;
       const base = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) translateZ(${z}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
       el.dataset.base = base;
-      if (!el.dataset.tilting) el.style.transform = base;
+      // 换牌时一律按新位置走，哪怕鼠标正压在这张卡上也要把倾斜让位：
+      // 点两侧的卡时鼠标必然在它身上（dataset.tilting=1），旧代码会跳过这张的位移，
+      // 于是中间那张先走了，被点的那张却停在原地，要等鼠标移开才归位
+      el.dataset.tilting = "";
+      el.style.transform = base;
       el.style.opacity = a > 1 ? "0" : String(1 - a * 0.16);
       el.style.zIndex = String(10 - a);
       el.style.filter = "none";
@@ -686,6 +691,8 @@ function initDeck() {
       el.setAttribute("aria-label", a === 0 ? `Open ${data[k].title}` : `Bring ${data[k].title} to the front`);
     });
 
+    // 位移期间屏蔽倾斜：卡片正在走，pointermove 读到的矩形是中间态，硬套会把卡压歪
+    tiltUntil = performance.now() + 760;
     tiltRect.clear();   // 卡片换位了，缓存的矩形作废
     if (tags) {
       tags.innerHTML = data[cur].tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("");
@@ -728,6 +735,9 @@ function initDeck() {
         tiltRect.set(el, el.getBoundingClientRect());
       });
       el.addEventListener("pointermove", (e) => {
+        // 刚换过牌：卡片还在往新位置走的这 0.76s 里不接倾斜
+        if (performance.now() < tiltUntil) return;
+        if (tiltUntil) { tiltUntil = 0; tiltRect.clear(); }   // 位移结束，重新取一次矩形
         let rect = tiltRect.get(el);
         if (!rect) {
           rect = el.getBoundingClientRect();
