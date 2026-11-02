@@ -651,37 +651,53 @@ body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; t
   padding: 64px 40px 20px;
   overflow: hidden;
 }
-.projects__note {
-  width: 100%;
-  max-width: 680px;
-  margin: 0 auto 12px;
-  text-align: center;
+/* ---- 标题带：大标题 / 副标题交替，从右往左无限滚动 ---- */
+.projects__marquee {
+  /* 100vw + 父级 align-items:center 让它左右贯通到屏幕边缘（父级 overflow:hidden 负责裁切） */
+  width: 100vw;
+  height: 150px;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
 }
-.projects__kicker {
-  font-size: clamp(26px, 2.5vw, 36px);
+.mq__track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: mqFlow 30s linear infinite;   /* 时长由 JS 按实际宽度改写成恒速 */
+}
+.mq__group {
+  display: flex;
+  align-items: center;
+  gap: 54px;
+  padding-right: 54px;    /* 与组内 gap 相同，两组接缝处才等距 */
+}
+.mq__big {
+  font-family: var(--font-en);
+  font-size: clamp(44px, 5vw, 76px);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  line-height: 1;
+  letter-spacing: -0.025em;
   color: var(--navy);
-  margin-bottom: 8px;
+  white-space: nowrap;
 }
-.projects__rule {
-  display: block;
-  width: min(442px, 74%);
-  height: 1.5px;
-  margin: 8px auto 10px;
-  border-radius: 2px;
-  background: rgba(51, 61, 109, 0.24);
-}
-.projects__intro p {
-  font-size: 12.8px;
-  line-height: 1.7;
-  color: var(--muted);
-}
-.projects__intro p:first-child {
-  font-size: 13.5px;
+.mq__small {
+  font-family: var(--font-en);
+  font-size: clamp(12px, 1.02vw, 15px);
   font-weight: 600;
-  color: var(--navy);
-  margin-bottom: 3px;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+@keyframes mqFlow {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }   /* 两组等宽，走完一组正好接上 */
+}
+@media (prefers-reduced-motion: reduce) {
+  .mq__track { animation: none; }
 }
 
 /* ---- 扑克牌牌堆：三张横排，中间最大最正，两侧倾斜后压 ---- */
@@ -970,7 +986,8 @@ section[id] { scroll-margin-top: 92px; }
   .about__intro { margin-top: 26px; line-height: 1.95; }
   .skills__title { margin-top: 32px; }
   .projects { padding: 84px 22px 44px; justify-content: center; }
-  .projects__note { position: static; width: 100%; max-width: 520px; margin-bottom: 14px; }
+  .projects__marquee { height: 104px; margin-bottom: 12px; }
+  .mq__group { gap: 30px; padding-right: 30px; }
   .pdeck { height: 430px; }
   .pcard { width: 300px; }
   /* 手机宽度不够并排三张，只留当前这张，左右滑动换牌 */
@@ -1164,6 +1181,6 @@ body.hs-on .hero__seam { z-index: 2; }
 }
 
 /* Projects 屏的内容默认收起，由滚动进度放出来（背景色始终在） */
-body.hs-on .projects__note,
+body.hs-on .projects__marquee,
 body.hs-on .pdeck,
 body.hs-on .pdeck__tags { opacity: 0; }

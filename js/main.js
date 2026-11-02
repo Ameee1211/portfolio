@@ -615,9 +615,21 @@ function renderProjects() {
   const stage = $("deckStage");
   if (!stage) return;
   const p = SITE.projects;
-  $("projectsTitle").textContent = p.title;
-  $("projectsIntro").innerHTML = p.intro.map((t) => `<p>${esc(t)}</p>`).join("");
 
+  // 标题带：大标题 + 副标题交替排列，复制成两组（第二组同样的内容）用来做无缝循环；
+  // 一组里重复三遍，保证它比屏幕宽，滚到接缝处也不会露出空白
+  const mq = $("projectsMarquee");
+  if (mq) {
+    const pair =
+      `<span class="mq__big">${esc(p.title)}</span>` +
+      `<span class="mq__small">${esc(p.intro[0])}</span>`;
+    const group = `<div class="mq__group">${pair.repeat(3)}</div>`;
+    mq.innerHTML = `<div class="mq__track">${group}${group}</div>`;
+    // 速度恒定：按一组的实际宽度算时长（约 92px/秒），换字号/换文案都不用改参数
+    const track = mq.querySelector(".mq__track");
+    const g = mq.querySelector(".mq__group");
+    if (track && g) track.style.animationDuration = Math.max(14, g.offsetWidth / 92).toFixed(1) + "s";
+  }
 
   stage.innerHTML = p.items
     .map((it, i) => {
@@ -1264,9 +1276,11 @@ function initHomeScenes() {
     // 侧卡 / 说明 / 标签出现。必须晚于 flipB：翻到一半时牌几乎是侧着的，
     // 这时候让底下那张一模一样的真卡浮上来，会看到一张"正面的牌"从侧面牌里透出来
     revealA: 4.62, revealB: 5.15,
+    // 牌组和标签都到位之后，标题带才浮出来（它自己一直在从右往左滚，这里只管淡入）
+    titleA: 5.18, titleB: 5.58,
     // 首页到 Featured Projects 就结束了（没有页脚）。留 0.02 屏余量，
-    // 避免滚动上限和 revealB 卡在同一个像素上导致最后差一点点没走满
-    end: 5.17,
+    // 避免滚动上限和 titleB 卡在同一个像素上导致最后差一点点没走满
+    end: 5.6,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
@@ -1304,7 +1318,7 @@ function initHomeScenes() {
       cue: hero.querySelector(".hero__cue"),
       aboutInner: document.querySelector(".about__inner"),
       photo: document.querySelector(".about__photo"),
-      pnote: document.querySelector(".projects__note"),
+      pmq: document.querySelector(".projects__marquee"),
       pdeck: document.querySelector(".pdeck"),
       ptags: document.querySelector(".pdeck__tags"),
       card: document.getElementById("aboutCard"),
@@ -1535,15 +1549,17 @@ function initHomeScenes() {
     // 终点姿态要和真卡一致（3° 后仰），否则卡片内部内容会因为透视不同而错位
     if (els.cardInner) els.cardInner.style.transform = `rotateY(${(easeIO(pF) * 180).toFixed(2)}deg)`;
 
-    // —— Projects 的其他元素：标题、两侧卡、标签一起浮现 ——
+    // —— Projects 的其他元素：两侧卡、标签浮现，标题带最后才出来 ——
     const pR = clamp01((t - TL.revealA) / (TL.revealB - TL.revealA));
     // 真卡先在完全相同的位置"垫"上来（pR 0→0.55 铺满），翻牌卡一直不透明地压在上面；
-    // 说明与标签错后一拍，让画面一直有东西在变，直到时间轴最后一帧（不会出现"到了却不结束"的干等）
+    // 标签错后一拍，让画面一直有东西在变，直到时间轴最后一帧（不会出现"到了却不结束"的干等）
     const pIn = Math.min(1, pR / 0.55);
     const pText = clamp01((pR - 0.42) / 0.58);
-    if (els.pnote) els.pnote.style.opacity = String(pText);
     if (els.pdeck) els.pdeck.style.opacity = String(pIn);
     if (els.ptags) els.ptags.style.opacity = String(pText);
+    // 标题带：牌组和标签都铺满之后才淡入，之后一直自己从右往左滚
+    const pT = clamp01((t - TL.titleA) / (TL.titleB - TL.titleA));
+    if (els.pmq) els.pmq.style.opacity = String(pT);
     // 叠化交接：真卡已铺满，两张牌像素级重合，叠化本身看不出东西；但要是显卡上有半像素的
     // 栅格差异，也会被这个过渡摊平，而不是"啪"地换一张牌
     const cardFade = clamp01((pR - 0.6) / 0.18);
@@ -1586,7 +1602,7 @@ function initHomeScenes() {
       root.style.scrollBehavior = prevBehavior;
       return;
     }
-    const full = (TL.revealB - TL.morphA) * (window.innerHeight || 1);
+    const full = (TL.titleB - TL.morphA) * (window.innerHeight || 1);
     // 比原来短一点：整段动画不留"空转"的尾巴
     const dur = 760 + 1650 * Math.min(1, dist / (full || 1));
 
@@ -1619,7 +1635,7 @@ function initHomeScenes() {
       window.scrollTo(0, startY);
       root.style.scrollBehavior = b;
     }
-    playTo(TL.revealB * vh);
+    playTo(TL.titleB * vh);
   };
 
   // 后退：Projects → About 完整（翻牌倒放）

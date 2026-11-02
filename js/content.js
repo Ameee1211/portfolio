@@ -383,11 +383,8 @@ const SITE = {
   // ---------- Featured Projects ----------
   projects: {
     title: "Featured Projects",
-    intro: [
-      "Behind every design is a story.",
-      "Explore my projects to see how ideas evolve — from research to refined interfaces.",
-      "Click through, try things out, and get a feel for my process.",
-    ],
+    // 只保留这一句副标题：它会和 title 交替出现在标题带里（原来那两段说明已按用户要求删掉）
+    intro: ["Behind every design is a story."],
     // 新增项目：复制一个 {} 改内容即可，卡片自动生成
     // cover 为空字符串时显示 tint 纯色占位块
     items: [
