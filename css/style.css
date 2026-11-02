@@ -1048,4 +1048,14 @@ body.hs-on .hero__seam { z-index: 2; }
 
 /* 填充字母：平时透明，裂开时才淡入，用来把字母铺到屏幕上下边缘 */
 .ws { overflow: visible; }
-.ws__letter--fill { opacity: clamp(0, calc(var(--hp, 0) * 2.6), 1); }
+/* 填充字母与主网格同字体同色，但不参与「已找到」的索引匹配 */
+.ws__fill {
+  font-family: var(--font-en);
+  font-size: var(--ws-font, 64px);
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: #b3afc2;
+  pointer-events: none;
+  opacity: clamp(0, calc(var(--hp, 0) * 2.6), 1);
+}

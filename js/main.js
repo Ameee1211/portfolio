@@ -294,7 +294,7 @@ function renderWordSearch() {
   const fillRow = (r) =>
     Array.from({ length: cols }, (_, c) => {
       const ch = pool[Math.abs(r * 37 + c * 17 + 11) % pool.length];
-      return `<text class="ws__letter ws__letter--fill" x="${c * g.cw + g.cw / 2}" y="${r * g.ch + g.ch / 2}">${esc(ch)}</text>`;
+      return `<text class="ws__fill" x="${c * g.cw + g.cw / 2}" y="${r * g.ch + g.ch / 2}">${esc(ch)}</text>`;
     }).join("");
 
   const topFill = Array.from({ length: 4 }, (_, i) => fillRow(i - 4)).join("");
@@ -1298,8 +1298,10 @@ function initHomeScenes() {
     }
     // 答案虚线跨在上下两半之间，裂开时没法跟着走，干脆先淡出
     hero.style.setProperty("--hp", p1.toFixed(4));
+    const hideBands = p1 > 0.18;
     hero.querySelectorAll(".ws__found").forEach((g) => {
-      g.style.opacity = String(Math.max(0, 1 - p1 * 4.5));
+      g.style.opacity = String(Math.max(0, 1 - p1 * 5));
+      g.style.visibility = hideBands ? "hidden" : "";
     });
 
     // About 就是压在下面的一层画布：不位移，只是随着裂缝张开逐渐清晰
