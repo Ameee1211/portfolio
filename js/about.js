@@ -416,6 +416,7 @@ function abRenderInterests() {
           </div>
           ${it.more ? `<div class="ab-int__more" id="intMore${i}">${abMoreBody(it.more)}</div>` : ""}
         </div>
+        <span class="ab-int__strip" aria-hidden="true"><span class="ab-int__strip-t">${esc(it.title)}</span></span>
       </article>`;
     })
     .join("");
@@ -677,11 +678,15 @@ function abInitInterests() {
   const wrap = $("abInt");
   if (!wrap) return;
   const cards = [...wrap.querySelectorAll(".ab-int__card")];
+  const wide = window.matchMedia("(min-width: 1024px)");   // 手风琴只在桌面端生效
+  let cur = -1;
+  let hTimer = 0;
 
-  const setOpen = (card) => {
-    cards.forEach((c) => {
-      const on = c === card;
+  const paint = (idx) => {
+    cards.forEach((c, i) => {
+      const on = i === idx;
       c.classList.toggle("is-open", on);
+      c.classList.toggle("is-strip", idx > -1 && !on);
       const btn = c.querySelector(".ab-int__toggle");
       if (btn) {
         btn.setAttribute("aria-expanded", String(on));
@@ -689,7 +694,62 @@ function abInitInterests() {
         if (txt) txt.textContent = on ? "Close" : "See more";
       }
     });
-    wrap.classList.toggle("has-open", !!card);
+    wrap.classList.toggle("has-open", idx > -1);
+  };
+
+  // 量一次"目标态下容器会有多高"：临时关掉过渡按目标态排版，量完立刻还原，
+  // 全程在同一次布局里完成，不会画到中间态，也不会留下动画记录
+  const measure = (idx, back) => {
+    const wrapT = wrap.style.transition;
+    const wrapH = wrap.style.height;
+    const cardT = cards.map((c) => c.style.transition);
+    wrap.style.transition = "none";
+    wrap.style.height = "auto";
+    cards.forEach((c) => { c.style.transition = "none"; });
+    paint(idx);
+    void wrap.offsetHeight;
+    const h = wrap.getBoundingClientRect().height;
+    paint(back);
+    void wrap.offsetHeight;
+    cards.forEach((c, i) => { c.style.transition = cardT[i]; });
+    wrap.style.transition = wrapT;
+    wrap.style.height = wrapH;
+    return h;
+  };
+
+  const setOpen = (card) => {
+    const idx = card ? cards.indexOf(card) : -1;
+    if (idx === cur) return;
+    const prev = cur;
+
+    // 内容从哪一侧进来：顺着"上一次那张 → 这次这张"的方向
+    let dir = 1;
+    if (prev > -1 && idx > -1) dir = idx > prev ? 1 : -1;
+    else if (idx > -1) dir = idx === 0 ? -1 : 1;
+    wrap.style.setProperty("--int-dir", String(dir));
+
+    cur = idx;
+    const animate = wide.matches;
+
+    if (!animate) {          // 小屏：保持原来的做法，不做高度动画
+      paint(idx);
+    } else {
+      const h0 = wrap.getBoundingClientRect().height;
+      const h1 = measure(idx, prev);
+      clearTimeout(hTimer);
+      // 先把高度钉在当前值，再过渡到目标值，避免展开瞬间高度"跳一下"
+      wrap.style.transition = "none";
+      wrap.style.height = h0 + "px";
+      void wrap.offsetHeight;
+      paint(idx);
+      wrap.style.transition = "height 0.66s cubic-bezier(0.4, 0, 0.2, 1)";
+      wrap.style.height = h1 + "px";
+      hTimer = setTimeout(() => {
+        wrap.style.transition = "";
+        wrap.style.height = "";
+      }, 700);
+    }
+
     if (card) {
       const top = card.getBoundingClientRect().top + window.scrollY - 96;
       if (Math.abs(window.scrollY - top) > 40) window.scrollTo({ top, behavior: "smooth" });
