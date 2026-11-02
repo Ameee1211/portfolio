@@ -1036,8 +1036,12 @@ body.hs-on .footer { z-index: 10; }
   pointer-events: none;
   will-change: transform;
 }
-.hero__veil--top { top: 0; height: 66.67%; }
-.hero__veil--bottom { bottom: 0; height: 33.33%; }
+.hero__veil--top { top: 0; height: 62%; }
+.hero__veil--bottom { bottom: 0; height: 38%; }
 
 body.hs-on .hero__inner { position: relative; z-index: 1; }
 body.hs-on .hero__seam { z-index: 2; }
+
+/* 裂开进度（0–1），由 JS 写在 .hero 上 */
+.hero { --hp: 0; }
+.hero .hero__cue { opacity: clamp(0, calc(1 - var(--hp) * 6), 1); }

@@ -1258,27 +1258,41 @@ function initHomeScenes() {
 
     // —— Hero → About：字母上下裂开，半屏底色跟着退场 ——
     const p1 = clamp01((t - TL.splitA) / (TL.splitB - TL.splitA));
-    // 裂缝在 4/6 屏高处，上下各让开同样的像素距离
-    const seamY = vh * (els.splitRatio || 0.667);
-    const off = seamY * p1;
-
+    // 裂缝对齐迷宫真正的 4/6 分界（ZHANG 与 UI 之间），不是屏幕的 2/3
     const svg = els.svg;
+    let seamY = vh * 0.62;
+    let k = 1;
     if (svg && svg.viewBox && svg.viewBox.baseVal.width) {
-      const k = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
-      const d = off / (k || 1);
-      els.top.forEach((g) => g.setAttribute("transform", `translate(0 ${-d})`));
-      els.bot.forEach((g) => g.setAttribute("transform", `translate(0 ${d})`));
+      const r = svg.getBoundingClientRect();
+      k = r.width / svg.viewBox.baseVal.width || 1;
+      seamY = r.top + r.height * (els.splitRatio || 0.667);
     }
-    if (els.veilT) els.veilT.style.transform = `translateY(${-off.toFixed(1)}px)`;
-    if (els.veilB) els.veilB.style.transform = `translateY(${off.toFixed(1)}px)`;
-    // 答案虚线跨在上下两半之间，裂开时没法跟着走，干脆先淡出
-    if (els.found) els.found.forEach((g) => (g.style.opacity = String(Math.max(0, 1 - p1 * 4))));
-    if (els.cue) els.cue.style.opacity = String(Math.max(0, 1 - p1 * 6));
+    const offTop = seamY * p1;
+    const offBottom = (vh - seamY) * p1;
 
-    // About 背景始终不透明（否则会露出下一屏），只让里面的内容渐显并轻微上滑
+    if (svg) {
+      els.top.forEach((g) => g.setAttribute("transform", `translate(0 ${-offTop / k})`));
+      els.bot.forEach((g) => g.setAttribute("transform", `translate(0 ${offBottom / k})`));
+    }
+    // 两片底色的高度就贴着裂缝，位移量各自等于自身高度，p=1 时正好整片让开
+    if (els.veilT) {
+      els.veilT.style.height = seamY.toFixed(1) + "px";
+      els.veilT.style.transform = `translateY(${(-offTop).toFixed(1)}px)`;
+    }
+    if (els.veilB) {
+      els.veilB.style.height = (vh - seamY).toFixed(1) + "px";
+      els.veilB.style.transform = `translateY(${offBottom.toFixed(1)}px)`;
+    }
+    // 答案虚线跨在上下两半之间，裂开时没法跟着走，干脆先淡出
+    hero.style.setProperty("--hp", p1.toFixed(4));
+    hero.querySelectorAll(".ws__found").forEach((g) => {
+      g.style.opacity = String(Math.max(0, 1 - p1 * 4.5));
+    });
+
+    // About 就是压在下面的一层画布：不位移，只是随着裂缝张开逐渐清晰
     if (els.aboutInner) {
-      els.aboutInner.style.opacity = String(0.25 + 0.75 * p1);
-      els.aboutInner.style.transform = `translateY(${((1 - p1) * 45).toFixed(2)}vh)`;
+      els.aboutInner.style.opacity = String(0.2 + 0.8 * p1);
+      els.aboutInner.style.transform = "none";
     }
 
     // —— About → Projects（本步先用淡出占位，下一步换成照片 morph）——
