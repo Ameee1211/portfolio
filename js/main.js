@@ -1520,7 +1520,8 @@ function initHomeScenes() {
     // 已经让开的那几屏不能再挡点击（否则 About 的按钮、卡片都点不到）
     if (hero) hero.style.pointerEvents = p1 > 0.9 ? "none" : "";
     if (about) about.style.pointerEvents = pM > 0.9 ? "none" : "";
-    if (projects) projects.style.pointerEvents = pR > 0.9 ? "none" : "";
+    // 注意这里是"显示完成才可交互"，之前写反了：pR 高时反而把整个 Projects 屏禁用了指针
+    if (projects) projects.style.pointerEvents = pR >= 0.999 ? "" : "none";
     if (els.pdeck) els.pdeck.style.pointerEvents = pR >= 0.999 ? "" : "none";
 
     stage.dataset.phase =
