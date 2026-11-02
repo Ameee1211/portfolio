@@ -1290,13 +1290,13 @@
   }
   .ab-int__card.is-strip:hover { transform: translateY(-6px); background: var(--white); }
 
-  /* 窄条里原来的内容先淡出，靠 min-width 保住排版不被压变形（多出来的部分被 overflow 裁掉） */
+  /* 窄条里原来的内容淡出（它要变成一根只带竖排标题的柱子） */
   .ab-int__card.is-strip .ab-int__media,
   .ab-int__card.is-strip .ab-int__right {
     min-width: 300px;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.16s ease;
+    transition: opacity 0.1s ease;
   }
 
   /* 竖排标题 */
@@ -1308,7 +1308,7 @@
     justify-content: center;
     padding: 20px 0;
     opacity: 0;
-    transition: opacity 0.28s ease;
+    transition: opacity 0.16s ease 0.06s;
   }
   .ab-int__card.is-strip .ab-int__strip { opacity: 1; }
   .ab-int__strip-t {
@@ -1323,23 +1323,44 @@
   }
   .ab-int__card.is-strip .ab-int__strip-t { color: rgba(51, 61, 109, 0.66); }
 
-  /* 展开/收起过程中：宽度在插值，文字会每一帧重新折行（看起来就是字在跳），
-     图片的容器也在被连续拉伸（从顶部横幅变成左竖条）。
-     所以文字块和图片都先"立刻"藏起来，等尺寸变完再一起淡入 ——
-     只在最终位置出现一次，全程不动。 */
-  .ab-int__right { transition: opacity 0.28s ease; }
-  .ab-int__media { transition: opacity 0.28s ease; }
-  .ab-int.is-morphing .ab-int__card .ab-int__right,
-  .ab-int.is-morphing .ab-int__card .ab-int__media {
-    opacity: 0;
+  /* ========================================================
+     展开 / 收起 = 拉帘子
+     整段动画里，卡内内容的尺寸（图片列宽、文字列宽、行高）都钉死在最终值，
+     卡片本身只是一个"窗口"在变宽：从左边开始，把内容一点点扫出来；
+     收起时窗口反过来盖回去。所以图不会变形、文字不会重新折行，
+     窄条上的竖排标题也照常显示（不藏任何东西）。
+     ======================================================== */
+  .ab-int__media,
+  .ab-int__right { transition: opacity 0.24s ease; }
+
+  /* 展开的那张：内容整体钉在最终尺寸 */
+  .ab-int.is-morphing .ab-int__card.is-open {
+    grid-template-columns: var(--int-media-w, 240px) var(--int-right-w, 1fr);
+    grid-auto-rows: var(--int-open-h, auto);
+    min-height: 0;      /* 高度跟着外层的高度动画走，超出窗口的部分由 overflow 裁掉 */
+  }
+  /* 另外两张（正在收窄 / 张开）：内容钉在"收起态"的宽度，由窗口裁切 */
+  .ab-int.is-morphing .ab-int__card:not(.is-open) .ab-int__media,
+  .ab-int.is-morphing .ab-int__card:not(.is-open) .ab-int__right {
+    width: var(--int-closed-w, auto);
+    flex: 0 0 auto;
+  }
+
+  /* 收起：先保持展开态不动，只把宽度收回去，最后一帧才落回收起态的布局 */
+  .ab-int.is-closing .ab-int__card { width: calc((100% - 44px) / 3); }
+  /* 收起时另外两张要在"窗口"张开的过程中被露出来：内容立刻恢复不透明，
+     由变宽的窗口去裁切（不做淡入，否则半透明的图配着被裁的字会显得乱） */
+  .ab-int.is-closing .ab-int__card .ab-int__media,
+  .ab-int.is-closing .ab-int__card .ab-int__right {
+    opacity: 1;
     transition: none;
   }
+  .ab-int.is-closing .ab-int__card.is-strip .ab-int__strip {
+    opacity: 0;
+    transition: opacity 0.1s ease;
+  }
+
   /* 悬停时图片是 scale(1.06)，展开后要回到 1。默认有 0.7s 过渡，
-     于是点开之后图还会慢慢"缩回去"一下 —— 变形期间直接关掉过渡，一步到位 */
-  .ab-int.is-morphing .ab-int__card .ab-int__media img { transition: none; }
+     于是点开之后图还会慢慢"缩回去"一下 —— 展开态直接关掉，一步到位 */
   .ab-int__card.is-open .ab-int__media img { transition: none; }
-  .ab-int.is-morphing .ab-int__card.is-strip .ab-int__strip {
-    opacity: 0;
-    transition: none;
-  }
 }

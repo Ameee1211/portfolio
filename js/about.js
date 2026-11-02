@@ -697,8 +697,10 @@ function abInitInterests() {
     wrap.classList.toggle("has-open", idx > -1);
   };
 
-  // 量一次"目标态下容器会有多高"：临时关掉过渡按目标态排版，量完立刻还原，
-  // 全程在同一次布局里完成，不会画到中间态，也不会留下动画记录
+  // 量一次"目标态"：临时关掉过渡按目标态排版，量完立刻还原，
+  // 全程在同一次布局里完成，不会画到中间态，也不会留下动画记录。
+  // 除了容器高度，还把展开卡里"图片列 / 文字列"的实际宽度量出来 ——
+  // 变形期间要用它们把布局钉死在最终尺寸（否则宽度在插值，图的盒子会被拉伸、文字会重新折行）
   const measure = (idx, back) => {
     const wrapT = wrap.style.transition;
     const wrapH = wrap.style.height;
@@ -709,12 +711,19 @@ function abInitInterests() {
     paint(idx);
     void wrap.offsetHeight;
     const h = wrap.getBoundingClientRect().height;
+    let mediaW = 0;
+    let rightW = 0;
+    if (idx > -1) {
+      const card = cards[idx];
+      mediaW = Math.round(card.querySelector(".ab-int__media").getBoundingClientRect().width);
+      rightW = Math.round(card.querySelector(".ab-int__right").getBoundingClientRect().width);
+    }
     paint(back);
     void wrap.offsetHeight;
     cards.forEach((c, i) => { c.style.transition = cardT[i]; });
     wrap.style.transition = wrapT;
     wrap.style.height = wrapH;
-    return h;
+    return { h, mediaW, rightW };
   };
 
   // 三张卡展开后的内容高度本来各不相同（同一宽度下实测 620 / 682 / 648）。
@@ -724,17 +733,31 @@ function abInitInterests() {
   const fitHeight = () => {
     if (!wide.matches) {
       wrap.style.removeProperty("--int-open-h");
+      wrap.style.removeProperty("--int-media-w");
+      wrap.style.removeProperty("--int-right-w");
+      wrap.style.removeProperty("--int-closed-w");
       return 0;
     }
     wrap.style.removeProperty("--int-open-h");
     void wrap.offsetHeight;
     let max = 0;
+    let mediaW = 0;
+    let rightW = 0;
     cards.forEach((c, i) => {
-      const h = measure(i, cur);
-      if (h > max) max = h;
+      const m = measure(i, cur);
+      if (m.h > max) max = m.h;
+      if (m.mediaW) mediaW = m.mediaW;
+      if (m.rightW) rightW = m.rightW;
     });
     max = Math.round(max);
     wrap.style.setProperty("--int-open-h", max + "px");
+    if (mediaW) wrap.style.setProperty("--int-media-w", mediaW + "px");
+    if (rightW) wrap.style.setProperty("--int-right-w", rightW + "px");
+    // 收起态的卡宽（CSS 里是 (100% - 44) / 3），挡板动画时要把内容钉在这个宽度
+    wrap.style.setProperty(
+      "--int-closed-w",
+      Math.round((wrap.getBoundingClientRect().width - 44) / 3) + "px"
+    );
     return max;
   };
 
@@ -755,22 +778,28 @@ function abInitInterests() {
     }
 
     const h0 = wrap.getBoundingClientRect().height;
-    const h1 = measure(idx, prev);
+    const m = measure(idx, prev);
+    const h1 = m.h;
+    const closing = idx === -1 && prev > -1;
     clearTimeout(hTimer);
-    // 卡片在变形（宽度插值）时，文字会每帧重新折行 —— 整个过程中先把文字藏起来，
-    // 变完再淡入。所以这里先挂 is-morphing，最后 500ms 时摘掉
+    // 变形期间（下面在 CSS 里）把卡内布局钉死在最终尺寸：
+    // 图片列/文字列的宽度、行高都用展开态的实测值 ——
+    // 内容从头到尾一动不动，卡片只是像一个窗口一样长大，从左边把内容"扫"出来（像拉帘子）
     wrap.classList.add("is-morphing");
+    if (closing) wrap.classList.add("is-closing");
     // 先把高度钉在当前值，再过渡到目标值，避免展开瞬间高度"跳一下"
     wrap.style.transition = "none";
     wrap.style.height = h0 + "px";
     void wrap.offsetHeight;
-    paint(idx);
+    // 收起时先不切布局：让卡片保持展开态，只把窗口宽度收回去，最后一帧才落回收起态
+    if (!closing) paint(idx);
     wrap.style.transition = "height 0.48s cubic-bezier(0.4, 0, 0.2, 1)";
     wrap.style.height = h1 + "px";
     hTimer = setTimeout(() => {
       wrap.style.transition = "";
       wrap.style.height = "";
-      wrap.classList.remove("is-morphing");   // 尺寸定了 → 文字在最终位置淡入，不再移动
+      wrap.classList.remove("is-morphing", "is-closing");
+      if (closing) paint(-1);   // 窗口已经回到收起态的尺寸，这时再切布局
     }, 500);
   };
 
