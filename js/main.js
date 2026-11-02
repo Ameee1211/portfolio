@@ -1253,7 +1253,6 @@ function initHomeScenes() {
 
   const about = document.querySelector(".about");
   const projects = document.querySelector(".projects");
-  const footer = document.querySelector(".footer");
 
   // 时间轴（单位：1 = 一个视口高度）。A→B 是转场区间，其余是停留区
   const TL = {
@@ -1265,8 +1264,9 @@ function initHomeScenes() {
     // 侧卡 / 说明 / 标签出现。必须晚于 flipB：翻到一半时牌几乎是侧着的，
     // 这时候让底下那张一模一样的真卡浮上来，会看到一张"正面的牌"从侧面牌里透出来
     revealA: 4.62, revealB: 5.15,
-    shrinkA: 5.95, shrinkB: 6.55,
-    end: 6.85,
+    // 首页到 Featured Projects 就结束了（没有页脚）。留 0.02 屏余量，
+    // 避免滚动上限和 revealB 卡在同一个像素上导致最后差一点点没走满
+    end: 5.17,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
@@ -1413,7 +1413,7 @@ function initHomeScenes() {
   let raf = 0;
   let backSynced = false;
   // 导航里的 #home / #about / #projects 在叠屏布局下没有位置可跳，改成滚到对应时间点
-  const ANCHORS = { home: 0, about: 1.2, projects: 5.15, contact: 5.7 };
+  const ANCHORS = { home: 0, about: 1.2, projects: 5.15 };
   document.querySelectorAll('a[href^="#"]').forEach((a) => {
     const id = (a.getAttribute("href") || "").slice(1);
     if (!(id in ANCHORS)) return;
@@ -1549,10 +1549,6 @@ function initHomeScenes() {
     const cardFade = clamp01((pR - 0.6) / 0.18);
     if (els.card) els.card.style.opacity = String(pM > 0 ? 1 - cardFade : 0);
 
-    // —— Projects → Thanks（先用淡出占位）——
-    const p3 = clamp01((t - TL.shrinkA) / (TL.shrinkB - TL.shrinkA));
-    if (projects) projects.style.opacity = String(1 - p3);
-
     // 已经让开的那几屏不能再挡点击（否则 About 的按钮、卡片都点不到）
     if (hero) hero.style.pointerEvents = p1 > 0.9 ? "none" : "";
     if (about) about.style.pointerEvents = pM > 0.9 ? "none" : "";
@@ -1561,7 +1557,7 @@ function initHomeScenes() {
     if (els.pdeck) els.pdeck.style.pointerEvents = pR >= 0.999 ? "" : "none";
 
     stage.dataset.phase =
-      t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.revealA ? "card" : t < TL.shrinkA ? "projects" : "thanks";
+      t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.revealA ? "card" : "projects";
   };
 
   // 滚动位置只当时间轴用：手一动就开始播放，所以这里不再记"停留点"
@@ -1660,8 +1656,7 @@ function initHomeScenes() {
       return;
     }
     // 后退：在 Projects 这一屏里往上动一点就自动倒放回 About
-    // （上界卡在 shrinkA：已经翻到 Thanks 页脚时，先让它正常滚回 Projects，别直接弹回去）
-    if (step < -2 && prevT >= TL.revealB - 0.02 && prevT < TL.shrinkA) {
+    if (step < -2 && prevT >= TL.revealB - 0.02) {
       playBack();
       lastY = window.scrollY;
       prevT = window.scrollY / vh;
