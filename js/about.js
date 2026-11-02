@@ -717,6 +717,27 @@ function abInitInterests() {
     return h;
   };
 
+  // 三张卡展开后的内容高度本来各不相同（同一宽度下实测 620 / 682 / 648）。
+  // 这里把三张分别按"展开态"量一遍，取最大值写成 CSS 变量，
+  // 让 .is-open 的 min-height 统一到它 —— 于是不管点哪张，撑开的高度都一样。
+  // 量之前先清掉变量，否则上一次的值会把结果锁死在最大值上、越量越大。
+  const fitHeight = () => {
+    if (!wide.matches) {
+      wrap.style.removeProperty("--int-open-h");
+      return 0;
+    }
+    wrap.style.removeProperty("--int-open-h");
+    void wrap.offsetHeight;
+    let max = 0;
+    cards.forEach((c, i) => {
+      const h = measure(i, cur);
+      if (h > max) max = h;
+    });
+    max = Math.round(max);
+    wrap.style.setProperty("--int-open-h", max + "px");
+    return max;
+  };
+
   const setOpen = (card) => {
     const idx = card ? cards.indexOf(card) : -1;
     if (idx === cur) return;
@@ -768,6 +789,18 @@ function abInitInterests() {
   // Esc 收起
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") setOpen(null);
+  });
+
+  // 展开后的统一高度：第一次排版完成量一遍；字体加载完、窗口尺寸变了再量
+  fitHeight();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitHeight());
+  let fitTimer = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(() => {
+      fitHeight();
+      if (cur > -1) wrap.style.height = "";   // 已展开时让容器回落到 auto，跟随新的统一高度
+    }, 180);
   });
 }
 

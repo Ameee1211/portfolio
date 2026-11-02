@@ -1281,6 +1281,8 @@
   /* 覆盖旧的"其他卡片直接消失" */
   .ab-int.has-open .ab-int__card:not(.is-open) { display: flex; }
   .ab-int__card.is-open { width: calc(100% - 196px); }   /* 两张窄条 76 + 两道 22 的间距 */
+  /* 展开后的高度由 JS 量三张里最高的那张写进 --int-open-h，保证三张撑开一模一样高 */
+  .ab-int__card.is-open { min-height: var(--int-open-h, 0px); }
   .ab-int__card.is-strip {
     width: 76px;
     cursor: pointer;
