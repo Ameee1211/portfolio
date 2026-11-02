@@ -724,6 +724,17 @@ function initDeck() {
     select(i);
   };
 
+  // 给"滚轮翻牌"用：到边返回 false，由上层决定是回退到 About 还是什么都不做
+  stage.__deck = {
+    step(dir) {
+      const next = cur + dir;
+      if (next < 0 || next >= n) return false;
+      select(next);
+      return true;
+    },
+    index: () => cur,
+  };
+
   window.addEventListener("pdeck-reset", () => tiltRect.clear());
 
   /* 手机上没有侧卡可点，用横向滑动换牌 */
@@ -1700,6 +1711,7 @@ function initHomeScenes() {
 
   // 前进：About 完整 → Projects（停留区静止，先对齐到动画起点，看不出跳）
   const playForward = () => {
+    wQueue = 0; wAcc = 0; wLock = 0;     // 进/出这一屏时把滚轮攒的格数清干净
     const vh = window.innerHeight || 1;
     const startY = Math.max(window.scrollY, TL.morphA * vh);
     if (startY !== window.scrollY) {
@@ -1714,6 +1726,7 @@ function initHomeScenes() {
 
   // 后退：Projects → About 完整（翻牌倒放）
   const playBack = () => {
+    wQueue = 0; wAcc = 0; wLock = 0;
     const vh = window.innerHeight || 1;
     // 用户可能把卡片 hover 歪了，先在牌面还看得见时按回原位，
     // 否则翻牌卡和真实卡在交叉淡化时会错位
@@ -1765,6 +1778,63 @@ function initHomeScenes() {
   };
   window.addEventListener("wheel", blockInput, { passive: false });
   window.addEventListener("touchmove", blockInput, { passive: false });
+
+  /* ——— Projects 屏：滚轮翻牌 ———
+     这一屏是最后一屏，滚轮在这里不再带动时间轴，改成翻牌：
+     往下 = 下一张，往上 = 上一张；翻到第一张再往上才退回 About。
+     到边不循环，否则"往上退出去"和"上一张"会打架。
+     手感的关键是"不丢格"：滚轮事件按 110px 折算成一格放进队列，
+     锁着的时候继续攒，锁一松就一张接一张地翻，所以连滚三下就是三张。 */
+  const W_GATE = 110;      // 一格 = 110px 的滚动量（鼠标一格约 110~120）
+  const W_LOCK = 300;      // 两次翻牌的最小间隔（换牌过渡 0.72s，这里允许接上去）
+  let wAcc = 0;            // 还没攒够一格的零头
+  let wQueue = 0;          // 攒下的格数（正=往下，负=往上）
+  let wLock = 0;
+  let wPump = 0;
+
+  const deckStep = () => {
+    const deck = els.pdeck;
+    if (!deck || !deck.__deck || !wQueue) return;
+    const dir = wQueue > 0 ? 1 : -1;
+    if (deck.__deck.step(dir)) {
+      wQueue -= dir;
+      wLock = performance.now() + W_LOCK;
+    } else if (dir < 0) {
+      wQueue = 0;
+      playBack();                              // 已经是第一张，再往上 → 倒放回 About
+    } else {
+      wQueue = 0;                              // 已经是最后一张，往下没有更多了
+    }
+  };
+
+  const pumpWheel = () => {
+    wPump = 0;
+    if (playing || !wQueue) return;
+    if (performance.now() < wLock) { wPump = setTimeout(pumpWheel, 60); return; }
+    deckStep();
+    if (wQueue && !playing) wPump = setTimeout(pumpWheel, 60);
+  };
+
+  const onDeckWheel = (e) => {
+    if (playing) return;                       // 播放中交给 blockInput 吞掉
+    const deck = els.pdeck;
+    if (!deck || !deck.__deck) return;
+    const vh = window.innerHeight || 1;
+    if (window.scrollY / vh < TL.revealB - 0.01) return;   // 还没到 Projects 屏，正常滚动
+    e.preventDefault();                        // 这一屏的滚轮全部由我们接管
+
+    wAcc += e.deltaY;
+    const gates = Math.trunc(wAcc / W_GATE);
+    if (gates) {
+      // 中途反向就把没翻的旧账清掉，免得"往上滚一下先翻了两张"
+      if (wQueue && Math.sign(wQueue) !== Math.sign(gates)) wQueue = 0;
+      wAcc -= gates * W_GATE;
+      wQueue = Math.max(-3, Math.min(3, wQueue + gates));   // 一次最多排三张，防手一抖飞过去
+    }
+    if (!wPump) wPump = setTimeout(pumpWheel, 0);
+  };
+  window.addEventListener("wheel", onDeckWheel, { passive: false });
+
   prevT = window.scrollY / (window.innerHeight || 1);   // 刷新时可能带着滚动位置回来，别误判成"跳了一大下"
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", () => {
