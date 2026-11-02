@@ -565,7 +565,8 @@ img { display: block; max-width: 100%; }
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 .about__left.is-in .about__title { opacity: 1; transform: none; transition-delay: 0.3s; }
-.about__left.is-in .about__btn { opacity: 1; transform: none; transition-delay: 0.42s; }
+/* 叠屏模式下按钮改由 body.hs-on 的阶梯规则接管，这条只管普通布局 */
+body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; transition-delay: 0.42s; }
 
 /* ---- 右：索引式信息行 ---- */
 .about__info { display: flex; flex-direction: column; }
@@ -1023,11 +1024,38 @@ body.hs-on .footer {
 
 body.hs-on .hero { z-index: 40; }
 body.hs-on .about { z-index: 30; background: var(--cream); overflow: hidden; }
-/* 分步出现的四块：初始藏在右侧，由滚动进度驱动滑入 */
+/* 分步出现的四块：平时藏在右侧，滚过各自那条线后整套动画自己播完 */
 body.hs-on .about__info,
 body.hs-on .about__intro,
 body.hs-on .skills,
-body.hs-on .about__btn { will-change: transform, opacity; }
+body.hs-on .about__btn {
+  opacity: 0;
+  transform: translateX(96px);
+  transition:
+    opacity 0.75s ease,
+    transform 1.3s cubic-bezier(0.28, 1.56, 0.34, 1);
+  will-change: transform, opacity;
+}
+body.hs-on .skills { transform: translateX(132px); }
+body.hs-on .about__btn { transform: translateX(72px); }
+
+body.hs-on .about__info.is-in,
+body.hs-on .about__intro.is-in,
+body.hs-on .skills.is-in,
+body.hs-on .about__btn.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.hs-on .about__info,
+  body.hs-on .about__intro,
+  body.hs-on .skills,
+  body.hs-on .about__btn {
+    transform: none;
+    transition: opacity 0.3s linear;
+  }
+}
 body.hs-on .projects { z-index: 20; background: var(--bg); }
 body.hs-on .footer { z-index: 10; }
 
