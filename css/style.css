@@ -648,8 +648,7 @@ body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; t
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* 顶部 88px：让开固定导航栏（80px），否则顶部那行"返回 About me"会被导航盖住点不到 */
-  padding: 88px 40px 20px;
+  padding: 64px 40px 20px;
   overflow: hidden;
 }
 /* 静态标题块：只在手机端出现（电脑端用下面的滚动标题带） */
@@ -657,12 +656,17 @@ body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; t
 
 /* ---- 轻量出口：导航栏下面的一行小字（不是按钮，只是可点的文字）---- */
 .projects__back {
+  /* 绝对定位：紧贴导航栏（高 80px）下沿，且不占版面高度 */
+  position: absolute;
+  top: 82px;
+  left: 50%;
+  transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
-  align-self: center;
   gap: 5px;
-  margin: 0 0 4px;
+  margin: 0;
   padding: 0;
+  line-height: 1;
   white-space: nowrap;
   font-family: var(--font-en);
   font-size: 10.5px;
