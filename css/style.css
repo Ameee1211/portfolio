@@ -605,16 +605,23 @@ img { display: block; max-width: 100%; }
   font-weight: 600;
   color: var(--navy);
 }
-.skills__row { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 16px; }
+.skills__row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 16px; }
+/* 与 About 页 What I use 一致：只放软件图标，不写字 */
 .skill {
-  padding: 9px 17px;
-  border: 1px solid var(--skill-color);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--skill-color);
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.26s ease, color 0.26s ease, transform 0.26s ease, box-shadow 0.26s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  line-height: 0;
+  font-size: 0;
+  cursor: default;
+}
+.skill svg {
+  width: 25px;
+  height: 25px;
+  display: block;
 }
 
 /* 只在有真实指针（鼠标）的设备上启用悬停效果 */

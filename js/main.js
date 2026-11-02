@@ -543,7 +543,12 @@ function renderAbout() {
   $("aboutIntro").textContent = a.intro;
   $("skillsTitle").textContent = a.skills.title;
   $("skillsRow").innerHTML = a.skills.items
-    .map((s) => `<span class="skill" style="--skill-color:${esc(s.color)}">${esc(s.label)}</span>`)
+    .map(
+      (s) =>
+        `<span class="skill" title="${esc(s.label)}" aria-label="${esc(s.label)}">` +
+        (TOOL_ICONS[s.label] || esc(s.label)) +
+        `</span>`
+    )
     .join("");
 }
 
