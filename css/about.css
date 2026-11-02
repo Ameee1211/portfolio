@@ -1323,14 +1323,21 @@
   }
   .ab-int__card.is-strip .ab-int__strip-t { color: rgba(51, 61, 109, 0.66); }
 
-  /* 展开/收起过程中：宽度在插值，文字会每一帧重新折行（看起来就是字在跳）。
-     所以整个文字块先"立刻"藏起来，等尺寸变完再淡入 —— 文字只在最终位置出现一次，全程不动。
-     图片不藏：图只是被裁切，不会有折行抖动。 */
+  /* 展开/收起过程中：宽度在插值，文字会每一帧重新折行（看起来就是字在跳），
+     图片的容器也在被连续拉伸（从顶部横幅变成左竖条）。
+     所以文字块和图片都先"立刻"藏起来，等尺寸变完再一起淡入 ——
+     只在最终位置出现一次，全程不动。 */
   .ab-int__right { transition: opacity 0.28s ease; }
-  .ab-int.is-morphing .ab-int__card .ab-int__right {
+  .ab-int__media { transition: opacity 0.28s ease; }
+  .ab-int.is-morphing .ab-int__card .ab-int__right,
+  .ab-int.is-morphing .ab-int__card .ab-int__media {
     opacity: 0;
     transition: none;
   }
+  /* 悬停时图片是 scale(1.06)，展开后要回到 1。默认有 0.7s 过渡，
+     于是点开之后图还会慢慢"缩回去"一下 —— 变形期间直接关掉过渡，一步到位 */
+  .ab-int.is-morphing .ab-int__card .ab-int__media img { transition: none; }
+  .ab-int__card.is-open .ab-int__media img { transition: none; }
   .ab-int.is-morphing .ab-int__card.is-strip .ab-int__strip {
     opacity: 0;
     transition: none;
