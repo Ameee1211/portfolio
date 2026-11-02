@@ -732,6 +732,18 @@ function initDeck() {
       return true;
     },
     index: () => cur,
+    // 归位到第一张。调用时牌堆是看不见的（已经退回 About），所以直接落位不走过渡：
+    // 否则 measureEnd 会量到过渡中间态，翻牌卡落点会歪
+    reset() {
+      if (!cur) return;
+      select(0);
+      cards.forEach((el) => {
+        el.style.transition = "none";
+        el.style.transform = el.dataset.base || "";
+      });
+      void cards[0].offsetWidth;    // 强制回流，让上面的落位立刻生效
+      cards.forEach((el) => { el.style.transition = ""; });
+    },
   };
 
   window.addEventListener("pdeck-reset", () => tiltRect.clear());
@@ -1607,6 +1619,9 @@ function initHomeScenes() {
         els.photo.style.transition = "";
         els.photo.style.transform = "";
       }
+      // 已经退回 About，牌堆看不见了：归位到第一张，
+      // 这样下次翻牌一定翻 SunLink，不会接着上次停留的那张
+      if (els.pdeck && els.pdeck.__deck) els.pdeck.__deck.reset();
     }
 
     const pMove = easeIO(clamp01(pM));   // 从照片原位就开始走，不再先停一段
