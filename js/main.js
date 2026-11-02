@@ -587,6 +587,7 @@ function initAboutStage() {
 
   const MAX = 9; // 最大倾斜角度
   stage.addEventListener("pointermove", (e) => {
+    if (document.body.dataset.hsLock === "1") return;   // 转场接管期间不跟随鼠标
     const r = stage.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
@@ -598,6 +599,7 @@ function initAboutStage() {
   });
 
   stage.addEventListener("pointerleave", () => {
+    if (document.body.dataset.hsLock === "1") return;
     photo.style.transform = "";
   });
 }
@@ -690,6 +692,8 @@ function initDeck() {
     }
     select(i);
   };
+
+  window.addEventListener("pdeck-reset", () => tiltRect.clear());
 
   /* 手机上没有侧卡可点，用横向滑动换牌 */
   let tx = 0;
@@ -1305,36 +1309,60 @@ function initHomeScenes() {
   };
 
   // 起止几何：起点是 About 里的照片卡，终点是 pdeck 当前那张卡
-  const measure = () => {
+  const W = 380;
+  const H = 506.7;
+
+  const measureStart = () => {
     const ph = els.photo;
-    const cur = document.querySelector(".pcard.is-current");
+    if (!ph || !els.cardGeom) return;
+    const r = ph.getBoundingClientRect();
+    // 照片带 -2° 旋转，rect 是被撑大的包围盒；尺寸要用 offsetWidth/Height
+    const w = ph.offsetWidth || r.width;
+    const h = ph.offsetHeight || r.height;
+    if (w <= 0) return;
     const vw = window.innerWidth || 1;
     const vh = window.innerHeight || 1;
-    const W = 380;
-    const H = 506.7;
-    const g = { dx: 0, dy: 0, sx: 1, sy: 1, dxEnd: 0, dyEnd: 0, sxEnd: 1, syEnd: 1 };
-    if (ph) {
-      const r = ph.getBoundingClientRect();
-      // 照片卡带 -2° 旋转，rect 是被撑大的包围盒；尺寸要用 offsetWidth/Height
-      const w = ph.offsetWidth || r.width;
-      const h = ph.offsetHeight || r.height;
-      if (w > 0) {
-        g.dx = r.left + r.width / 2 - vw / 2;
-        g.dy = r.top + r.height / 2 - vh / 2;
-        g.sx = w / W;
-        g.sy = h / H;
-      }
+    els.cardGeom.dx = r.left + r.width / 2 - vw / 2;
+    els.cardGeom.dy = r.top + r.height / 2 - vh / 2;
+    els.cardGeom.sx = w / W;
+    els.cardGeom.sy = h / H;
+  };
+
+  const measureEnd = () => {
+    const cur = document.querySelector(".pcard.is-current");
+    if (!cur || !els.cardGeom) return;
+    const c = cur.getBoundingClientRect();
+    if (c.width <= 0) return;
+    const vw = window.innerWidth || 1;
+    const vh = window.innerHeight || 1;
+    els.cardGeom.dxEnd = c.left + c.width / 2 - vw / 2;
+    els.cardGeom.dyEnd = c.top + c.height / 2 - vh / 2;
+    els.cardGeom.sxEnd = c.width / W;
+    els.cardGeom.syEnd = c.height / H;
+  };
+
+  const measure = () => {
+    if (!els.cardGeom) {
+      els.cardGeom = { dx: 0, dy: 0, sx: 1, sy: 1, dxEnd: 0, dyEnd: 0, sxEnd: 1, syEnd: 1 };
     }
-    if (cur) {
-      const c = cur.getBoundingClientRect();
-      if (c.width > 0) {
-        g.dxEnd = c.left + c.width / 2 - vw / 2;
-        g.dyEnd = c.top + c.height / 2 - vh / 2;
-        g.sxEnd = c.width / W;
-        g.syEnd = c.height / H;
-      }
-    }
-    els.cardGeom = g;
+    measureStart();
+    measureEnd();
+  };
+
+  // 把被鼠标吸歪的卡片按回原位（无过渡），再量终点，保证量的是最终位置
+  const settleDeck = () => {
+    const cur = document.querySelector(".pcard.is-current");
+    if (!cur) return;
+    cur.dataset.tilting = "";
+    cur.style.transition = "none";
+    cur.style.transform = cur.dataset.base || "";
+    void cur.offsetWidth;
+    cur.style.transition = "";
+    tiltClear();
+  };
+  // 让 initDeck 缓存的悬停矩形作废
+  const tiltClear = () => {
+    window.dispatchEvent(new CustomEvent("pdeck-reset"));
   };
 
   syncCard();
@@ -1414,7 +1442,7 @@ function initHomeScenes() {
     // —— About → 翻牌：文字退场，照片离开原位成为一张牌 ——
     const pM = clamp01((t - TL.morphA) / (TL.morphB - TL.morphA));
     // 翻牌卡与原照片位置重合，所以在这里把原图让出来，看不出替换
-    if (els.photo) els.photo.style.opacity = pM > 0.001 ? "0" : "";
+    if (els.photo) els.photo.style.opacity = pM > 0 ? "0" : "";
     // 文字先退场，底色慢一拍再走：卡片移动时画面还是暖的，不是一片白
     if (about) {
       about.style.setProperty("--about-bg", Math.max(0, 1 - pM * 1.15).toFixed(3));
@@ -1425,13 +1453,25 @@ function initHomeScenes() {
       els.aboutInner.style.opacity = String(Math.max(0, 1 - pM * 2.1));
     }
 
-    // 进入翻牌前同步一次背面（用户可能已经在 Projects 里换过卡）
+    // 进入翻牌：把照片的鼠标视差按回原位并锁住，同时重新量起止
+    // （照片被鼠标吸歪时 rect 会变，用旧值接管就会看到"卡片先跳一下"）
     if (pM > 0 && !backSynced) {
       backSynced = true;
+      document.body.dataset.hsLock = "1";
+      if (els.photo) {
+        els.photo.style.transition = "none";
+        els.photo.style.transform = "rotate(-2deg)";
+      }
       syncCard();
-      measure();
-    } else if (pM <= 0) {
+      settleDeck();     // 把被鼠标吸歪的卡片按回去
+      measure();        // 重新量起点与终点
+    } else if (pM <= 0 && backSynced) {
       backSynced = false;
+      document.body.dataset.hsLock = "";
+      if (els.photo) {
+        els.photo.style.transition = "";
+        els.photo.style.transform = "";
+      }
     }
 
     const pMove = clamp01((pM - 0.22) / 0.78);
@@ -1445,7 +1485,7 @@ function initHomeScenes() {
       els.card.style.transform =
         `translate(-50%, -50%) translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) ` +
         `scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) rotate(${rot.toFixed(2)}deg)`;
-      els.card.style.opacity = String(pM > 0.001 ? 1 : 0);
+      els.card.style.opacity = String(pM > 0 ? 1 : 0);
     }
 
     // —— 翻面：照片（正面）转到 SunLink 卡片（背面）——
@@ -1458,7 +1498,7 @@ function initHomeScenes() {
     if (els.pdeck) els.pdeck.style.opacity = String(pR);
     if (els.ptags) els.ptags.style.opacity = String(pR);
     // 牌落位后交给真正的牌堆，翻牌卡淡出
-    if (els.card) els.card.style.opacity = String(pM > 0.001 ? 1 - pR : 0);
+    if (els.card) els.card.style.opacity = String(pM > 0 ? 1 - pR : 0);
 
     // —— Projects → Thanks（先用淡出占位）——
     const p3 = clamp01((t - TL.shrinkA) / (TL.shrinkB - TL.shrinkA));
@@ -1468,7 +1508,7 @@ function initHomeScenes() {
     if (hero) hero.style.pointerEvents = p1 > 0.9 ? "none" : "";
     if (about) about.style.pointerEvents = pM > 0.9 ? "none" : "";
     if (projects) projects.style.pointerEvents = pR > 0.9 ? "none" : "";
-    if (els.pdeck) els.pdeck.style.pointerEvents = pR > 0.9 ? "" : "none";
+    if (els.pdeck) els.pdeck.style.pointerEvents = pR >= 0.999 ? "" : "none";
 
     stage.dataset.phase =
       t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.revealA ? "card" : t < TL.shrinkA ? "projects" : "thanks";
@@ -1541,6 +1581,10 @@ function initHomeScenes() {
   // 后退：Projects → About 完整（翻牌倒放）
   const playBack = () => {
     const vh = window.innerHeight || 1;
+    // 用户可能把卡片 hover 歪了，先在牌面还看得见时按回原位，
+    // 否则翻牌卡和真实卡在交叉淡化时会错位
+    settleDeck();
+    measureEnd();
     playTo(TL.morphA * vh);
   };
 
