@@ -1227,16 +1227,18 @@ function initHomeScenes() {
     splitA: 0.12, splitB: 1.1,
     info: 1.55, intro: 1.95, skills: 2.35, btn: 2.75,
     // 按钮出现后只留 0.35 屏缓冲：滚动一到这条线画面就开始变，用户的手是"参与"进来的
-    morphA: 3.1, morphB: 3.85,   // 文字退场，照片移到中间
-    flipA: 3.9, flipB: 4.6,      // 翻牌：照片 → SunLink 卡片
-    revealA: 5.0, revealB: 5.55, // Projects 的标题、侧卡、标签出现
-    shrinkA: 6.15, shrinkB: 6.75,
-    end: 7.05,
+    morphA: 3.1, morphB: 3.65,   // 文字退场，照片移到中间（区间短，滚一格就看得出在动）
+    flipA: 3.7, flipB: 4.4,      // 翻牌：照片 → SunLink 卡片
+    revealA: 4.8, revealB: 5.35, // Projects 的标题、侧卡、标签出现
+    shrinkA: 5.95, shrinkB: 6.55,
+    end: 6.85,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
 
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  // 加减速：起步慢、中段快、收尾缓，避免"匀速直线"那种被拽一下的感觉
+  const easeIO = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 
   // 回弹缓动：末尾会冲过头再退回来，形成"弹出来"的手感
   const backOut = (x) => {
@@ -1474,7 +1476,7 @@ function initHomeScenes() {
       }
     }
 
-    const pMove = clamp01((pM - 0.22) / 0.78);
+    const pMove = easeIO(clamp01(pM));   // 从照片原位就开始走，不再先停一段
     if (els.card && els.cardGeom) {
       const g = els.cardGeom;
       const dx = g.dx + (g.dxEnd - g.dx) * pMove;
@@ -1490,15 +1492,18 @@ function initHomeScenes() {
 
     // —— 翻面：照片（正面）转到 SunLink 卡片（背面）——
     const pF = clamp01((t - TL.flipA) / (TL.flipB - TL.flipA));
-    if (els.cardInner) els.cardInner.style.transform = `rotateY(${(pF * 180).toFixed(2)}deg)`;
+    if (els.cardInner) els.cardInner.style.transform = `rotateY(${(easeIO(pF) * 180).toFixed(2)}deg)`;
 
     // —— Projects 的其他元素：标题、两侧卡、标签一起浮现 ——
     const pR = clamp01((t - TL.revealA) / (TL.revealB - TL.revealA));
-    if (els.pnote) els.pnote.style.opacity = String(pR);
-    if (els.pdeck) els.pdeck.style.opacity = String(pR);
-    if (els.ptags) els.ptags.style.opacity = String(pR);
-    // 牌落位后交给真正的牌堆，翻牌卡淡出
-    if (els.card) els.card.style.opacity = String(pM > 0 ? 1 - pR : 0);
+    // 先让真卡在完全相同的位置"垫"上来（pR 0→0.55 就铺满），
+    // 然后再把翻牌卡撤走；同时交叉淡化会让中间态发灰，看着像卡片在动
+    const pIn = Math.min(1, pR / 0.55);
+    const pOut = Math.max(0, (pR - 0.55) / 0.45);
+    if (els.pnote) els.pnote.style.opacity = String(pIn);
+    if (els.pdeck) els.pdeck.style.opacity = String(pIn);
+    if (els.ptags) els.ptags.style.opacity = String(pIn);
+    if (els.card) els.card.style.opacity = String(pM > 0 ? 1 - pOut : 0);
 
     // —— Projects → Thanks（先用淡出占位）——
     const p3 = clamp01((t - TL.shrinkA) / (TL.shrinkB - TL.shrinkA));
@@ -1525,7 +1530,6 @@ function initHomeScenes() {
   let restTimer = 0;
   let lastY = window.scrollY;
 
-  const easeIO = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 
   // 从当前位置匀速缓入缓出地滚到 toY
   const playTo = (toY) => {
