@@ -721,39 +721,36 @@ function abInitInterests() {
     const idx = card ? cards.indexOf(card) : -1;
     if (idx === cur) return;
     const prev = cur;
-
-    // 内容从哪一侧进来：顺着"上一次那张 → 这次这张"的方向
-    let dir = 1;
-    if (prev > -1 && idx > -1) dir = idx > prev ? 1 : -1;
-    else if (idx > -1) dir = idx === 0 ? -1 : 1;
-    wrap.style.setProperty("--int-dir", String(dir));
-
     cur = idx;
     const animate = wide.matches;
 
-    if (!animate) {          // 小屏：保持原来的做法，不做高度动画
+    if (!animate) {          // 小屏：保持原来的做法，不做高度动画（滚动跟随也照旧，不动手机端）
       paint(idx);
-    } else {
-      const h0 = wrap.getBoundingClientRect().height;
-      const h1 = measure(idx, prev);
-      clearTimeout(hTimer);
-      // 先把高度钉在当前值，再过渡到目标值，避免展开瞬间高度"跳一下"
-      wrap.style.transition = "none";
-      wrap.style.height = h0 + "px";
-      void wrap.offsetHeight;
-      paint(idx);
-      wrap.style.transition = "height 0.66s cubic-bezier(0.4, 0, 0.2, 1)";
-      wrap.style.height = h1 + "px";
-      hTimer = setTimeout(() => {
-        wrap.style.transition = "";
-        wrap.style.height = "";
-      }, 700);
+      if (card) {
+        const top = card.getBoundingClientRect().top + window.scrollY - 96;
+        if (Math.abs(window.scrollY - top) > 40) window.scrollTo({ top, behavior: "smooth" });
+      }
+      return;
     }
 
-    if (card) {
-      const top = card.getBoundingClientRect().top + window.scrollY - 96;
-      if (Math.abs(window.scrollY - top) > 40) window.scrollTo({ top, behavior: "smooth" });
-    }
+    const h0 = wrap.getBoundingClientRect().height;
+    const h1 = measure(idx, prev);
+    clearTimeout(hTimer);
+    // 卡片在变形（宽度插值）时，文字会每帧重新折行 —— 整个过程中先把文字藏起来，
+    // 变完再淡入。所以这里先挂 is-morphing，最后 500ms 时摘掉
+    wrap.classList.add("is-morphing");
+    // 先把高度钉在当前值，再过渡到目标值，避免展开瞬间高度"跳一下"
+    wrap.style.transition = "none";
+    wrap.style.height = h0 + "px";
+    void wrap.offsetHeight;
+    paint(idx);
+    wrap.style.transition = "height 0.48s cubic-bezier(0.4, 0, 0.2, 1)";
+    wrap.style.height = h1 + "px";
+    hTimer = setTimeout(() => {
+      wrap.style.transition = "";
+      wrap.style.height = "";
+      wrap.classList.remove("is-morphing");   // 尺寸定了 → 文字在最终位置淡入，不再移动
+    }, 500);
   };
 
   cards.forEach((card) => {

@@ -952,11 +952,16 @@
   border-radius: 14px;
   overflow: hidden;
   background: var(--tint);
+  /* 同一行里三块被拉成等高，说明只有一行的那块会留出空隙、露出底色。
+     让 figcaption 撑满剩余高度，白底一直到底边 */
+  display: flex;
+  flex-direction: column;
 }
-.ab-more__tile img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.ab-more__tile img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; flex: 0 0 auto; }
 .ab-more__ph { display: grid; place-items: center; aspect-ratio: 1; }
 .ab-more__ph svg { width: 64px; height: 64px; color: rgba(51, 61, 109, 0.32); }
 .ab-more__tile figcaption {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1269,7 +1274,7 @@
   .ab-int__card {
     flex: 0 0 auto;
     width: calc((100% - 44px) / 3);
-    transition: width 0.66s cubic-bezier(0.4, 0, 0.2, 1),
+    transition: width 0.48s cubic-bezier(0.4, 0, 0.2, 1),
                 transform 0.45s cubic-bezier(0.2, 0.8, 0.3, 1),
                 box-shadow 0.45s;
   }
@@ -1301,7 +1306,7 @@
     justify-content: center;
     padding: 20px 0;
     opacity: 0;
-    transition: opacity 0.3s ease 0.14s;
+    transition: opacity 0.28s ease;
   }
   .ab-int__card.is-strip .ab-int__strip { opacity: 1; }
   .ab-int__strip-t {
@@ -1316,13 +1321,16 @@
   }
   .ab-int__card.is-strip .ab-int__strip-t { color: rgba(51, 61, 109, 0.66); }
 
-  /* 展开后卡内内容从"来的那一侧"滑入；--int-dir 由 JS 写（1 = 从右，-1 = 从左） */
-  .ab-int__card.is-open .ab-int__media,
-  .ab-int__card.is-open .ab-int__right {
-    animation: abIntIn 0.52s cubic-bezier(0.22, 0.68, 0.2, 1) 0.16s both;
+  /* 展开/收起过程中：宽度在插值，文字会每一帧重新折行（看起来就是字在跳）。
+     所以整个文字块先"立刻"藏起来，等尺寸变完再淡入 —— 文字只在最终位置出现一次，全程不动。
+     图片不藏：图只是被裁切，不会有折行抖动。 */
+  .ab-int__right { transition: opacity 0.28s ease; }
+  .ab-int.is-morphing .ab-int__card .ab-int__right {
+    opacity: 0;
+    transition: none;
   }
-  @keyframes abIntIn {
-    from { opacity: 0; transform: translateX(calc(var(--int-dir, 1) * 38px)); }
-    to { opacity: 1; transform: none; }
+  .ab-int.is-morphing .ab-int__card.is-strip .ab-int__strip {
+    opacity: 0;
+    transition: none;
   }
 }
