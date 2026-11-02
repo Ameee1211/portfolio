@@ -575,21 +575,8 @@ img { display: block; max-width: 100%; }
   gap: 18px;
   padding: 17px 16px 17px 20px;
   border-radius: 12px;
-  transition: background 0.32s ease, transform 0.32s ease;
 }
 .about__row + .about__row { box-shadow: 0 -1px 0 rgba(51, 61, 109, 0.07); }
-.about__row::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  width: 3px;
-  height: 0;
-  border-radius: 2px;
-  background: var(--purple);
-  transform: translateY(-50%);
-  transition: height 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.4);
-}
 
 .about__row dt {
   min-width: 116px;
@@ -622,15 +609,6 @@ img { display: block; max-width: 100%; }
   width: 25px;
   height: 25px;
   display: block;
-}
-
-/* 只在有真实指针（鼠标）的设备上启用悬停效果 */
-@media (hover: hover) and (pointer: fine) {
-  .about__row:hover {
-    background: rgba(116, 105, 182, 0.14);
-    transform: translateX(5px);
-  }
-  .about__row:hover::before { height: 62%; }
 }
 
 /* ================= 按钮 =================
