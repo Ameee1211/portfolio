@@ -1092,3 +1092,60 @@ body.hs-on .hero__seam { z-index: 2; }
   pointer-events: none;
   opacity: clamp(0, calc(var(--hp, 0) * 2.6), 1);
 }
+
+/* ============================================================
+   About → Projects 的翻牌卡
+   正面是 About 的照片，翻 180° 背面是 pdeck 里当前那张卡
+   ============================================================ */
+.abcard {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 380px;
+  height: 506.7px;      /* 与 .pcard 的 3:4 一致 */
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  perspective: 1500px;          /* 让翻转有近大远小，而不是被压扁 */
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+.abcard__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.abcard__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.abcard__front {
+  background: #fff;
+  border-radius: 22px;
+  padding: 9px;
+  box-shadow: 0 26px 60px rgba(51, 61, 109, 0.18);
+}
+.abcard__front img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 15px;
+}
+.abcard__back { transform: rotateY(180deg); }
+.abcard__back .pcard__face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Projects 屏的内容默认收起，由滚动进度放出来（背景色始终在） */
+body.hs-on .projects__note,
+body.hs-on .pdeck,
+body.hs-on .pdeck__tags { opacity: 0; }

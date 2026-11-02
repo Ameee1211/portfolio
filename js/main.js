@@ -1223,9 +1223,12 @@ function initHomeScenes() {
     splitA: 0.12, splitB: 1.1,
     info: 1.55, intro: 1.95, skills: 2.35, btn: 2.75,
     // btn 到 morphA 之间是纯停留区：四块都出现了，画面不动，让人看得清
-    morphA: 3.85, morphB: 4.55,
-    shrinkA: 4.95, shrinkB: 5.55,
-    end: 5.8,
+    morphA: 3.85, morphB: 4.6,   // 文字退场，照片移到中间
+    flipA: 4.65, flipB: 5.35,    // 翻牌：照片 → SunLink 卡片
+    holdB: 5.75,                 // 翻完停一下看卡
+    revealA: 5.75, revealB: 6.3, // Projects 的标题、侧卡、标签出现
+    shrinkA: 6.9, shrinkB: 7.5,
+    end: 7.8,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
@@ -1260,6 +1263,14 @@ function initHomeScenes() {
       found: [...hero.querySelectorAll(".ws__found")],
       cue: hero.querySelector(".hero__cue"),
       aboutInner: document.querySelector(".about__inner"),
+      photo: document.querySelector(".about__photo"),
+      pnote: document.querySelector(".projects__note"),
+      pdeck: document.querySelector(".pdeck"),
+      ptags: document.querySelector(".pdeck__tags"),
+      card: document.getElementById("aboutCard"),
+      cardInner: document.getElementById("aboutCardInner"),
+      cardImg: document.getElementById("aboutCardImg"),
+      cardBack: document.getElementById("aboutCardBack"),
       info: document.querySelector(".about__info"),
       intro: document.querySelector(".about__intro"),
       skills: document.querySelector(".skills"),
@@ -1273,9 +1284,64 @@ function initHomeScenes() {
     };
   };
   grab();
-  window.__grabHomeScenes = grab;
+
+  // 正面沿用 About 的照片；背面克隆 pdeck 当前那张卡，保证翻过来和真卡一模一样
+  let backFor = null;
+  const syncCard = () => {
+    const src = document.querySelector("#aboutPhoto");
+    if (els.cardImg && src && src.src && els.cardImg.src !== src.src) {
+      els.cardImg.src = src.src;
+      els.cardImg.alt = src.alt || "";
+    }
+    const cur = document.querySelector(".pcard.is-current");
+    const key = cur ? cur.dataset.i : null;
+    if (cur && key !== backFor) {
+      const face = cur.querySelector(".pcard__face");
+      if (face) {
+        els.cardBack.innerHTML = "";
+        els.cardBack.appendChild(face.cloneNode(true));
+        backFor = key;
+      }
+    }
+  };
+
+  // 起止几何：起点是 About 里的照片卡，终点是 pdeck 当前那张卡
+  const measure = () => {
+    const ph = els.photo;
+    const cur = document.querySelector(".pcard.is-current");
+    const vw = window.innerWidth || 1;
+    const vh = window.innerHeight || 1;
+    const W = 380;
+    const g = { dx: 0, dy: 0, s: 1, dxEnd: 0, dyEnd: 0, sEnd: 1 };
+    if (ph) {
+      const r = ph.getBoundingClientRect();
+      if (r.width > 0) {
+        g.dx = r.left + r.width / 2 - vw / 2;
+        g.dy = r.top + r.height / 2 - vh / 2;
+        g.s = r.width / W;
+      }
+    }
+    if (cur) {
+      const c = cur.getBoundingClientRect();
+      if (c.width > 0) {
+        g.dxEnd = c.left + c.width / 2 - vw / 2;
+        g.dyEnd = c.top + c.height / 2 - vh / 2;
+        g.sEnd = c.width / W;
+      }
+    }
+    els.cardGeom = g;
+  };
+
+  syncCard();
+  measure();
+  window.__grabHomeScenes = () => {
+    grab();
+    syncCard();
+    measure();
+  };
 
   let raf = 0;
+  let backSynced = false;
   // 导航里的 #home / #about / #projects 在叠屏布局下没有位置可跳，改成滚到对应时间点
   const ANCHORS = { home: 0, about: 1.2, projects: 3.95, contact: 5.7 };
   document.querySelectorAll('a[href^="#"]').forEach((a) => {
@@ -1340,20 +1406,57 @@ function initHomeScenes() {
       else if (t < at - 0.12) el.classList.remove("is-in");
     });
 
-    // —— About → Projects（本步先用淡出占位，下一步换成照片 morph）——
-    const p2 = clamp01((t - TL.morphA) / (TL.morphB - TL.morphA));
-    if (about) about.style.opacity = String(1 - p2);
+    // —— About → 翻牌：文字退场，照片离开原位成为一张牌 ——
+    const pM = clamp01((t - TL.morphA) / (TL.morphB - TL.morphA));
+    // 翻牌卡与原照片位置重合，所以在这里把原图让出来，看不出替换
+    if (els.photo) els.photo.style.opacity = pM > 0.001 ? "0" : "";
+    // 文字先退场（前四成），卡片再起步，不然两者同时动会互相抢
+    if (about) about.style.opacity = String(Math.max(0, 1 - pM * 2.1));
 
-    // —— Projects → Thanks（同上，先淡出占位）——
+    // 进入翻牌前同步一次背面（用户可能已经在 Projects 里换过卡）
+    if (pM > 0 && !backSynced) {
+      backSynced = true;
+      syncCard();
+      measure();
+    } else if (pM <= 0) {
+      backSynced = false;
+    }
+
+    const pMove = clamp01((pM - 0.22) / 0.78);
+    if (els.card && els.cardGeom) {
+      const g = els.cardGeom;
+      const dx = g.dx + (g.dxEnd - g.dx) * pMove;
+      const dy = g.dy + (g.dyEnd - g.dy) * pMove;
+      const sc = g.s + (g.sEnd - g.s) * pMove;
+      els.card.style.transform =
+        `translate(-50%, -50%) translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${sc.toFixed(4)})`;
+      els.card.style.opacity = String(pM > 0.001 ? 1 : 0);
+    }
+
+    // —— 翻面：照片（正面）转到 SunLink 卡片（背面）——
+    const pF = clamp01((t - TL.flipA) / (TL.flipB - TL.flipA));
+    if (els.cardInner) els.cardInner.style.transform = `rotateY(${(pF * 180).toFixed(2)}deg)`;
+
+    // —— Projects 的其他元素：标题、两侧卡、标签一起浮现 ——
+    const pR = clamp01((t - TL.revealA) / (TL.revealB - TL.revealA));
+    if (els.pnote) els.pnote.style.opacity = String(pR);
+    if (els.pdeck) els.pdeck.style.opacity = String(pR);
+    if (els.ptags) els.ptags.style.opacity = String(pR);
+    // 牌落位后交给真正的牌堆，翻牌卡淡出
+    if (els.card) els.card.style.opacity = String(pM > 0.001 ? 1 - pR : 0);
+
+    // —— Projects → Thanks（先用淡出占位）——
     const p3 = clamp01((t - TL.shrinkA) / (TL.shrinkB - TL.shrinkA));
     if (projects) projects.style.opacity = String(1 - p3);
 
     // 已经让开的那几屏不能再挡点击（否则 About 的按钮、卡片都点不到）
     if (hero) hero.style.pointerEvents = p1 > 0.9 ? "none" : "";
-    if (about) about.style.pointerEvents = p2 > 0.9 ? "none" : "";
-    if (projects) projects.style.pointerEvents = p3 > 0.9 ? "none" : "";
+    if (about) about.style.pointerEvents = pM > 0.9 ? "none" : "";
+    if (projects) projects.style.pointerEvents = pR > 0.9 ? "none" : "";
+    if (els.pdeck) els.pdeck.style.pointerEvents = pR > 0.9 ? "" : "none";
 
-    stage.dataset.phase = t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.shrinkA ? "projects" : "thanks";
+    stage.dataset.phase =
+      t < TL.splitA ? "hero" : t < TL.morphA ? "about" : t < TL.revealA ? "card" : t < TL.shrinkA ? "projects" : "thanks";
   };
 
   // 一次滚动就跨掉整段停留区（滚得太猛）时，先把页面按回 About 末尾，
@@ -1378,6 +1481,15 @@ function initHomeScenes() {
   };
   prevT = window.scrollY / (window.innerHeight || 1);   // 刷新时可能带着滚动位置回来，别误判成"跳了一大下"
   window.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll);
+  window.addEventListener("resize", () => {
+    measure();
+    onScroll();
+  });
+  // 图 / 字体落位后再量一次，避免起点算歪
+  [280, 1200].forEach((ms) => setTimeout(() => {
+    syncCard();
+    measure();
+    apply();
+  }, ms));
   apply();
 }
