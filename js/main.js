@@ -1470,46 +1470,70 @@ function initHomeScenes() {
   // 让人至少看清一次；需要再滚一下才真的进 Projects
   let prevT = 0;
   let guardArmed = true;   // 防暴滚只拦一次
-  let playArmed = true;    // "滑一下走完"是否武装
   let playing = false;
   let playRaf = 0;
+  let restY = null;        // 停住时的位置：只有"停下来再滑"才算一次
+  let restT = 0;           // 停住时在时间轴上的位置
+  let restTimer = 0;
+  let lastY = window.scrollY;
 
-  // About 四块都出来之后，再往下滑一下就自动把整段转场播完（滚多滚少都一样）
-  const triggerY = () => TL.btn + 0.1;
+  const easeIO = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 
-  const playThrough = () => {
-    const vh = window.innerHeight || 1;
-    const total = (TL.revealB - TL.morphA) * vh;
-    const to = TL.revealB * vh;
-    // 停留区画面完全静止，直接对齐到动画起点，看不出来
-    const from = Math.max(window.scrollY, TL.morphA * vh);
-    if (to - from < 40) return;
-
-    // style.css 里是 scroll-behavior: smooth，逐帧 scrollTo 会每帧重启一次平滑滚动，
-    // 页面几乎不动 —— 播放期间必须先切成 auto，结束后还原
+  // 从当前位置匀速缓入缓出地滚到 toY
+  const playTo = (toY) => {
     const root = document.documentElement;
     const prevBehavior = root.style.scrollBehavior;
+    // style.css 是 scroll-behavior: smooth，逐帧 scrollTo 会每帧重启平滑滚动 → 页面几乎不动
     root.style.scrollBehavior = "auto";
 
-    playing = true;
-    playArmed = false;
-    if (window.scrollY !== from) window.scrollTo(0, from);
+    const from = window.scrollY;
+    const dist = Math.abs(toY - from);
+    if (dist < 8) {
+      root.style.scrollBehavior = prevBehavior;
+      return;
+    }
+    const full = (TL.revealB - TL.morphA) * (window.innerHeight || 1);
+    const dur = 900 + 2100 * Math.min(1, dist / (full || 1));
 
-    const dur = 900 + 2100 * Math.min(1, (to - from) / (total || 1));
+    playing = true;
+    restY = null;
     const t0 = performance.now();
     const tick = (now) => {
       const k = Math.min(1, (now - t0) / dur);
-      const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
-      window.scrollTo(0, Math.round(from + (to - from) * e));
+      window.scrollTo(0, Math.round(from + (toY - from) * easeIO(k)));
       if (k < 1) {
         playRaf = requestAnimationFrame(tick);
       } else {
         playing = false;
         root.style.scrollBehavior = prevBehavior;
+        lastY = window.scrollY;
         prevT = window.scrollY / (window.innerHeight || 1);
+        // 播完等同于"刚停在这里"，下一次滑动可以直接接上
+        restY = window.scrollY;
+        restT = window.scrollY / (window.innerHeight || 1);
       }
     };
     playRaf = requestAnimationFrame(tick);
+  };
+
+  // 前进：About 完整 → Projects（停留区静止，先对齐到动画起点，看不出跳）
+  const playForward = () => {
+    const vh = window.innerHeight || 1;
+    const startY = Math.max(window.scrollY, TL.morphA * vh);
+    if (startY !== window.scrollY) {
+      const root = document.documentElement;
+      const b = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      window.scrollTo(0, startY);
+      root.style.scrollBehavior = b;
+    }
+    playTo(TL.revealB * vh);
+  };
+
+  // 后退：Projects → About 完整（翻牌倒放）
+  const playBack = () => {
+    const vh = window.innerHeight || 1;
+    playTo(TL.morphA * vh);
   };
 
   const onScroll = () => {
@@ -1517,29 +1541,59 @@ function initHomeScenes() {
     const t = window.scrollY / vh;
 
     if (playing) {
+      lastY = window.scrollY;
       prevT = t;
       if (!raf) raf = requestAnimationFrame(apply);
       return;
     }
 
-    // 越过触发线就自己播完，不需要用户继续滚
-    if (playArmed && prevT <= triggerY() && t > triggerY() && t < TL.revealB) {
-      playThrough();
-      prevT = t;
-      if (!raf) raf = requestAnimationFrame(apply);
-      return;
-    }
-    if (t < triggerY() - 0.3) playArmed = true;   // 退回 About 内部才重新武装
+    // 停手 300ms 才记录"停在哪"，这样按钮刚出现时的惯性不会直接把页面带走
+    clearTimeout(restTimer);
+    restTimer = setTimeout(() => {
+      if (playing) return;
+      const y = window.scrollY / (window.innerHeight || 1);
+      const inAbout = y >= TL.btn - 0.02 && y < TL.revealB - 0.02;
+      const inProjects = y >= TL.revealB - 0.02 && y < TL.shrinkA;
+      if (inAbout || inProjects) {
+        restY = window.scrollY;
+        restT = y;
+      } else {
+        restY = null;
+      }
+    }, 300);
 
-    if (guardArmed && t - prevT > 1.1 && prevT < TL.morphA && t > TL.morphA) {
+    if (restY !== null) {
+      const dy = window.scrollY - restY;
+      // About 完整后，往下滑一下 → 整段自动播完
+      if (restT < TL.morphA + 0.02 && dy > 8) {
+        playForward();
+        lastY = window.scrollY;
+        if (!raf) raf = requestAnimationFrame(apply);
+        return;
+      }
+      // Projects 里往上滑一下 → 自动倒放回 About
+      if (restT >= TL.revealB - 0.02 && dy < -8) {
+        playBack();
+        lastY = window.scrollY;
+        if (!raf) raf = requestAnimationFrame(apply);
+        return;
+      }
+    }
+
+    if (guardArmed && t - lastY > 1.1 && lastY / vh < TL.morphA && t > TL.morphA) {
       guardArmed = false;
       const back = (TL.morphA - 0.03) * vh;
-      prevT = TL.morphA - 0.03;
+      lastY = TL.morphA - 0.03;
+      const root = document.documentElement;
+      const b = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
       window.scrollTo(0, back);
+      root.style.scrollBehavior = b;
       if (!raf) raf = requestAnimationFrame(apply);
       return;
     }
     if (t < TL.morphA - 0.4) guardArmed = true;
+    lastY = window.scrollY;
     prevT = t;
     if (!raf) raf = requestAnimationFrame(apply);
   };
