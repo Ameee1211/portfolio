@@ -251,9 +251,10 @@ function renderWordSearch() {
   host.style.setProperty("--ws-band", String(g.band));
   host.dataset.puzzle = cfg === SITE.wordsearch.mobile ? "mobile" : "desktop";
 
-  // 上下各成一组：滚动时上半屏上移、下半屏下移，做出「从中线裂开」的转场
-  const half = Math.ceil(rows / 2);
-  const midY = (rows * g.ch) / 2;
+  // 上下各成一组：在 ZHANG 与 UI 之间裂开（6 行时是 4 上 2 下），
+  // 这样 TONG / ZHANG 的五条高亮都在上半，UI / UX / DESIGN 都在下半，不会跨缝
+  const half = Math.max(2, Math.min(rows - 1, Math.round(rows * 0.667)));
+  const midY = (rows * g.ch) * (half / rows);
 
   const bandParts = { top: [], bottom: [] };
   words.forEach((w, i) => {
@@ -1206,10 +1207,10 @@ function initHomeScenes() {
 
   // 时间轴（单位：1 = 一个视口高度）。A→B 是转场区间，其余是停留区
   const TL = {
-    splitA: 0.2, splitB: 0.65,
-    morphA: 1.05, morphB: 1.5,
-    shrinkA: 1.95, shrinkB: 2.3,
-    end: 2.6,
+    splitA: 0.12, splitB: 1.1,
+    morphA: 1.8, morphB: 2.5,
+    shrinkA: 2.9, shrinkB: 3.5,
+    end: 3.8,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
@@ -1227,6 +1228,12 @@ function initHomeScenes() {
       found: [...hero.querySelectorAll(".ws__found")],
       cue: hero.querySelector(".hero__cue"),
       aboutInner: document.querySelector(".about__inner"),
+      splitRatio: (() => {
+        const gs = hero.querySelector('.ws__letters[data-half="top"]');
+        const rows = SITE.wordsearch.desktop.letters.length;
+        const half = Math.max(2, Math.min(rows - 1, Math.round(rows * 0.667)));
+        return gs ? half / rows : 0.667;
+      })(),
     };
   };
   grab();
@@ -1251,20 +1258,28 @@ function initHomeScenes() {
 
     // —— Hero → About：字母上下裂开，半屏底色跟着退场 ——
     const p1 = clamp01((t - TL.splitA) / (TL.splitB - TL.splitA));
+    // 裂缝在 4/6 屏高处，上下各让开同样的像素距离
+    const seamY = vh * (els.splitRatio || 0.667);
+    const off = seamY * p1;
+
     const svg = els.svg;
     if (svg && svg.viewBox && svg.viewBox.baseVal.width) {
       const k = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
-      const d = (vh * 0.92 * p1) / (k || 1);
+      const d = off / (k || 1);
       els.top.forEach((g) => g.setAttribute("transform", `translate(0 ${-d})`));
       els.bot.forEach((g) => g.setAttribute("transform", `translate(0 ${d})`));
     }
-    if (els.veilT) els.veilT.style.transform = `translateY(${(-p1 * 200).toFixed(2)}%)`;
-    if (els.veilB) els.veilB.style.transform = `translateY(${(p1 * 200).toFixed(2)}%)`;
+    if (els.veilT) els.veilT.style.transform = `translateY(${-off.toFixed(1)}px)`;
+    if (els.veilB) els.veilB.style.transform = `translateY(${off.toFixed(1)}px)`;
     // 答案虚线跨在上下两半之间，裂开时没法跟着走，干脆先淡出
-    if (els.found) els.found.forEach((g) => (g.style.opacity = String(Math.max(0, 1 - p1 * 3))));
-    if (els.cue) els.cue.style.opacity = String(Math.max(0, 1 - p1 * 4));
-    // About 的背景不动（否则会露出下一屏），只让里面的内容有个"浮起"的位移
-    if (els.aboutInner) els.aboutInner.style.transform = `translateY(${((1 - p1) * 9).toFixed(2)}vh)`;
+    if (els.found) els.found.forEach((g) => (g.style.opacity = String(Math.max(0, 1 - p1 * 4))));
+    if (els.cue) els.cue.style.opacity = String(Math.max(0, 1 - p1 * 6));
+
+    // About 背景始终不透明（否则会露出下一屏），只让里面的内容渐显并轻微上滑
+    if (els.aboutInner) {
+      els.aboutInner.style.opacity = String(0.25 + 0.75 * p1);
+      els.aboutInner.style.transform = `translateY(${((1 - p1) * 45).toFixed(2)}vh)`;
+    }
 
     // —— About → Projects（本步先用淡出占位，下一步换成照片 morph）——
     const p2 = clamp01((t - TL.morphA) / (TL.morphB - TL.morphA));

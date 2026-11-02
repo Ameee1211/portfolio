@@ -1031,14 +1031,13 @@ body.hs-on .footer { z-index: 10; }
   position: absolute;
   left: 0;
   right: 0;
-  height: 50.5%;
   background: var(--bg);
   z-index: 0;
   pointer-events: none;
   will-change: transform;
 }
-.hero__veil--top { top: 0; }
-.hero__veil--bottom { bottom: 0; }
+.hero__veil--top { top: 0; height: 66.67%; }
+.hero__veil--bottom { bottom: 0; height: 33.33%; }
 
 body.hs-on .hero__inner { position: relative; z-index: 1; }
 body.hs-on .hero__seam { z-index: 2; }
