@@ -724,12 +724,11 @@ function initDeck() {
     select(i);
   };
 
-  // 给"滚轮翻牌"用：到边返回 false，由上层决定是回退到 About 还是什么都不做
+  // 给"滚轮翻牌"用：环形无限循环（最后一张再往下就是第一张，反之亦然）
   stage.__deck = {
     step(dir) {
-      const next = cur + dir;
-      if (next < 0 || next >= n) return false;
-      select(next);
+      if (!n) return false;
+      select(cur + dir);        // select 内部会取模，负数也落到合法位置
       return true;
     },
     index: () => cur,
@@ -1711,7 +1710,7 @@ function initHomeScenes() {
 
   // 前进：About 完整 → Projects（停留区静止，先对齐到动画起点，看不出跳）
   const playForward = () => {
-    wQueue = 0; wAcc = 0; wLock = 0;     // 进/出这一屏时把滚轮攒的格数清干净
+    wAcc = 0; wLock = 0;     // 进/出这一屏时把滚轮攒的量清干净
     const vh = window.innerHeight || 1;
     const startY = Math.max(window.scrollY, TL.morphA * vh);
     if (startY !== window.scrollY) {
@@ -1726,7 +1725,7 @@ function initHomeScenes() {
 
   // 后退：Projects → About 完整（翻牌倒放）
   const playBack = () => {
-    wQueue = 0; wAcc = 0; wLock = 0;
+    wAcc = 0; wLock = 0;
     const vh = window.innerHeight || 1;
     // 用户可能把卡片 hover 歪了，先在牌面还看得见时按回原位，
     // 否则翻牌卡和真实卡在交叉淡化时会错位
@@ -1781,36 +1780,14 @@ function initHomeScenes() {
 
   /* ——— Projects 屏：滚轮翻牌 ———
      这一屏是最后一屏，滚轮在这里不再带动时间轴：
-     · 往下 = 下一张（右边的卡转到中间，中间的转到左边）
-     · 往上 = 直接退回 About Me（不做"上一张"，这样退出永远只有一种手势）
-     到边不循环：已经是最后一张时再往下就没有更多了。
-     手感的关键是"不丢格"：滚轮事件按 110px 折算成一格放进队列，
-     锁着的时候继续攒，锁一松就一张接一张地翻，所以连滚三下就是三张。 */
-  const W_GATE = 110;      // 一格 = 110px 的滚动量（鼠标一格约 110~120）
-  const W_LOCK = 300;      // 两次翻牌的最小间隔（换牌过渡 0.72s，这里允许接上去）
-  let wAcc = 0;            // 还没攒够一格的零头
-  let wQueue = 0;          // 攒下还没翻的格数（只往下翻，所以不会为负）
-  let wLock = 0;
-  let wPump = 0;
-
-  const deckStep = () => {
-    const deck = els.pdeck;
-    if (!deck || !deck.__deck || wQueue <= 0) return;
-    if (deck.__deck.step(1)) {
-      wQueue -= 1;
-      wLock = performance.now() + W_LOCK;
-    } else {
-      wQueue = 0;                              // 已经是最后一张，没有更多了
-    }
-  };
-
-  const pumpWheel = () => {
-    wPump = 0;
-    if (playing || wQueue <= 0) return;
-    if (performance.now() < wLock) { wPump = setTimeout(pumpWheel, 60); return; }
-    deckStep();
-    if (wQueue > 0 && !playing) wPump = setTimeout(pumpWheel, 60);
-  };
+     · 往下 = 切下一张（右边的卡转到中间，中间的转到左边），到底了会绕回第一张（无限循环）
+     · 往上 = 直接退回 About Me（不做"上一张"，退出永远只有一种手势）
+     节奏：一次滑动只切一张，不管滚多滚少；两张之间至少隔 300ms，
+     所以快速连滚是一张接一张地跟上来，而不是一下子跳过去三四张。 */
+  const W_GATE = 40;       // 攒够 40px 才算"一次滑动"（鼠标一格 100~150，触控板碎步也能攒到）
+  const W_LOCK = 300;      // 两次换牌的最小间隔（换牌过渡 0.72s，允许下一张接上去）
+  let wAcc = 0;            // 本次滑动攒的位移
+  let wLock = 0;           // 下一次允许换牌的时间点
 
   const onDeckWheel = (e) => {
     if (playing) return;                       // 播放中交给 blockInput 吞掉
@@ -1822,19 +1799,17 @@ function initHomeScenes() {
 
     // 往上：不翻上一张，直接退回 About
     if (e.deltaY < 0) {
-      wQueue = 0;
       wAcc = 0;
       playBack();
       return;
     }
-    // 往下：翻下一张
+    const now = performance.now();
+    if (now < wLock) return;                   // 冷却中：这次滑动的量算进上一张，不再多切
     wAcc += e.deltaY;
-    const gates = Math.trunc(wAcc / W_GATE);
-    if (gates > 0) {
-      wAcc -= gates * W_GATE;
-      wQueue = Math.min(3, wQueue + gates);    // 一次最多排三张，防手一抖飞过去
-    }
-    if (!wPump) wPump = setTimeout(pumpWheel, 0);
+    if (wAcc < W_GATE) return;
+    wAcc = 0;                                  // 每次切完清零，不攒零头 —— 否则偶尔会一次滑出两张
+    wLock = now + W_LOCK;
+    deck.__deck.step(1);
   };
   window.addEventListener("wheel", onDeckWheel, { passive: false });
 
