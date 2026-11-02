@@ -1496,6 +1496,7 @@ function initHomeScenes() {
 
     // —— 翻面：照片（正面）转到 SunLink 卡片（背面）——
     const pF = clamp01((t - TL.flipA) / (TL.flipB - TL.flipA));
+    if (els.card) els.card.classList.toggle("is-flipping", pF > 0 && pF < 1);
     if (els.cardInner) els.cardInner.style.transform = `rotateY(${(easeIO(pF) * 180).toFixed(2)}deg)`;
 
     // —— Projects 的其他元素：标题、两侧卡、标签一起浮现 ——

@@ -1117,10 +1117,13 @@ body.hs-on .hero__seam { z-index: 2; }
   z-index: 60;
   opacity: 0;
   pointer-events: none;
-  perspective: 1500px;          /* 让翻转有近大远小，而不是被压扁 */
   transform: translate(-50%, -50%);
-  transform-style: preserve-3d;
   will-change: transform, opacity;
+}
+/* 透视只在真正翻面时打开：平时保持纯 2D 变换，和照片走同一条渲染路径 */
+.abcard.is-flipping {
+  perspective: 1500px;
+  transform-style: preserve-3d;
 }
 .abcard__inner {
   position: relative;
