@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=149" />
+  <link rel="stylesheet" href="css/style.css?v=150" />
 </head>
 <body>
 
@@ -65,7 +65,9 @@
 
     <!-- ================= Featured Projects ================= -->
     <section class="projects" id="projects">
-      <!-- 标题带：Featured Projects 与那句副标题大小字交替，从右往左无缝滚动 -->
+      <!-- 手机端：静态标题（电脑端隐藏） -->
+      <div class="projects__head" id="projectsHead"></div>
+      <!-- 电脑端：标题带，第一条从右边滑进来，之后一直往左流 -->
       <div class="projects__marquee" id="projectsMarquee" role="img" aria-label="Featured Projects — Behind every design is a story"></div>
 
       <div class="pdeck" id="deckStage"></div>
@@ -85,7 +87,7 @@
   <!-- 四屏转场的滚动轨道：只提供滚动距离，本身不显示任何内容 -->
   <div class="hs-stage" aria-hidden="true"></div>
 
-  <script src="js/content.js?v=149"></script>
-  <script src="js/main.js?v=149"></script>
+  <script src="js/content.js?v=150"></script>
+  <script src="js/main.js?v=150"></script>
 </body>
 </html>

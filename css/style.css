@@ -651,6 +651,9 @@ body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; t
   padding: 64px 40px 20px;
   overflow: hidden;
 }
+/* 静态标题块：只在手机端出现（电脑端用下面的滚动标题带） */
+.projects__head { display: none; }
+
 /* ---- 标题带：大标题 / 副标题交替，从右往左无限滚动 ---- */
 .projects__marquee {
   /* 100vw + 父级 align-items:center 让它左右贯通到屏幕边缘（父级 overflow:hidden 负责裁切） */
@@ -667,7 +670,7 @@ body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; t
   display: flex;
   width: max-content;
   will-change: transform;
-  animation: mqFlow 30s linear infinite;   /* 时长由 JS 按实际宽度改写成恒速 */
+  /* 位移由 JS 逐帧驱动：要控制"第一条从右边滑进来"，CSS 动画没法从这里起步 */
 }
 .mq__group {
   display: flex;
@@ -691,13 +694,6 @@ body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; t
   letter-spacing: 0.01em;
   color: var(--muted);
   white-space: nowrap;
-}
-@keyframes mqFlow {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }   /* 两组等宽，走完一组正好接上 */
-}
-@media (prefers-reduced-motion: reduce) {
-  .mq__track { animation: none; }
 }
 
 /* ---- 扑克牌牌堆：三张横排，中间最大最正，两侧倾斜后压 ---- */
@@ -986,8 +982,34 @@ section[id] { scroll-margin-top: 92px; }
   .about__intro { margin-top: 26px; line-height: 1.95; }
   .skills__title { margin-top: 32px; }
   .projects { padding: 84px 22px 44px; justify-content: center; }
-  .projects__marquee { height: 104px; margin-bottom: 12px; }
-  .mq__group { gap: 30px; padding-right: 30px; }
+  /* 手机端不用滚动标题带，保持原来的静态标题（用户明确要求） */
+  .projects__marquee { display: none; }
+  .projects__head {
+    display: block;
+    align-self: stretch;
+    text-align: center;
+    margin: 0 0 16px;
+  }
+  .projects__kicker {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .projects__rule {
+    display: block;
+    width: min(442px, 74%);
+    height: 1.5px;
+    margin: 8px auto 10px;
+    border-radius: 2px;
+    background: rgba(51, 61, 109, 0.24);
+  }
+  .projects__sub {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+  }
   .pdeck { height: 430px; }
   .pcard { width: 300px; }
   /* 手机宽度不够并排三张，只留当前这张，左右滑动换牌 */

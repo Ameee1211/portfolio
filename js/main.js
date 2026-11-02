@@ -616,7 +616,16 @@ function renderProjects() {
   if (!stage) return;
   const p = SITE.projects;
 
-  // 标题带：大标题 + 副标题交替排列，复制成两组（第二组同样的内容）用来做无缝循环；
+  // 手机端的静态标题（电脑端这块 display:none，用下面的滚动标题带）
+  const head = $("projectsHead");
+  if (head) {
+    head.innerHTML =
+      `<p class="projects__kicker">${esc(p.title)}</p>` +
+      `<span class="projects__rule" aria-hidden="true"></span>` +
+      `<p class="projects__sub">${esc(p.intro[0])}</p>`;
+  }
+
+  // 标题带：大标题 + 副标题交替排列，复制成两组（内容完全一样）用来做无缝循环；
   // 一组里重复三遍，保证它比屏幕宽，滚到接缝处也不会露出空白
   const mq = $("projectsMarquee");
   if (mq) {
@@ -625,10 +634,6 @@ function renderProjects() {
       `<span class="mq__small">${esc(p.intro[0])}</span>`;
     const group = `<div class="mq__group">${pair.repeat(3)}</div>`;
     mq.innerHTML = `<div class="mq__track">${group}${group}</div>`;
-    // 速度恒定：按一组的实际宽度算时长（约 92px/秒），换字号/换文案都不用改参数
-    const track = mq.querySelector(".mq__track");
-    const g = mq.querySelector(".mq__group");
-    if (track && g) track.style.animationDuration = Math.max(14, g.offsetWidth / 92).toFixed(1) + "s";
   }
 
   stage.innerHTML = p.items
@@ -1426,6 +1431,71 @@ function initHomeScenes() {
 
   let raf = 0;
   let backSynced = false;
+
+  /* ——— 标题带 ———
+     不是淡入：它一露出来就是满不透明，但轨道起点在屏幕右边缘之外，
+     所以看到的是"第一个 Featured Projects 从右边滑出来"，后面跟着一整溜源源不断往左走。
+     入场速度按 (1-u)² 衰减，收尾时正好等于巡航速度，不会"滑到位就停"。 */
+  const MQ_SPEED = 118;     // 巡航速度 px/秒
+  const MQ_ENTRY = 2.6;     // 入场时长（秒）
+  const MQ_STILL = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mqTrack = els.pmq ? els.pmq.querySelector(".mq__track") : null;
+  let mqW = 0;              // 一组内容的宽度（滚出这个距离就折回来）
+  let mqShown = false;
+  let mqEnter = true;       // 是否还要演"从右边滑进来"
+  let mqT = 0;
+  let mqX = 0;
+  let mqLast = 0;
+  let mqRaf = 0;
+
+  const mqMeasure = () => {
+    const g = mqTrack ? mqTrack.querySelector(".mq__group") : null;
+    mqW = g ? g.offsetWidth : 0;
+  };
+
+  const mqPaint = () => {
+    if (mqTrack) mqTrack.style.transform = `translate3d(${mqX.toFixed(1)}px, 0, 0)`;
+  };
+
+  const mqTick = (now) => {
+    mqRaf = 0;
+    const dt = Math.min(0.06, (now - mqLast) / 1000);
+    mqLast = now;
+    mqT += dt;
+    const vw = window.innerWidth || 1;
+    const W = mqW || vw * 2;
+    const u = Math.min(1, mqT / MQ_ENTRY);
+    // 入场项 (1-u)^1.9：起点在屏幕右侧外（+vw），衰减到 0 后只剩匀速巡航，
+    // 两者相加所以在 t=MQ_ENTRY 时速度正好等于巡航速度，不会"滑到位就停"。
+    // 指数取 1.9 而不是 2 —— 起步没那么"甩"，收尾一样平滑
+    const enter = mqEnter ? vw * Math.pow(1 - u, 1.9) : 0;
+    mqX = enter - MQ_SPEED * mqT;
+    // 内容以 W 为周期，掉出一个周期就整体挪回来（此时画面已铺满，挪回去看不出接缝）
+    while (mqX <= -W) mqX += W;
+    mqPaint();
+    mqRaf = requestAnimationFrame(mqTick);
+  };
+
+  const mqShow = (on, instant) => {
+    if (!mqTrack || on === mqShown) return;
+    mqShown = on;
+    if (on) {
+      mqMeasure();
+      mqEnter = !(instant || MQ_STILL);
+      mqT = 0;
+      mqX = mqEnter ? (window.innerWidth || 1) : 0;   // 不演入场就从中性位置开始巡航
+      mqPaint();
+      if (!MQ_STILL) {
+        mqLast = performance.now();
+        if (!mqRaf) mqRaf = requestAnimationFrame(mqTick);
+      }
+    } else if (mqRaf) {
+      cancelAnimationFrame(mqRaf);
+      mqRaf = 0;
+    }
+  };
+  let firstApply = true;
+
   // 导航里的 #home / #about / #projects 在叠屏布局下没有位置可跳，改成滚到对应时间点
   const ANCHORS = { home: 0, about: 1.2, projects: 5.15 };
   document.querySelectorAll('a[href^="#"]').forEach((a) => {
@@ -1557,9 +1627,13 @@ function initHomeScenes() {
     const pText = clamp01((pR - 0.42) / 0.58);
     if (els.pdeck) els.pdeck.style.opacity = String(pIn);
     if (els.ptags) els.ptags.style.opacity = String(pText);
-    // 标题带：牌组和标签都铺满之后才淡入，之后一直自己从右往左滚
+    // 标题带：牌组和标签都铺满之后才露出来（不做淡入，见 mqShow 的入场）
     const pT = clamp01((t - TL.titleA) / (TL.titleB - TL.titleA));
-    if (els.pmq) els.pmq.style.opacity = String(pT);
+    const mqOn = pT > 0;
+    if (els.pmq) els.pmq.style.opacity = mqOn ? "1" : "0";
+    // 刷新直接落在本屏时（第一次 apply 就已经在结尾），不要再演一遍入场
+    mqShow(mqOn, firstApply && t >= TL.titleB - 0.01);
+    firstApply = false;
     // 叠化交接：真卡已铺满，两张牌像素级重合，叠化本身看不出东西；但要是显卡上有半像素的
     // 栅格差异，也会被这个过渡摊平，而不是"啪"地换一张牌
     const cardFade = clamp01((pR - 0.6) / 0.18);
@@ -1695,6 +1769,7 @@ function initHomeScenes() {
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", () => {
     measure();
+    mqMeasure();     // 字号随视口变，组的宽度要重新量
     onScroll();
   });
   // 图 / 字体落位后再量一次，避免起点算歪
