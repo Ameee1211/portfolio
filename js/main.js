@@ -558,6 +558,10 @@ function renderAbout() {
   if (!$("aboutPhoto")) return;
   const a = SITE.about;
   $("aboutPhoto").src = a.photo;
+  // 翻牌用的那张图提前一起发起请求：不然它要等到转场才加载，
+  // 慢网下就会看到一张白卡（实测原图 365KB 单独下载要近 4 秒）
+  const cardImgEl = $("aboutCardImg");
+  if (cardImgEl) cardImgEl.src = a.photo;
   $("aboutTitle").textContent = a.title;
   $("aboutBtn").textContent = a.button.label;
   $("aboutBtn").href = a.button.href;

@@ -86,7 +86,7 @@ const SITE = {
 
   // ---------- About Me ----------
   about: {
-    photo: "assets/img/amy-portrait.jpg",
+    photo: "assets/img/amy-portrait.webp?v=2",
     title: "About Me",
     button: { label: "Explore More", href: "about.html" },
     info: [
@@ -126,7 +126,7 @@ const SITE = {
         "I design for the moment someone actually uses the thing — how it feels to use, not how it looks in a frame. So I start with the friction: the point where people hesitate, re-read a label, or quietly give up — and I fix that before anything gets decorated.",
       // 首屏只保留一个按钮：导航栏里已经有 Projects，这里的 "View my work" 是重复入口
       cta: { label: "Get in touch", href: "#contact" },
-      photo: "assets/img/amy-portrait.jpg",
+      photo: "assets/img/amy-portrait.webp?v=2",
       floats: ["Figma", "Rhino 7", "Blender", "Adobe CC"],
       stats: [
         { k: "Based in", v: "Hangzhou, China" },
