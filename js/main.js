@@ -1234,9 +1234,11 @@ function initHomeScenes() {
     splitA: 0.12, splitB: 1.1,
     info: 1.55, intro: 1.95, skills: 2.35, btn: 2.75,
     // 按钮出现后只留 0.35 屏缓冲：滚动一到这条线画面就开始变，用户的手是"参与"进来的
-    morphA: 3.1, morphB: 3.65,   // 文字退场，照片移到中间（区间短，滚一格就看得出在动）
-    flipA: 3.7, flipB: 4.4,      // 翻牌：照片 → SunLink 卡片
-    revealA: 4.8, revealB: 5.35, // Projects 的标题、侧卡、标签出现
+    morphA: 3.1, morphB: 3.92,   // 文字退场，照片移到中间
+    flipA: 3.88, flipB: 4.55,    // 翻牌：照片 → SunLink 卡片（紧接位移，全程不断）
+    // 侧卡 / 说明 / 标签出现。必须晚于 flipB：翻到一半时牌几乎是侧着的，
+    // 这时候让底下那张一模一样的真卡浮上来，会看到一张"正面的牌"从侧面牌里透出来
+    revealA: 4.62, revealB: 5.15,
     shrinkA: 5.95, shrinkB: 6.55,
     end: 6.85,
   };
@@ -1385,7 +1387,7 @@ function initHomeScenes() {
   let raf = 0;
   let backSynced = false;
   // 导航里的 #home / #about / #projects 在叠屏布局下没有位置可跳，改成滚到对应时间点
-  const ANCHORS = { home: 0, about: 1.2, projects: 3.95, contact: 5.7 };
+  const ANCHORS = { home: 0, about: 1.2, projects: 5.15, contact: 5.7 };
   document.querySelectorAll('a[href^="#"]').forEach((a) => {
     const id = (a.getAttribute("href") || "").slice(1);
     if (!(id in ANCHORS)) return;
@@ -1440,6 +1442,10 @@ function initHomeScenes() {
       els.aboutInner.style.opacity = String(0.2 + 0.8 * p1);
       els.aboutInner.style.transform = "none";
     }
+    // 裂开完成后整层收掉：迷宫里的高亮胶囊（.ws__found 里的 rect）自己写了
+    // visibility: visible，只给组设 hidden 藏不干净，会有一块橙色虚线残留在
+    // Projects 屏上盖住卡片。整层给 opacity 0 最稳，也不会触发重新排版
+    if (hero) hero.style.opacity = p1 > 0.999 ? "0" : "";
 
     // —— About 内部：滑过一条线就放进一块，动画自己慢慢播完 ——
     STEPS().forEach(({ el, at }) => {
@@ -1505,13 +1511,17 @@ function initHomeScenes() {
 
     // —— Projects 的其他元素：标题、两侧卡、标签一起浮现 ——
     const pR = clamp01((t - TL.revealA) / (TL.revealB - TL.revealA));
-    // 真卡先在完全相同的位置"垫"上来（pR 0→0.55 铺满），翻牌卡一直不透明地压在上面，
-    // 等真卡完全就位的那一帧才让位 —— 不做交叉淡化，避免中间态发灰/重影被看成"卡片在动"
+    // 真卡先在完全相同的位置"垫"上来（pR 0→0.55 铺满），翻牌卡一直不透明地压在上面；
+    // 说明与标签错后一拍，让画面一直有东西在变，直到时间轴最后一帧（不会出现"到了却不结束"的干等）
     const pIn = Math.min(1, pR / 0.55);
-    if (els.pnote) els.pnote.style.opacity = String(pIn);
+    const pText = clamp01((pR - 0.42) / 0.58);
+    if (els.pnote) els.pnote.style.opacity = String(pText);
     if (els.pdeck) els.pdeck.style.opacity = String(pIn);
-    if (els.ptags) els.ptags.style.opacity = String(pIn);
-    if (els.card) els.card.style.opacity = String(pM > 0 && pR <= 0.55 ? 1 : 0);
+    if (els.ptags) els.ptags.style.opacity = String(pText);
+    // 叠化交接：真卡已铺满，两张牌像素级重合，叠化本身看不出东西；但要是显卡上有半像素的
+    // 栅格差异，也会被这个过渡摊平，而不是"啪"地换一张牌
+    const cardFade = clamp01((pR - 0.6) / 0.18);
+    if (els.card) els.card.style.opacity = String(pM > 0 ? 1 - cardFade : 0);
 
     // —— Projects → Thanks（先用淡出占位）——
     const p3 = clamp01((t - TL.shrinkA) / (TL.shrinkB - TL.shrinkA));
@@ -1540,7 +1550,12 @@ function initHomeScenes() {
   let lastY = window.scrollY;
 
 
-  // 从当前位置匀速缓入缓出地滚到 toY
+  // 播放曲线：起步就有速度（不再"等它缓过来"），结尾仍然收得住。
+  // 之前用 easeInOutCubic，头 300ms 只走 0.4%，用户滚完得干等半秒才看见东西动；
+  // 现在 1-(1-k)^1.6，第一个 100ms 就能走掉全程的 6%，手指和画面是连着的
+  const easePlay = (k) => 1 - Math.pow(1 - k, 1.6);
+
+  // 从当前位置缓动滚到 toY
   const playTo = (toY) => {
     if (window.__hsNoAuto) return;   // 调试用：关掉自动播放，便于逐点检查
     const root = document.documentElement;
@@ -1555,14 +1570,15 @@ function initHomeScenes() {
       return;
     }
     const full = (TL.revealB - TL.morphA) * (window.innerHeight || 1);
-    const dur = 900 + 2100 * Math.min(1, dist / (full || 1));
+    // 比原来短一点：整段动画不留"空转"的尾巴
+    const dur = 760 + 1650 * Math.min(1, dist / (full || 1));
 
     playing = true;
     restY = null;
     const t0 = performance.now();
     const tick = (now) => {
       const k = Math.min(1, (now - t0) / dur);
-      window.scrollTo(0, Math.round(from + (toY - from) * easeIO(k)));
+      window.scrollTo(0, Math.round(from + (toY - from) * easePlay(k)));
       if (k < 1) {
         playRaf = requestAnimationFrame(tick);
       } else {
