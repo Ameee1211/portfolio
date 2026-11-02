@@ -615,13 +615,6 @@
 }
 .ab-skill__langrow:first-child { border-top: 0; padding-top: 0; }
 .ab-skill__langrow b { font-weight: 700; color: var(--navy); }
-@media (hover: hover) and (pointer: fine) {
-  .ab-skill:hover {
-    transform: translateY(-4px);
-    border-color: rgba(116, 105, 182, 0.32);
-    box-shadow: 0 16px 34px rgba(51, 61, 109, 0.1);
-  }
-}
 
 /* 工具条：单独一行，标签平铺 */
 .ab-toolbelt {
@@ -642,39 +635,22 @@
 }
 .ab-group__title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-.ab-tools { display: flex; flex-wrap: wrap; gap: 9px; }
-/* 工具标签：同样走「标签」规范 —— 浅底方角、无边框、无阴影，用品牌色只做点与字色 */
+.ab-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
+/* 工具：只放软件图标，不写字；悬停不反馈（它不是入口） */
 .ab-tool {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  border-radius: 8px;
+  justify-content: center;
   border: 0;
-  background: rgba(51, 61, 109, 0.055);
-  background: color-mix(in srgb, var(--c) 10%, #fff);
-  color: var(--c);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  line-height: 1.6;
+  background: none;
+  padding: 0;
+  line-height: 0;
   cursor: default;
-  transition: background 0.28s ease, transform 0.28s ease;
 }
-.ab-tool::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 2px;
-  background: var(--c);
-  opacity: 0.85;
-}
-@media (hover: hover) and (pointer: fine) {
-  .ab-tool:hover {
-    background: rgba(51, 61, 109, 0.075);
-    background: color-mix(in srgb, var(--c) 20%, #fff);
-    transform: translateY(-2px);
-  }
+.ab-tool svg {
+  width: 25px;
+  height: 25px;
+  display: block;
 }
 
 /* ============================================================

@@ -624,12 +624,6 @@ img { display: block; max-width: 100%; }
     transform: translateX(5px);
   }
   .about__row:hover::before { height: 62%; }
-  .skill:hover {
-    background: var(--skill-color);
-    color: #fff;
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 9px 20px rgba(51, 61, 109, 0.18);
-  }
 }
 
 /* ================= 按钮 =================
@@ -845,14 +839,6 @@ img { display: block; max-width: 100%; }
   letter-spacing: 0.07em;
   line-height: 1.6;
   text-transform: uppercase;
-}
-.tag::before {
-  content: "";
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.55;
 }
 
 /* ================= 页脚 ================= */

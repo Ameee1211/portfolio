@@ -112,8 +112,8 @@
     const sections = ST_SECTIONS.map((sec) => document.getElementById(sec.id)).filter(Boolean);
     if (sections.length < 2) return;
 
-    const THRESHOLD = 8;
-    const LOCK_MS = 760;
+    const THRESHOLD = 24;
+    const LOCK_MS = 520;
     const GESTURE_GAP = 90;
     const SETTLE_MS = 240;
     const EDGE = 2;
@@ -175,7 +175,7 @@
             if (target >= endY - 1) settleUntil = now + SETTLE_MS;
             return true;
           }
-          if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+          if (now < settleUntil) return true;
         }
         const next = sections[idx + 1];
         if (!next) return false;
@@ -193,7 +193,7 @@
           if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
           return true;
         }
-        if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+        if (now < settleUntil) return true;
       }
       const prev = idx > 0 ? sections[idx - 1] : hero;
       if (!prev) return false;

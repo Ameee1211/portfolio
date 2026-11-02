@@ -763,8 +763,8 @@ function initPinPager() {
   const nav = document.querySelector(".nav");
   const hero = document.querySelector(".hero");
 
-  const THRESHOLD = 8;
-  const LOCK_MS = 760;
+  const THRESHOLD = 24;
+  const LOCK_MS = 520;
   const GESTURE_GAP = 90;
   const SETTLE_MS = 240;
   const EDGE = 2;
@@ -823,7 +823,7 @@ function initPinPager() {
           if (target >= endY - 1) settleUntil = now + SETTLE_MS;
           return true;
         }
-        if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+        if (now < settleUntil) return true;
       }
       const next = pinned[idx + 1];
       if (!next) return false; // 最后一屏：交回浏览器，页脚自然滑上来
@@ -841,7 +841,7 @@ function initPinPager() {
         if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
         return true;
       }
-      if (now < settleUntil || sinceLast < GESTURE_GAP) return true;
+      if (now < settleUntil) return true;
     }
     const prev = idx > 0 ? pinned[idx - 1] : hero;
     if (!prev) return false;
@@ -991,3 +991,184 @@ initPinPager();
 
 // 桌面 / 手机切换时换一套迷宫（两套题布局与字数都不同）
 WS_MQ.addEventListener("change", () => renderWordSearch());
+
+/* ============================================================
+   分屏吸附（项目页通用）：一屏一段，段内可滚，段末再滚翻页
+   由各项目页调用 initSectionPager({ main, sections, hero })
+   ============================================================ */
+window.initSectionPager = function (opts) {
+  const { main, sections, hero } = opts || {};
+  if (!main || !sections || sections.length < 2) return;
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  if (!window.matchMedia("(min-width: 1024px)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const nav = document.querySelector(".nav");
+  const THRESHOLD = 24;   // 滚轮 / 触控板累积阈值（触控板抖动不会误触发）
+  const LOCK_MS = 520;    // 翻页动画锁上限，滚到目标位置会提前解锁
+  const SETTLE_MS = 240;  // 段末到位后停一下，再滚才翻页
+  const EDGE = 2;         // 判定「已对齐」的容差
+
+  let lockUntil = 0;
+  let lockDir = 0;
+  let lockTo = -1;
+  let settleUntil = 0;
+  let acc = 0;
+  let accTimer = 0;
+
+  const navH = () => (nav ? nav.offsetHeight : 0);
+  const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
+  const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+  const clampY = (v) => Math.max(0, Math.min(v, maxScroll()));
+
+  // 当前段：以视口顶部为基准，滚到段顶才算进入这一段（不用屏幕中线，避免半屏就误判）
+  const indexAt = () => {
+    const probe = window.scrollY + navH() + 4;
+    let idx = -1;
+    sections.forEach((sec, i) => {
+      if (topOf(sec) <= probe) idx = i;
+    });
+    return idx;
+  };
+
+  const go = (top, dir) => {
+    const target = clampY(top);
+    lockUntil = performance.now() + LOCK_MS;
+    lockDir = dir;
+    lockTo = target;
+    window.scrollTo({ top: target, behavior: "smooth" });
+  };
+
+  const jump = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, clampY(top));
+    root.style.scrollBehavior = prev;
+  };
+
+  const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
+
+  const step = (dir, delta) => {
+    const y = window.scrollY;
+    const idx = indexAt();
+    const cur = idx >= 0 ? sections[idx] : null;
+
+    if (dir > 0) {
+      if (cur) {
+        const endY = endOf(cur);
+        if (y < endY - EDGE) {
+          const target = Math.min(y + delta, endY);
+          jump(target);
+          if (target >= endY - 1) settleUntil = performance.now() + SETTLE_MS;
+          return true;
+        }
+        if (performance.now() < settleUntil) return true;
+      }
+      const next = sections[idx + 1];
+      if (!next) return false;   // 最后一段：交回浏览器，页脚自然滑上来
+      const target = topOf(next);
+      if (Math.abs(target - y) < 4) return false;
+      go(target, 1);
+      return true;
+    }
+
+    if (cur) {
+      const curTop = topOf(cur);
+      if (y > curTop + EDGE) {
+        const target = Math.max(y - delta, curTop);
+        jump(target);
+        if (target <= curTop + 1) settleUntil = performance.now() + SETTLE_MS;
+        return true;
+      }
+      if (performance.now() < settleUntil) return true;
+    }
+    const prev = idx > 0 ? sections[idx - 1] : hero;
+    if (!prev) return false;
+    const prevTop = topOf(prev);
+    const prevEnd = endOf(prev);
+    const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
+    if (Math.abs(target - y) < 4) return false;
+    go(target, -1);
+    return true;
+  };
+
+  // 段内有独立滚动容器时（如可滚的代码框）不接管
+  const inScroller = (el) => {
+    while (el && el !== document.body && el !== document.documentElement) {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 4) return true;
+      el = el.parentElement;
+    }
+    return false;
+  };
+
+  const onWheel = (e) => {
+    if (e.ctrlKey) return;
+    if (e.target instanceof Element && inScroller(e.target)) return;
+
+    const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    if (!d) return;
+
+    const now = performance.now();
+
+    if (now < lockUntil) {
+      // 反向操作立刻解锁，不打断用户
+      if (Math.sign(d) !== lockDir) {
+        lockUntil = 0;
+        acc = 0;
+        return;
+      }
+      if (Math.abs(window.scrollY - lockTo) > 2) {
+        e.preventDefault();
+        return;
+      }
+      lockUntil = 0;
+    }
+
+    acc += d;
+    clearTimeout(accTimer);
+    accTimer = setTimeout(() => (acc = 0), 200);
+
+    if (Math.abs(acc) < THRESHOLD) {
+      e.preventDefault();
+      return;
+    }
+
+    const delta = Math.abs(acc);
+    const dir = acc > 0 ? 1 : -1;
+    acc = 0;
+    if (step(dir, delta)) e.preventDefault();
+  };
+
+  const onKey = (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = (e.target && e.target.tagName) || "";
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+
+    let dir = 0;
+    if (e.key === "PageDown" || e.key === " " || e.key === "ArrowDown") dir = 1;
+    else if (e.key === "PageUp" || e.key === "ArrowUp") dir = -1;
+    else if (e.key === "Home") {
+      e.preventDefault();
+      go(0, -1);
+      return;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      go(maxScroll(), 1);
+      return;
+    }
+    if (!dir) return;
+    if (performance.now() < lockUntil) {
+      if (Math.abs(window.scrollY - lockTo) > 2) {
+        e.preventDefault();
+        return;
+      }
+      lockUntil = 0;
+    }
+    if (step(dir, window.innerHeight * 0.85)) e.preventDefault();
+  };
+
+  window.addEventListener("wheel", onWheel, { passive: false });
+  window.addEventListener("keydown", onKey);
+};
