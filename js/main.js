@@ -1346,6 +1346,7 @@ function initHomeScenes() {
       aboutInner: document.querySelector(".about__inner"),
       photo: document.querySelector(".about__photo"),
       pmq: document.querySelector(".projects__marquee"),
+      pback: document.querySelector(".projects__back"),
       pdeck: document.querySelector(".pdeck"),
       ptags: document.querySelector(".pdeck__tags"),
       card: document.getElementById("aboutCard"),
@@ -1656,6 +1657,7 @@ function initHomeScenes() {
     const pT = clamp01((t - TL.titleA) / (TL.titleB - TL.titleA));
     const mqOn = pT > 0;
     if (els.pmq) els.pmq.style.opacity = mqOn ? "1" : "0";
+    if (els.pback) els.pback.style.opacity = String(pT);   // 出口跟着标题带一起出现
     // 刷新直接落在本屏时（第一次 apply 就已经在结尾），不要再演一遍入场
     mqShow(mqOn, firstApply && t >= TL.titleB - 0.01);
     firstApply = false;
@@ -1794,11 +1796,11 @@ function initHomeScenes() {
   window.addEventListener("touchmove", blockInput, { passive: false });
 
   /* ——— Projects 屏：滚轮翻牌 ———
-     这一屏是最后一屏，滚轮在这里不再带动时间轴：
-     · 往下 = 切下一张（右边的卡转到中间，中间的转到左边），到底了会绕回第一张（无限循环）
-     · 往上 = 直接退回 About Me（不做"上一张"，退出永远只有一种手势）
-     节奏：一次滑动只切一张，不管滚多滚少；两张之间至少隔 300ms，
-     所以快速连滚是一张接一张地跟上来，而不是一下子跳过去三四张。 */
+     · 往下 = 切下一张（右边的卡转到中间，中间的转到左边）
+     · 往上 = 切上一张（左边的卡转到中间）
+     两头都是无限循环，所以左/右永远都有牌，和眼睛看到的是一致的。
+     退出这一屏靠顶部那行小字（点它倒放回 About），滚轮不再兼任返回。
+     节奏：一次滑动只切一张，不管滚多滚少；两张之间至少隔 300ms。 */
   const W_GATE = 40;       // 攒够 40px 才算"一次滑动"（鼠标一格 100~150，触控板碎步也能攒到）
   const W_LOCK = 300;      // 两次换牌的最小间隔（换牌过渡 0.72s，允许下一张接上去）
   let wAcc = 0;            // 本次滑动攒的位移
@@ -1812,21 +1814,26 @@ function initHomeScenes() {
     if (window.scrollY / vh < TL.revealB - 0.01) return;   // 还没到 Projects 屏，正常滚动
     e.preventDefault();                        // 这一屏的滚轮全部由我们接管
 
-    // 往上：不翻上一张，直接退回 About
-    if (e.deltaY < 0) {
-      wAcc = 0;
-      playBack();
-      return;
-    }
     const now = performance.now();
     if (now < wLock) return;                   // 冷却中：这次滑动的量算进上一张，不再多切
+    if (wAcc && Math.sign(wAcc) !== Math.sign(e.deltaY)) wAcc = 0;   // 中途反向就重新计
     wAcc += e.deltaY;
-    if (wAcc < W_GATE) return;
+    if (Math.abs(wAcc) < W_GATE) return;
+    const dir = wAcc > 0 ? 1 : -1;
     wAcc = 0;                                  // 每次切完清零，不攒零头 —— 否则偶尔会一次滑出两张
     wLock = now + W_LOCK;
-    deck.__deck.step(1);
+    deck.__deck.step(dir);
   };
   window.addEventListener("wheel", onDeckWheel, { passive: false });
+
+  // 顶部那行小字：轻量出口，点它倒放回 About me
+  if (els.pback) {
+    els.pback.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (playing) return;
+      playBack();
+    });
+  }
 
   prevT = window.scrollY / (window.innerHeight || 1);   // 刷新时可能带着滚动位置回来，别误判成"跳了一大下"
   window.addEventListener("scroll", onScroll, { passive: true });

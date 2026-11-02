@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=154" />
+  <link rel="stylesheet" href="css/style.css?v=155" />
 </head>
 <body>
 
@@ -65,6 +65,14 @@
 
     <!-- ================= Featured Projects ================= -->
     <section class="projects" id="projects">
+      <!-- 轻量出口：一行小字 + 上箭头，点它倒放回 About me -->
+      <a class="projects__back" id="projectsBack" href="#" aria-label="Back to About me">
+        <svg class="projects__back-i" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M6 10.2V2.2M6 2.2 2.5 5.7M6 2.2l3.5 3.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>About me</span>
+      </a>
+
       <!-- 手机端：静态标题（电脑端隐藏） -->
       <div class="projects__head" id="projectsHead"></div>
       <!-- 电脑端：标题带，第一条从右边滑进来，之后一直往左流 -->
@@ -87,7 +95,7 @@
   <!-- 四屏转场的滚动轨道：只提供滚动距离，本身不显示任何内容 -->
   <div class="hs-stage" aria-hidden="true"></div>
 
-  <script src="js/content.js?v=154"></script>
-  <script src="js/main.js?v=154"></script>
+  <script src="js/content.js?v=155"></script>
+  <script src="js/main.js?v=155"></script>
 </body>
 </html>

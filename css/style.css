@@ -648,11 +648,35 @@ body:not(.hs-on) .about__left.is-in .about__btn { opacity: 1; transform: none; t
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 64px 40px 20px;
+  /* 顶部 88px：让开固定导航栏（80px），否则顶部那行"返回 About me"会被导航盖住点不到 */
+  padding: 88px 40px 20px;
   overflow: hidden;
 }
 /* 静态标题块：只在手机端出现（电脑端用下面的滚动标题带） */
 .projects__head { display: none; }
+
+/* ---- 轻量出口：导航栏下面的一行小字（不是按钮，只是可点的文字）---- */
+.projects__back {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 5px;
+  margin: 0 0 4px;
+  padding: 0;
+  white-space: nowrap;
+  font-family: var(--font-en);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(51, 61, 109, 0.34);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.24s ease;
+}
+.projects__back:hover { color: var(--purple); }
+.projects__back-i { width: 9px; height: 9px; display: block; }
+.projects__back span { display: block; }
 
 /* ---- 标题带：大标题 / 副标题交替，从右往左无限滚动 ---- */
 .projects__marquee {
@@ -982,8 +1006,10 @@ section[id] { scroll-margin-top: 92px; }
   .about__intro { margin-top: 26px; line-height: 1.95; }
   .skills__title { margin-top: 32px; }
   .projects { padding: 84px 22px 44px; justify-content: center; }
-  /* 手机端不用滚动标题带，保持原来的静态标题（用户明确要求） */
+  /* 手机端不用滚动标题带，保持原来的静态标题（用户明确要求）；
+     出口小字也不放（手机上直接往上滚就能回去，而且它会压到静态标题） */
   .projects__marquee { display: none; }
+  .projects__back { display: none; }
   .projects__head {
     display: block;
     align-self: stretch;
@@ -1204,5 +1230,6 @@ body.hs-on .hero__seam { z-index: 2; }
 
 /* Projects 屏的内容默认收起，由滚动进度放出来（背景色始终在） */
 body.hs-on .projects__marquee,
+body.hs-on .projects__back,
 body.hs-on .pdeck,
 body.hs-on .pdeck__tags { opacity: 0; }
