@@ -1222,13 +1222,12 @@ function initHomeScenes() {
   const TL = {
     splitA: 0.12, splitB: 1.1,
     info: 1.55, intro: 1.95, skills: 2.35, btn: 2.75,
-    // btn 到 morphA 之间是纯停留区：四块都出现了，画面不动，让人看得清
-    morphA: 3.85, morphB: 4.6,   // 文字退场，照片移到中间
-    flipA: 4.65, flipB: 5.35,    // 翻牌：照片 → SunLink 卡片
-    holdB: 5.75,                 // 翻完停一下看卡
-    revealA: 5.75, revealB: 6.3, // Projects 的标题、侧卡、标签出现
-    shrinkA: 6.9, shrinkB: 7.5,
-    end: 7.8,
+    // 按钮出现后只留 0.35 屏缓冲：滚动一到这条线画面就开始变，用户的手是"参与"进来的
+    morphA: 3.1, morphB: 3.85,   // 文字退场，照片移到中间
+    flipA: 3.9, flipB: 4.6,      // 翻牌：照片 → SunLink 卡片
+    revealA: 5.0, revealB: 5.55, // Projects 的标题、侧卡、标签出现
+    shrinkA: 6.15, shrinkB: 6.75,
+    end: 7.05,
   };
   stage.style.height = (TL.end + 1) * 100 + "vh";
   document.body.classList.add("hs-on");
@@ -1312,13 +1311,18 @@ function initHomeScenes() {
     const vw = window.innerWidth || 1;
     const vh = window.innerHeight || 1;
     const W = 380;
-    const g = { dx: 0, dy: 0, s: 1, dxEnd: 0, dyEnd: 0, sEnd: 1 };
+    const H = 506.7;
+    const g = { dx: 0, dy: 0, sx: 1, sy: 1, dxEnd: 0, dyEnd: 0, sxEnd: 1, syEnd: 1 };
     if (ph) {
       const r = ph.getBoundingClientRect();
-      if (r.width > 0) {
+      // 照片卡带 -2° 旋转，rect 是被撑大的包围盒；尺寸要用 offsetWidth/Height
+      const w = ph.offsetWidth || r.width;
+      const h = ph.offsetHeight || r.height;
+      if (w > 0) {
         g.dx = r.left + r.width / 2 - vw / 2;
         g.dy = r.top + r.height / 2 - vh / 2;
-        g.s = r.width / W;
+        g.sx = w / W;
+        g.sy = h / H;
       }
     }
     if (cur) {
@@ -1326,7 +1330,8 @@ function initHomeScenes() {
       if (c.width > 0) {
         g.dxEnd = c.left + c.width / 2 - vw / 2;
         g.dyEnd = c.top + c.height / 2 - vh / 2;
-        g.sEnd = c.width / W;
+        g.sxEnd = c.width / W;
+        g.syEnd = c.height / H;
       }
     }
     els.cardGeom = g;
@@ -1434,9 +1439,12 @@ function initHomeScenes() {
       const g = els.cardGeom;
       const dx = g.dx + (g.dxEnd - g.dx) * pMove;
       const dy = g.dy + (g.dyEnd - g.dy) * pMove;
-      const sc = g.s + (g.sEnd - g.s) * pMove;
+      const sx = g.sx + (g.sxEnd - g.sx) * pMove;
+      const sy = g.sy + (g.syEnd - g.sy) * pMove;
+      const rot = -2 * (1 - pMove);   // 与 About 里照片的 -2° 对齐，移动过程中回正
       els.card.style.transform =
-        `translate(-50%, -50%) translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${sc.toFixed(4)})`;
+        `translate(-50%, -50%) translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) ` +
+        `scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) rotate(${rot.toFixed(2)}deg)`;
       els.card.style.opacity = String(pM > 0.001 ? 1 : 0);
     }
 
