@@ -722,9 +722,13 @@ function initDeck() {
     cards.forEach((el) => {
       // 倾斜加在外层 .pcard 上：它才是被 .pdeck 透视的元素，方向不会失真
       el.addEventListener("pointerenter", () => {
+        // 首页是分屏转场，卡片会从照片位置飞过来并落位；
+        // 如果这时卡片跟着鼠标倾斜，落位/交接那一下就会被看成"跳"，所以首页不做倾斜
+        if (document.body.classList.contains("hs-on")) return;
         tiltRect.set(el, el.getBoundingClientRect());
       });
       el.addEventListener("pointermove", (e) => {
+        if (document.body.classList.contains("hs-on")) return;
         let rect = tiltRect.get(el);
         if (!rect) {
           rect = el.getBoundingClientRect();
@@ -742,6 +746,7 @@ function initDeck() {
         el.style.setProperty("--gy", `${(py * 100).toFixed(1)}%`);
       });
       el.addEventListener("pointerleave", () => {
+        if (document.body.classList.contains("hs-on")) return;
         el.dataset.tilting = "";
         el.style.transform = el.dataset.base || "";
         tiltRect.delete(el);
