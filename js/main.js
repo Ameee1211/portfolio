@@ -1485,6 +1485,12 @@ function initHomeScenes() {
     const from = Math.max(window.scrollY, TL.morphA * vh);
     if (to - from < 40) return;
 
+    // style.css 里是 scroll-behavior: smooth，逐帧 scrollTo 会每帧重启一次平滑滚动，
+    // 页面几乎不动 —— 播放期间必须先切成 auto，结束后还原
+    const root = document.documentElement;
+    const prevBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+
     playing = true;
     playArmed = false;
     if (window.scrollY !== from) window.scrollTo(0, from);
@@ -1499,6 +1505,7 @@ function initHomeScenes() {
         playRaf = requestAnimationFrame(tick);
       } else {
         playing = false;
+        root.style.scrollBehavior = prevBehavior;
         prevT = window.scrollY / (window.innerHeight || 1);
       }
     };
