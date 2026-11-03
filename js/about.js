@@ -891,6 +891,48 @@ function abInitEduExp() {
 
   let busy = false;
 
+  // 03 的标题 + 三条经历：飞入由转场自己驱动，不靠一次性的 IntersectionObserver
+  const expHead = exp.querySelector(".ab-head");
+  const expItems = [...exp.querySelectorAll(".ab-exp")];
+
+  // 把三条经历摆回「还没飞进来」的状态。
+  // 关键：先把 is-in 加上，让观察器之后不再二次触发过渡；隐身靠内联样式压住。
+  const resetItems = () => {
+    expItems.forEach((el) => {
+      el.getAnimations().forEach((a) => a.cancel());
+      el.classList.add("is-in");
+      el.style.transition = "none";
+      el.style.opacity = "0";
+      el.style.transform = "translate3d(58px,0,0)";
+    });
+  };
+
+  // 依次从右边飞进来（标题先渐现，三条随后错开，合起来约 1.3s）
+  const flyIn = () => {
+    if (expHead) {
+      const ha = expHead.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, easing: "ease" });
+      ha.onfinish = () => ha.cancel();
+    }
+    expItems.forEach((el, i) => {
+      const a = el.animate(
+        [
+          { opacity: 0, transform: "translate3d(58px,0,0)" },
+          { opacity: 1, transform: "none" },
+        ],
+        {
+          duration: 640,
+          delay: 200 + i * 250,
+          easing: "cubic-bezier(.16,.84,.28,1)",
+          fill: "both",
+        }
+      );
+      a.onfinish = () => {
+        el.style.cssText = "";   // 交回 CSS（is-in 已经是最终态，不会跳）
+        a.cancel();
+      };
+    });
+  };
+
   const SAMPLES = 44;
   const R_MID = 130;    // 到屏幕中央时那个环的半径
   const SPIN = 540;     // 转着过去的总转角（1.5 圈）
@@ -952,6 +994,7 @@ function abInitEduExp() {
     gpa.style.opacity = "0";
     line.style.opacity = "0";            // 真身那根线先让位，落位再接上
     edu.classList.add("is-bg-shift");    // 02 的白 → 03 的淡灰紫，和圈圈同时渐变
+    resetItems();                        // 03 的三条经历先回到屏外，落位后再依次飞入
     // 02 其余内容退场
     const outs = [];
     [edu.querySelector(".ab-head"), edu.querySelector(".ab-edu__body")].forEach((n) => {
@@ -1024,6 +1067,7 @@ function abInitEduExp() {
       svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "both" })
         .onfinish = () => svg.remove();
       outs.forEach((a) => a.cancel());
+      flyIn();                             // 标题渐现 → 三条经历依次从右边飞入
       delete gpa.dataset.peHidden;
       gpa.style.opacity = "";
       // 03 已经是自己的底色了，02 慢慢变回去（此时它已在视口外）
@@ -1057,11 +1101,13 @@ function abInitEduExp() {
     gpa.style.opacity = "0";
     line.style.opacity = "0";            // 真身那根线先让位
     exp.classList.add("is-bg-shift");    // 03 的淡灰紫 → 02 的白，和圈圈同时渐变
+    exp.classList.add("is-line-out");    // 时间轴那条淡淡的底线也一起让位，否则圈飞走后还留着一条线
 
     // 03 的内容全部退场，只留下圈圈在转
     const outs3 = [];
-    [exp.querySelector(".ab-head"), ...exp.querySelectorAll(".ab-exp")].forEach((n, i) => {
+    [expHead, ...expItems].forEach((n, i) => {
       if (!n) return;
+      if (i) { n.getAnimations().forEach((a) => a.cancel()); n.style.cssText = ""; }
       outs3.push(n.animate(
         [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(46px)" }],
         { duration: 300, delay: Math.min(i, 3) * 40, easing: "ease", fill: "both" }
@@ -1131,6 +1177,7 @@ function abInitEduExp() {
       line.style.opacity = "";
       outs3.forEach((a) => a.cancel());
       setTimeout(() => exp.classList.remove("is-bg-shift"), 700);
+      exp.classList.remove("is-line-out");   // 03 已经滚出视口，底线可以回来了
       setTimeout(() => { busy = false; }, 140);
     };
 
@@ -2307,18 +2354,17 @@ function abInitPager() {
         if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
         return true;
       }
-      // 已经贴着板块顶部了：要往回走的转场优先判断，
-      // 否则会被上面那 240ms 的「底部停顿」吞掉 —— 返回动画就会时有时无
-      if (idx === 0 && AB_TRANSIT && AB_TRANSIT.up()) return true;
-      if (now < settleUntil) return true;
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
     if (!prev) return false;
+    // 已经贴着板块顶部、要往回走时：反向转场一律优先于上面那 240ms 的「停顿」，
+    // 否则这几下滚轮会被直接吞掉 —— 返回动画就会时有时无
     // 02 → 01：把 01→02 那套倒着放一遍
     if (prev.id === "philosophy" && AB_PE && AB_PE.up()) return true;
     // 03 → 02：时间轴竖线弯回成环，转回 GPA
     if (prev.id === "education" && AB_EE && AB_EE.up()) return true;
     if (idx === 0 && prev === hero && AB_TRANSIT && AB_TRANSIT.up()) return true;
+    if (cur && now < settleUntil) return true;
     const prevTop = topOf(prev);
     const prevEnd = endOf(prev);
     // 上一块比视口高时，停到它「读完」的位置（底部留白可见），从下往上读更自然

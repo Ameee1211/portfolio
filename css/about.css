@@ -500,7 +500,10 @@
   bottom: 14px;
   width: 2px;
   background: linear-gradient(180deg, rgba(116, 105, 182, 0.45), rgba(116, 105, 182, 0.06));
+  transition: opacity 0.26s ease;
 }
+/* 03 → 02 反向转场：这条淡底线也一起让位，否则圈飞走了它还留在页面上 */
+#experience.is-line-out .ab-timeline::before { opacity: 0; }
 .ab-exp { position: relative; padding: 28px 0; }
 .ab-exp + .ab-exp { border-top: 1px dashed rgba(51, 61, 109, 0.14); }
 .ab-exp__dot {
