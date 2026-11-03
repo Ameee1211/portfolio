@@ -422,9 +422,8 @@
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 16px;
-  box-shadow: 0 16px 36px rgba(51, 61, 109, 0.1);
   transform-origin: 50% 50%;
-  will-change: width, height, left, top, transform, box-shadow;
+  will-change: width, height, left, top, transform;
 }
 
 /* ============================================================
