@@ -1343,7 +1343,7 @@ function initHomeScenes() {
       pdeck: document.querySelector(".pdeck"),
       ptags: document.querySelector(".pdeck__tags"),
       card: document.getElementById("aboutCard"),
-      cast: document.getElementById("aboutCardCast"),
+      cardFront: document.querySelector(".abcard__front"),
       cardInner: document.getElementById("aboutCardInner"),
       cardImg: document.getElementById("aboutCardImg"),
       cardBack: document.getElementById("aboutCardBack"),
@@ -1389,7 +1389,7 @@ function initHomeScenes() {
   // 照片的阴影是 0 26px 60px .18（悬停时更大），真卡的阴影是 0 24px 48px -24px .42 那套，
   // 两者完全不是一个量级。以前两面各自带自己的阴影，翻到 90° 那一帧正面消失、背面出现，
   // 阴影就硬切一下 —— 用户看到的就是「阴影跳一下」。
-  // 现在两面都不画阴影，统一由 .abcard__cast（不参与翻面）来画，并整段平滑变化。
+  // 现在两面都写**同一个** box-shadow（JS 内联），换面时一模一样，值本身再走 transition 渐变。
   let photoShadow = "";
   let cardShadow = "";
   let lastShadow = null;
@@ -1398,6 +1398,14 @@ function initHomeScenes() {
     const face = document.querySelector(".pcard.is-current .pcard__face");
     if (face) cardShadow = getComputedStyle(face).boxShadow || "";
     lastShadow = null;      // 强制下一帧写一次
+  };
+
+  // 正反两面写同一个阴影值（背面是克隆出来的，每次 syncCard 后要重新找一遍）
+  const setCast = (v) => {
+    if (!v) return;
+    if (els.cardFront) els.cardFront.style.boxShadow = v;
+    const bf = els.cardBack ? els.cardBack.querySelector(".pcard__face") : null;
+    if (bf) bf.style.boxShadow = v;
   };
 
   // 翻牌卡是 position:fixed + left:50% + translate(-50%,-50%)，
@@ -1683,14 +1691,11 @@ function initHomeScenes() {
     const pText = clamp01((pR - 0.42) / 0.58);
 
     // 阴影：翻过 90° 换成「卡片」那一套（这时卡片侧成一条线，看不出切换），
-    // 浓度则跟着真卡的显现程度交出去 —— 两张重叠时也不会叠成两层影子
-    if (els.cast) {
-      els.cast.style.opacity = String(Math.max(0, 1 - pIn));
-      const want = pF > 0.5 ? cardShadow : photoShadow;
-      if (want && want !== lastShadow) {
-        lastShadow = want;
-        els.cast.style.boxShadow = want;
-      }
+    // 正反两面写同一个值 —— 正面藏、背面露的那一帧，两面的影子完全一样，所以不跳
+    const wantShadow = pF > 0.5 ? cardShadow : photoShadow;
+    if (wantShadow && wantShadow !== lastShadow) {
+      lastShadow = wantShadow;
+      setCast(wantShadow);
     }
     if (els.pdeck) els.pdeck.style.opacity = String(pIn);
     if (els.ptags) els.ptags.style.opacity = String(pText);
