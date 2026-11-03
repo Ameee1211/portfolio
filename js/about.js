@@ -545,6 +545,50 @@ function abInitHero() {
 }
 
 /* ============================================================
+   转场公用：一块 fixed 全屏的 SVG 画布 + 采样点生成
+   ============================================================ */
+function abRelaySvg(n, id) {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "ab-pe");
+  const defs = document.createElementNS(NS, "defs");
+  const grad = document.createElementNS(NS, "linearGradient");
+  grad.setAttribute("id", id);
+  grad.setAttribute("gradientUnits", "userSpaceOnUse");
+  const s0 = document.createElementNS(NS, "stop");
+  s0.setAttribute("offset", "0%");
+  const s1 = document.createElementNS(NS, "stop");
+  s1.setAttribute("offset", "100%");
+  grad.appendChild(s0);
+  grad.appendChild(s1);
+  defs.appendChild(grad);
+  svg.appendChild(defs);
+  const paths = [];
+  for (let i = 0; i < n; i++) {
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("fill", "none");
+    p.setAttribute("stroke", "url(#" + id + ")");
+    p.setAttribute("stroke-linecap", "round");
+    p.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(p);
+    paths.push(p);
+  }
+  document.body.appendChild(svg);
+  return { svg, grad, s0, s1, paths };
+}
+
+// 一条弧（或一段线）的采样点 → path 的 d
+function abArcPath(cx, cy, r, a0, a1, rot, n) {
+  let d = "";
+  for (let s = 0; s < n; s++) {
+    const u = s / (n - 1);
+    const ang = ((a0 + (a1 - a0) * u + rot) * Math.PI) / 180;
+    d += (s ? "L" : "M") + (cx + r * Math.cos(ang)).toFixed(1) + " " + (cy + r * Math.sin(ang)).toFixed(1);
+  }
+  return d;
+}
+
+/* ============================================================
    01 → 02：正文三处高亮条聚成有缺口的圆，转成 GPA 环
    ------------------------------------------------------------
    三段弧的角度（度）：
@@ -593,45 +637,7 @@ function abInitPhilEdu() {
   };
 
   // 三段弧的画布：fixed 全屏 SVG，逐帧改 path 的 d
-  const makeSvg = () => {
-    const NS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(NS, "svg");
-    svg.setAttribute("class", "ab-pe");
-    const defs = document.createElementNS(NS, "defs");
-    const grad = document.createElementNS(NS, "linearGradient");
-    grad.setAttribute("id", "abPeGrad");
-    grad.setAttribute("gradientUnits", "userSpaceOnUse");
-    const s0 = document.createElementNS(NS, "stop");
-    s0.setAttribute("offset", "0%");
-    const s1 = document.createElementNS(NS, "stop");
-    s1.setAttribute("offset", "100%");
-    grad.appendChild(s0);
-    grad.appendChild(s1);
-    defs.appendChild(grad);
-    svg.appendChild(defs);
-    const paths = [0, 1, 2].map(() => {
-      const p = document.createElementNS(NS, "path");
-      p.setAttribute("fill", "none");
-      p.setAttribute("stroke", "url(#abPeGrad)");
-      p.setAttribute("stroke-linecap", "round");
-      p.setAttribute("stroke-linejoin", "round");
-      svg.appendChild(p);
-      return p;
-    });
-    document.body.appendChild(svg);
-    return { svg, grad, s0, s1, paths };
-  };
-
-  // 一条弧（或一条直杠）的采样点 → path 的 d
-  const arcD = (cx, cy, r, a0, a1, rot) => {
-    let d = "";
-    for (let s = 0; s < SAMPLES; s++) {
-      const u = s / (SAMPLES - 1);
-      const ang = ((a0 + (a1 - a0) * u + rot) * Math.PI) / 180;
-      d += (s ? "L" : "M") + (cx + r * Math.cos(ang)).toFixed(1) + " " + (cy + r * Math.sin(ang)).toFixed(1);
-    }
-    return d;
-  };
+  const makeSvg = () => abRelaySvg(3, "abPeGrad");
 
   const down = () => {
     if (busy || !abWide()) return false;
@@ -774,6 +780,7 @@ function abInitPhilEdu() {
 
     busy = true;
     phil.classList.add("is-relay");    // 01 的文字先藏着，落位再放出来
+    gpa.dataset.peHidden = "1";        // 转场期间别被 relay 的 hide() 定时器放出来
 
     // 02 的内容退场，GPA 交给克隆
     const outs = [];
@@ -809,7 +816,7 @@ function abInitPhilEdu() {
         bars.forEach((b, i) => {
           const a0 = lerp(SEG_B[i][0], SEG_A[i][0], p);
           const a1 = lerp(SEG_B[i][1], SEG_A[i][1], p);
-          paths[i].setAttribute("d", arcD(cx, cy, rr, a0, a1, rot));
+          paths[i].setAttribute("d", abArcPath(cx, cy, rr, a0, a1, rot, SAMPLES));
           paths[i].setAttribute("stroke-width", lerp(gW, b.h, p).toFixed(1));
         });
         s0.setAttribute("stop-color", mix(BLUE, YEL, p));
@@ -855,6 +862,7 @@ function abInitPhilEdu() {
 
       // 02 恢复原样，下次再进来还是完整的
       outs.forEach((a) => a.cancel());
+      delete gpa.dataset.peHidden;
       gpa.style.opacity = "";
       setTimeout(() => { busy = false; }, 140);
     };
@@ -864,6 +872,251 @@ function abInitPhilEdu() {
   };
 
   AB_PE = { down, up, busy: () => busy };
+}
+
+/* ============================================================
+   02 → 03：GPA 环转着到屏幕中间 → 拉直 → 变成 03 左边那条时间轴竖线
+   反向（03 → 02）把同一套倒着放：竖线弯回成环、转回 GPA
+   ------------------------------------------------------------
+   环按采样点顺序「解开」成线：圆周上第 i 个点 → 竖线上第 i 个点，
+   所以是剪开拉直，不是压扁
+   ============================================================ */
+function abInitEduExp() {
+  const edu = document.getElementById("education");
+  const exp = document.getElementById("experience");
+  const gpa = edu && edu.querySelector(".ab-gpa");
+  const tl = exp && exp.querySelector(".ab-timeline");
+  const line = exp && document.getElementById("abExpLine");
+  if (!edu || !exp || !gpa || !tl || !line) return;
+
+  let busy = false;
+
+  const SAMPLES = 44;
+  const R_MID = 130;    // 到屏幕中央时那个环的半径
+  const SPIN = 540;     // 转着过去的总转角（1.5 圈）
+  const A0 = -90;       // 环的起点角度，和 GPA 的 rotate(-90) 对齐
+  const A1 = 216;       // 306° 的弧，正好是 3.4/4
+
+  const BLUE = [126, 181, 236];
+  const PURPLE = [116, 105, 182];
+  const LINE0 = [116, 105, 182];   // 时间轴渐变上端 var(--purple)
+  const LINE1 = [116, 105, 182];   // 下端同色，靠 stop-opacity 变淡
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const mix = (a, b, t) =>
+    "rgb(" + Math.round(lerp(a[0], b[0], t)) + "," + Math.round(lerp(a[1], b[1], t)) + "," +
+    Math.round(lerp(a[2], b[2], t)) + ")";
+
+  const jumpTo = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, top);
+    root.style.scrollBehavior = prev;
+  };
+
+  // 跳到 03 之后，那条竖线应该有多长（跟 abInitExperience 的填充公式一致）
+  const lineAfter = () => {
+    const tlR = tl.getBoundingClientRect();
+    const expR = exp.getBoundingClientRect();
+    const top = tlR.top - expR.top + 14;
+    const p = clamp01((window.innerHeight * 0.78 - (tlR.top - expR.top)) / Math.max(1, tlR.height));
+    return { x: tlR.left + 8, top: top, h: Math.max(1, (tlR.height - 28) * p) };
+  };
+
+  // 现在这条线在屏幕上的真实位置（03 就在视口里时用得上）
+  const lineNow = () => {
+    const r = line.getBoundingClientRect();
+    return { x: r.left + r.width / 2, top: r.top, h: Math.max(1, r.height) };
+  };
+
+  const down = () => {
+    if (busy || !abWide()) return false;
+    const gr = gpa.getBoundingClientRect();
+    if (!gr.width) return false;
+    const k = gr.width / 200;
+    const gR = 86 * k;
+    const gW = 13 * k;
+    const gCx = gr.left + gr.width / 2;
+    const gCy = gr.top + gr.height / 2;
+
+    const dst = lineAfter();
+    const cx0 = window.innerWidth / 2;
+    const cy0 = window.innerHeight / 2;
+
+    busy = true;
+    gpa.dataset.peHidden = "1";
+    gpa.style.opacity = "0";
+    // 02 其余内容退场
+    const outs = [];
+    [edu.querySelector(".ab-head"), edu.querySelector(".ab-edu__body")].forEach((n) => {
+      if (!n) return;
+      outs.push(n.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(8px)" }],
+        { duration: 300, easing: "ease", fill: "both" }));
+    });
+
+    const { svg, grad, s0, s1, paths } = abRelaySvg(1, "abEeGrad");
+    const path = paths[0];
+
+    const T_A = 900;    // 环转着挪到屏幕中央
+    const T_B = 1000;   // 拉直，落到时间轴那条线上
+    const t0 = performance.now();
+    let raf = 0;
+
+    const frame = (now) => {
+      const el = now - t0;
+
+      if (el < T_A) {
+        const p = easeInOut(el / T_A);
+        const cx = lerp(gCx, cx0, p);
+        const cy = lerp(gCy, cy0, p);
+        const rr = lerp(gR, R_MID, p);
+        const rot = SPIN * easeOut(el / T_A);
+        path.setAttribute("d", abArcPath(cx, cy, rr, A0, A1, rot, SAMPLES));
+        path.setAttribute("stroke-width", lerp(gW, gW, p).toFixed(1));
+        s0.setAttribute("stop-color", mix(BLUE, BLUE, 0));
+        s1.setAttribute("stop-color", mix(PURPLE, PURPLE, 0));
+        grad.setAttribute("x1", cx);
+        grad.setAttribute("y1", cy - rr);
+        grad.setAttribute("x2", cx);
+        grad.setAttribute("y2", cy + rr);
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+
+      const q = Math.min(1, (el - T_A) / T_B);
+      const p = easeInOut(q);
+      const rot = SPIN;
+      let d = "";
+      for (let s = 0; s < SAMPLES; s++) {
+        const u = s / (SAMPLES - 1);
+        const ang = ((A0 + (A1 - A0) * u + rot) * Math.PI) / 180;
+        const ax = cx0 + R_MID * Math.cos(ang);
+        const ay = cy0 + R_MID * Math.sin(ang);
+        const bx = dst.x;
+        const by = dst.top + dst.h * u;
+        d += (s ? "L" : "M") + lerp(ax, bx, p).toFixed(1) + " " + lerp(ay, by, p).toFixed(1);
+      }
+      path.setAttribute("d", d);
+      path.setAttribute("stroke-width", lerp(gW, 2, p).toFixed(1));
+      s0.setAttribute("stop-color", mix(BLUE, LINE0, p));
+      s1.setAttribute("stop-color", mix(PURPLE, LINE1, p));
+      s1.setAttribute("stop-opacity", lerp(1, 0.28, p).toFixed(2));
+      grad.setAttribute("x1", lerp(cx0, dst.x, p));
+      grad.setAttribute("y1", lerp(cy0 - R_MID, dst.top, p));
+      grad.setAttribute("x2", lerp(cx0, dst.x, p));
+      grad.setAttribute("y2", lerp(cy0 + R_MID, dst.top + dst.h, p));
+
+      if (q < 1) { raf = requestAnimationFrame(frame); return; }
+
+      // 落位：跳到 03，克隆撤走，竖线交给真身（滚动会继续把它填满）
+      const expTop = exp.getBoundingClientRect().top + window.scrollY;
+      jumpTo(expTop);
+      svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "both" })
+        .onfinish = () => { svg.remove(); line.style.opacity = ""; };
+      outs.forEach((a) => a.cancel());
+      delete gpa.dataset.peHidden;
+      gpa.style.opacity = "";
+      setTimeout(() => { busy = false; }, 140);
+    };
+
+    raf = requestAnimationFrame(frame);
+    return true;
+  };
+
+  // 往上：03 → 02（竖线弯回成环，转回 GPA）
+  const up = () => {
+    if (busy || !abWide()) return false;
+    const gr = gpa.getBoundingClientRect();
+    const er = edu.getBoundingClientRect();
+    if (!gr.width) return false;
+    const k = gr.width / 200;
+    const gR = 86 * k;
+    const gW = 13 * k;
+    const gCx = gr.left + gr.width / 2;
+    // 跳回 02 之后 GPA 会在的视口位置
+    const gCy = gr.top - er.top + gr.height / 2;
+
+    const src = lineNow();
+    const cx0 = window.innerWidth / 2;
+    const cy0 = window.innerHeight / 2;
+
+    busy = true;
+    gpa.dataset.peHidden = "1";
+    gpa.style.opacity = "0";
+    line.style.opacity = "0";   // 真身那根线先让位，等克隆撤走再接上
+
+    const { svg, grad, s0, s1, paths } = abRelaySvg(1, "abEeGrad");
+    const path = paths[0];
+
+    const T_A = 900;    // 竖线离开时间轴、弯回成环、退到屏幕中央
+    const T_B = 1000;   // 环反着转、缩小，回到 GPA
+    const t0 = performance.now();
+    let raf = 0;
+
+    const frame = (now) => {
+      const el = now - t0;
+
+      if (el < T_A) {
+        const p = easeInOut(el / T_A);
+        const rot = SPIN;
+        let d = "";
+        for (let s = 0; s < SAMPLES; s++) {
+          const u = s / (SAMPLES - 1);
+          const bx = src.x;
+          const by = src.top + src.h * u;
+          const ang = ((A0 + (A1 - A0) * u + rot) * Math.PI) / 180;
+          const ax = cx0 + R_MID * Math.cos(ang);
+          const ay = cy0 + R_MID * Math.sin(ang);
+          d += (s ? "L" : "M") + lerp(bx, ax, p).toFixed(1) + " " + lerp(by, ay, p).toFixed(1);
+        }
+        path.setAttribute("d", d);
+        path.setAttribute("stroke-width", lerp(2, gW, p).toFixed(1));
+        s0.setAttribute("stop-color", mix(LINE0, BLUE, p));
+        s1.setAttribute("stop-color", mix(LINE1, PURPLE, p));
+        s1.setAttribute("stop-opacity", lerp(0.28, 1, p).toFixed(2));
+        grad.setAttribute("x1", lerp(src.x, cx0, p));
+        grad.setAttribute("y1", lerp(src.top, cy0 - R_MID, p));
+        grad.setAttribute("x2", lerp(src.x, cx0, p));
+        grad.setAttribute("y2", lerp(src.top + src.h, cy0 + R_MID, p));
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+
+      const q = Math.min(1, (el - T_A) / T_B);
+      const p = easeInOut(q);
+      const rot = SPIN * (1 - easeOut(q));
+      const cx = lerp(cx0, gCx, p);
+      const cy = lerp(cy0, gCy, p);
+      const rr = lerp(R_MID, gR, p);
+      path.setAttribute("d", abArcPath(cx, cy, rr, A0, A1, rot, SAMPLES));
+      path.setAttribute("stroke-width", gW.toFixed(1));
+      s0.setAttribute("stop-color", mix(BLUE, BLUE, 0));
+      s1.setAttribute("stop-color", mix(PURPLE, PURPLE, 0));
+      grad.setAttribute("x1", cx);
+      grad.setAttribute("y1", cy - rr);
+      grad.setAttribute("x2", cx);
+      grad.setAttribute("y2", cy + rr);
+
+      if (q < 1) { raf = requestAnimationFrame(frame); return; }
+
+      // 落位：跳回 02，克隆撤走，GPA 回来
+      jumpTo(er.top + window.scrollY);
+      svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "both" })
+        .onfinish = () => { svg.remove(); gpa.style.opacity = ""; };
+      delete gpa.dataset.peHidden;
+      line.style.opacity = "";
+      setTimeout(() => { busy = false; }, 140);
+    };
+
+    raf = requestAnimationFrame(frame);
+    return true;
+  };
+
+  AB_EE = { down, up, busy: () => busy };
 }
 
 // 滚动到这里时：理念高亮扫过、GPA 环填色、课程分数条生长
@@ -1173,10 +1426,15 @@ function abInitRelays() {
     el.animate(frames, Object.assign({ fill: "both", easing: "cubic-bezier(.4,0,.2,1)" }, opts));
 
   // 真身先隐身，过一会儿自动恢复（此时它已经在视口外）
+  // 但如果这段时间里它被转场接管了（data-pe-hidden），就别把它放出来 ——
+  // 否则转场正播到一半，GPA 会突然冒出来和克隆圆叠在一起
   const hide = (el, ms) => {
     if (!el) return;
     el.style.opacity = "0";
-    setTimeout(() => { el.style.opacity = ""; }, ms);
+    setTimeout(() => {
+      if (el.dataset.peHidden === "1") return;
+      el.style.opacity = "";
+    }, ms);
   };
 
   const flash = (el, ms) => {
@@ -1190,22 +1448,9 @@ function abInitRelays() {
   // ② 01 -> 02 由 abInitPhilEdu() 的整段转场接管（高亮条聚成有缺口的圆 → GPA 环）
   //    这里不再有 relay：转场期间滚动是锁住的，不会走到 32% 进度
 
-  // ③ 02 -> 03：环缩小，落成时间轴的第一个点
-  relays["education>experience"] = () => {
-    const gpa = document.querySelector("#education .ab-gpa");
-    const dot = document.querySelector("#experience .ab-exp__dot");
-    if (!gpa || !dot) return;
-    const gr = R(gpa);
-    const dr = R(dot);
-    const { c } = clone(gpa);
-    const s = Math.max(0.02, dr.width / gr.width);
-    const a = run(c, [
-      { transform: "none", opacity: 1 },
-      { transform: "translate(" + (dr.left + dr.width / 2 - (gr.left + gr.width / 2)) + "px," + (dr.top + dr.height / 2 - (gr.top + gr.height / 2)) + "px) scale(" + s.toFixed(3) + ")", opacity: 0 },
-    ], { duration: 540 });
-    a.onfinish = () => { c.remove(); flash(dot, 700); };
-    hide(gpa, 1000);
-  };
+  // ③ 02 -> 03 由 abInitEduExp() 的整段转场接管（环转到屏幕中间 → 拉直 → 时间轴竖线）
+  //    这里不再有 relay：转场期间滚动是锁住的，不会走到 32% 进度
+  //    （旧的 hide(gpa, 1000) 也一并去掉 —— 那个延迟恢复会和 02→01 的转场抢 GPA）
 
   // ④ 03 -> 04：每条经历最后一个标签，飞进技能瓷砖的 chips
   relays["experience>skills"] = () => {
@@ -1385,6 +1630,7 @@ function abTypeRun(root, dur) {
    ============================================================ */
 let AB_TRANSIT = null;   // 首屏 → 01
 let AB_PE = null;        // 01 → 02（高亮条聚成圆 → GPA 环）
+let AB_EE = null;        // 02 → 03（GPA 环 → 拉直 → 时间轴竖线）
 
 function abInitHeroTransit() {
   if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -2021,6 +2267,8 @@ function abInitPager() {
       if (!next) return false;
       // 01 → 02：交给专门的转场（高亮条聚成有缺口的圆 → GPA 环），期间锁滚动
       if (cur && cur.id === "philosophy" && next.id === "education" && AB_PE && AB_PE.down()) return true;
+      // 02 → 03：GPA 环转到屏幕中间再拉直成时间轴竖线
+      if (cur && cur.id === "education" && next.id === "experience" && AB_EE && AB_EE.down()) return true;
       const target = topOf(next);
       if (Math.abs(target - y) < 4) return false;
       go(target, 1);
@@ -2046,6 +2294,8 @@ function abInitPager() {
     if (!prev) return false;
     // 02 → 01：把 01→02 那套倒着放一遍
     if (prev.id === "philosophy" && AB_PE && AB_PE.up()) return true;
+    // 03 → 02：时间轴竖线弯回成环，转回 GPA
+    if (prev.id === "education" && AB_EE && AB_EE.up()) return true;
     if (idx === 0 && prev === hero && AB_TRANSIT && AB_TRANSIT.up()) return true;
     const prevTop = topOf(prev);
     const prevEnd = endOf(prev);
@@ -2071,6 +2321,7 @@ function abInitPager() {
     // 首屏那段转场还在播（约 1.1s）：先吞掉，别让它被后续滚轮推着走
     if (AB_TRANSIT && AB_TRANSIT.busy()) { e.preventDefault(); return; }
     if (AB_PE && AB_PE.busy()) { e.preventDefault(); return; }
+    if (AB_EE && AB_EE.busy()) { e.preventDefault(); return; }
 
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
@@ -2168,6 +2419,7 @@ function abInitPager() {
   abInitHeadRule();
   abInitRelays();
   abInitPhilEdu();       // 01 → 02 的整段转场，同样要在 pager 之前
+  abInitEduExp();        // 02 → 03 的整段转场
   abInitHeroTransit();   // 必须在 abInitPager 之前：pager 会读 AB_TRANSIT
   abInitIndex(abRenderIndex());
   abInitPager();
