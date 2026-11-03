@@ -1384,6 +1384,19 @@ function initHomeScenes() {
   const W = 380;
   const H = 506.7;
 
+  // 翻牌卡是 position:fixed + left:50% + translate(-50%,-50%)，
+  // 它的 50% 是相对**内容区**（initial containing block，不含滚动条）算的；
+  // 而 window.innerWidth 是**含**滚动条的。两者差了整整一条滚动条宽，
+  // 拿 innerWidth/2 当中心基准，卡片就会整体向左偏半个滚动条（约 7~8px）——
+  // 这就是「照片翻成卡片时永远有个向左的位移」的真正原因。
+  const stageBox = () => {
+    const de = document.documentElement;
+    return {
+      w: de.clientWidth || window.innerWidth || 1,
+      h: de.clientHeight || window.innerHeight || 1,
+    };
+  };
+
   const measureStart = () => {
     const ph = els.photo;
     if (!ph || !els.cardGeom) return;
@@ -1392,10 +1405,9 @@ function initHomeScenes() {
     const w = ph.offsetWidth || r.width;
     const h = ph.offsetHeight || r.height;
     if (w <= 0) return;
-    const vw = window.innerWidth || 1;
-    const vh = window.innerHeight || 1;
-    els.cardGeom.dx = r.left + r.width / 2 - vw / 2;
-    els.cardGeom.dy = r.top + r.height / 2 - vh / 2;
+    const box = stageBox();
+    els.cardGeom.dx = r.left + r.width / 2 - box.w / 2;
+    els.cardGeom.dy = r.top + r.height / 2 - box.h / 2;
     els.cardGeom.sx = w / W;
     els.cardGeom.sy = h / H;
   };
@@ -1405,10 +1417,9 @@ function initHomeScenes() {
     if (!cur || !els.cardGeom) return;
     const c = cur.getBoundingClientRect();
     if (c.width <= 0) return;
-    const vw = window.innerWidth || 1;
-    const vh = window.innerHeight || 1;
-    els.cardGeom.dxEnd = c.left + c.width / 2 - vw / 2;
-    els.cardGeom.dyEnd = c.top + c.height / 2 - vh / 2;
+    const box = stageBox();
+    els.cardGeom.dxEnd = c.left + c.width / 2 - box.w / 2;
+    els.cardGeom.dyEnd = c.top + c.height / 2 - box.h / 2;
     els.cardGeom.sxEnd = c.width / W;
     els.cardGeom.syEnd = c.height / H;
   };
@@ -1602,8 +1613,7 @@ function initHomeScenes() {
       // 先记住照片「此刻在屏幕上的样子」：鼠标停在 About 区时它是歪的（rotateX/rotateY + 1.03 缩放），
       // 翻牌卡必须从**这个**位置和大小接手。之前是先把它瞬间掰正、再按掰正后的位置量 ——
       // 于是照片忽然回正缩回去，看起来就是卡片「跳一下」。
-      const vw2 = window.innerWidth || 1;
-      const vh2 = window.innerHeight || 1;
+      const box2 = stageBox();
       const before = els.photo ? els.photo.getBoundingClientRect() : null;
       if (els.photo) {
         els.photo.style.transition = "none";
@@ -1614,8 +1624,8 @@ function initHomeScenes() {
       measure();        // 重新量起点与终点
       // 起点改成「掰正之前」的样子，接得上用户眼睛看到的那一帧
       if (before && before.width > 0 && els.cardGeom) {
-        els.cardGeom.dx = before.left + before.width / 2 - vw2 / 2;
-        els.cardGeom.dy = before.top + before.height / 2 - vh2 / 2;
+        els.cardGeom.dx = before.left + before.width / 2 - box2.w / 2;
+        els.cardGeom.dy = before.top + before.height / 2 - box2.h / 2;
         els.cardGeom.sx = before.width / W;
         els.cardGeom.sy = before.height / H;
       }
