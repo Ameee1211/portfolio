@@ -660,6 +660,7 @@ function abInitPhilEdu() {
 
     busy = true;
     phil.classList.add("is-relay");
+    abCoursesReset();          // 02 的课程条先归零（此时 02 还在视口外），落位后再一起长出来
 
     const cx0 = window.innerWidth / 2;
     const cy0 = window.innerHeight / 2;
@@ -745,6 +746,7 @@ function abInitPhilEdu() {
       });
 
       jumpTo(er.top + window.scrollY);
+      abCoursesGrow(240);        // 落位后四条分数条一起从 0 长到 84/82/82/81
       svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "both" })
         .onfinish = () => svg.remove();
 
@@ -1102,6 +1104,7 @@ function abInitEduExp() {
     line.style.opacity = "0";            // 真身那根线先让位
     exp.classList.add("is-bg-shift");    // 03 的淡灰紫 → 02 的白，和圈圈同时渐变
     exp.classList.add("is-line-out");    // 时间轴那条淡淡的底线也一起让位，否则圈飞走后还留着一条线
+    abCoursesReset();                    // 回到 02 时课程条要重新从 0 长一遍
 
     // 03 的内容全部退场，只留下圈圈在转
     const outs3 = [];
@@ -1170,6 +1173,7 @@ function abInitEduExp() {
 
       // 落位：跳回 02。GPA 立刻出现在克隆的位置上（不留空档、不闪），克隆随后淡出
       jumpTo(er.top + window.scrollY);
+      abCoursesGrow(240);        // 回到 02 后四条分数条也一起从 0 长一遍
       delete gpa.dataset.peHidden;
       gpa.style.opacity = "";
       svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "both" })
@@ -1186,6 +1190,31 @@ function abInitEduExp() {
   };
 
   AB_EE = { down, up, busy: () => busy };
+}
+
+/* ---------- 课程分数条：每次进 02 都从 0 一起长到各自的分值 ---------- */
+// 转场一开始先归零（此时 02 还在视口外，看不见），落位后再一起生长。
+// 普通入场（不经过转场）也走同一套，避免两条路径叠在一起。
+let abGrowStamp = 0;
+
+function abCoursesReset() {
+  document.querySelectorAll(".ab-course__fill").forEach((f) => {
+    f.style.transition = "none";
+    f.style.width = "0%";
+  });
+}
+
+function abCoursesGrow(delay) {
+  const fills = [...document.querySelectorAll(".ab-course__fill")];
+  if (!fills.length) return;
+  abGrowStamp = performance.now();
+  const run = () => {
+    fills.forEach((f) => { f.style.transition = ""; });
+    void fills[0].offsetWidth;   // 先让「宽度 0 + 过渡已恢复」这一帧落定，否则不会有过渡
+    fills.forEach((f) => { f.style.width = (f.dataset.w || "0") + "%"; });
+  };
+  if (delay) setTimeout(run, delay);
+  else requestAnimationFrame(run);
 }
 
 // 滚动到这里时：理念高亮扫过、GPA 环填色、课程分数条生长
@@ -1206,11 +1235,17 @@ function abInitAnim() {
           if (arc) arc.style.strokeDashoffset = arc.dataset.off;
           const val = el.querySelector(".ab-gpa__value");
           if (val && abWide()) abCountUp(val);
-          document.querySelectorAll(".ab-course__fill").forEach((f, i) => {
-            setTimeout(() => {
-              f.style.width = `${f.dataset.w}%`;
-            }, 180 + i * 110);
-          });
+          // 课程条：电脑端统一走 abCoursesGrow（转场与普通入场同一套，四条一起长）；
+          // 手机端保持原来的依次生长不变
+          if (performance.now() - abGrowStamp > 800) {
+            if (abWide()) {
+              abCoursesGrow(200);
+            } else {
+              document.querySelectorAll(".ab-course__fill").forEach((f, i) => {
+                setTimeout(() => { f.style.width = `${f.dataset.w}%`; }, 180 + i * 110);
+              });
+            }
+          }
         }
         io.unobserve(el);
       });
