@@ -79,13 +79,44 @@ function abRenderHero() {
 }
 
 /* ---------- 2. 设计理念 ---------- */
+// 段落本身保持完整可读；三个高亮短语是"活"的：
+// 鼠标移上去 → 其余文字淡到 32%，右侧浮出这张原则卡；点卡片 → 翻面看它在项目里的例子。
 function abRenderPhilosophy() {
   const p = AB.philosophy;
+  let hi = -1;
   const body = p.statement
-    .map((s) => (s.hl ? `<span class="hl">${esc(s.t)}</span>` : esc(s.t)))
+    .map((s) => {
+      if (!s.hl) return `<span class="ab-ph">${esc(s.t)}</span>`;
+      hi += 1;
+      return `<span class="hl" data-p="${hi}" tabindex="0" role="button">${esc(s.t)}</span>`;
+    })
     .join("");
+
+  const cards = (p.principles || [])
+    .map(
+      (c, i) => `
+      <article class="ab-principle" data-p="${i}">
+        <div class="ab-principle__flip">
+          <div class="ab-principle__face">
+            <span class="ab-principle__idx">${String(i + 1).padStart(2, "0")}</span>
+            <h3 class="ab-principle__t">${esc(c.title)}</h3>
+            <p class="ab-principle__b">${esc(c.body)}</p>
+            <span class="ab-principle__hint">Click for an example</span>
+          </div>
+          <div class="ab-principle__face ab-principle__face--back">
+            <span class="ab-principle__idx">${String(i + 1).padStart(2, "0")}</span>
+            <p class="ab-principle__ex">${esc(c.example)}</p>
+            <a class="ab-principle__link" href="${esc(c.href)}">${esc(c.linkLabel || "Open")}
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+          </div>
+        </div>
+      </article>`
+    )
+    .join("");
+
   return `
-  <section class="ab-sec ab-sec--cream" id="philosophy">
+  <section class="ab-sec ab-sec--cream ab-philosophy" id="philosophy">
     <div class="ab-wrap">
       <div class="ab-head">
         <span class="ab-head__num">${esc(p.index)}</span>
@@ -93,7 +124,21 @@ function abRenderPhilosophy() {
         <span class="ab-head__rule"></span>
       </div>
       <span class="ab-philosophy__mark" aria-hidden="true"></span>
-      <p class="ab-philosophy__statement" id="abPhilosophy">${body}</p>
+      <div class="ab-philosophy__body">
+        <p class="ab-philosophy__statement" id="abPhilosophy">${body}</p>
+        <div class="ab-principles" id="abPrinciples">
+          <div class="ab-principles__cue">
+            ${(p.principles || [])
+              .map(
+                (c, i) => `<button class="ab-principles__item" type="button" data-p="${i}">
+                  <span>${String(i + 1).padStart(2, "0")}</span>${esc(c.title)}
+                </button>`
+              )
+              .join("")}
+          </div>
+          ${cards}
+        </div>
+      </div>
     </div>
   </section>`;
 }
@@ -112,6 +157,7 @@ function abRenderEducation() {
         <span class="ab-course__name">${esc(c.name)}</span>
         <span class="ab-course__score">${c.score}</span>
         <span class="ab-course__bar"><span class="ab-course__fill" data-w="${c.score}"></span></span>
+        ${c.note ? `<span class="ab-course__note">${esc(c.note)}</span>` : ""}
       </div>`
     )
     .join("");
@@ -141,7 +187,7 @@ function abRenderEducation() {
               data-off="${(C * (1 - ratio)).toFixed(2)}" />
           </svg>
           <div class="ab-gpa__center">
-            <span class="ab-gpa__value">${e.gpa.value}</span>
+            <span class="ab-gpa__value" data-count="${e.gpa.value}">${e.gpa.value}</span>
             <span class="ab-gpa__max">out of ${e.gpa.max}</span>
             <span class="ab-gpa__cap">GPA</span>
           </div>
@@ -194,7 +240,7 @@ function abRenderExperience() {
         <span class="ab-head__label">${esc(x.label)}</span>
         <span class="ab-head__rule"></span>
       </div>
-      <div class="ab-timeline">${items}</div>
+      <div class="ab-timeline"><span class="ab-timeline__line" id="abExpLine" aria-hidden="true"></span>${items}</div>
     </div>
   </section>`;
 }
@@ -510,6 +556,8 @@ function abInitAnim() {
         if (el.id === "education") {
           const arc = $("abGpaArc");
           if (arc) arc.style.strokeDashoffset = arc.dataset.off;
+          const val = el.querySelector(".ab-gpa__value");
+          if (val && abWide()) abCountUp(val);
           document.querySelectorAll(".ab-course__fill").forEach((f, i) => {
             setTimeout(() => {
               f.style.width = `${f.dataset.w}%`;
@@ -573,6 +621,180 @@ function abInitCopy() {
       copy(val);
     });
   });
+}
+
+/* ============================================================
+   交互层（仅电脑端 >=1024px；手机端不参与）
+   ============================================================ */
+const abWide = () => window.matchMedia("(min-width: 1024px)").matches;
+
+// 01 理念：高亮短语 -> 原则卡（悬停出现，点一下翻面看例子）
+function abInitPhilosophy() {
+  const st = $("abPhilosophy");
+  const wrap = $("abPrinciples");
+  if (!st || !wrap || !abWide()) return;
+
+  const hls = [...st.querySelectorAll(".hl")];
+  const cards = [...wrap.querySelectorAll(".ab-principle")];
+  if (!hls.length || !cards.length) return;
+
+  let on = -1;
+  let hideTimer = 0;
+
+  const show = (i) => {
+    clearTimeout(hideTimer);
+    if (on === i) return;
+    on = i;
+    st.classList.add("is-focus");
+    wrap.classList.add("has-on");
+    hls.forEach((h, k) => h.classList.toggle("is-on", k === i));
+    cards.forEach((c, k) => c.classList.toggle("is-on", k === i));
+  };
+
+  const hide = () => {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      on = -1;
+      st.classList.remove("is-focus");
+      wrap.classList.remove("has-on");
+      hls.forEach((h) => h.classList.remove("is-on"));
+      cards.forEach((c) => {
+        c.classList.remove("is-on");
+        c.classList.remove("is-flipped");
+      });
+    }, 240);
+  };
+
+  hls.forEach((h, i) => {
+    h.addEventListener("pointerenter", () => show(i));
+    h.addEventListener("pointerleave", hide);
+    h.addEventListener("focus", () => show(i));
+    h.addEventListener("blur", hide);
+  });
+
+  wrap.addEventListener("pointerenter", () => clearTimeout(hideTimer));
+  wrap.addEventListener("pointerleave", hide);
+
+  // 段落下面那三个标题：悬停预览、点一下展开/翻面
+  wrap.querySelectorAll(".ab-principles__item").forEach((btn, i) => {
+    btn.addEventListener("pointerenter", () => show(i));
+    btn.addEventListener("focus", () => show(i));
+    btn.addEventListener("click", () => {
+      show(i);
+      const card = cards[i];
+      if (card) card.classList.toggle("is-flipped");
+    });
+  });
+
+  cards.forEach((c) => {
+    c.addEventListener("click", (e) => {
+      if (e.target.closest(".ab-principle__link")) return;
+      c.classList.toggle("is-flipped");
+    });
+  });
+}
+
+// GPA 数字滚动
+function abCountUp(el) {
+  const target = parseFloat(el.dataset.count || "0");
+  if (!target) return;
+  const dur = 1200;
+  const t0 = performance.now();
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 3);
+    el.textContent = (target * e).toFixed(1);
+    if (k < 1) requestAnimationFrame(step);
+    else el.textContent = target.toFixed(1);
+  };
+  requestAnimationFrame(step);
+}
+
+// 03 经历：从右侧飞入（CSS）+ 时间轴随滚动填充 + 悬停聚焦
+function abInitExperience() {
+  const tl = document.querySelector(".ab-timeline");
+  if (!tl) return;
+  const rows = [...tl.querySelectorAll(".ab-exp")];
+  const line = $("abExpLine");
+
+  rows.forEach((r) => {
+    r.addEventListener("pointerenter", () => {
+      tl.classList.add("is-hover");
+      r.classList.add("is-on");
+    });
+    r.addEventListener("pointerleave", () => {
+      tl.classList.remove("is-hover");
+      r.classList.remove("is-on");
+    });
+  });
+
+  if (!abWide() || !line) return;
+
+  let raf = 0;
+  const paint = () => {
+    raf = 0;
+    const r = tl.getBoundingClientRect();
+    const p = (window.innerHeight * 0.78 - r.top) / Math.max(1, r.height);
+    line.style.transform = "scaleY(" + Math.max(0, Math.min(1, p)).toFixed(4) + ")";
+  };
+  const onScroll = () => { if (!raf) raf = requestAnimationFrame(paint); };
+  paint();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+}
+
+// 04 技能：图标朝光标轻微转动
+function abInitTools() {
+  const belt = document.querySelector(".ab-tools");
+  if (!belt || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+  const icons = [...belt.querySelectorAll(".ab-tool")];
+  if (!icons.length) return;
+  let rects = [];
+
+  const cache = () => { rects = icons.map((el) => el.getBoundingClientRect()); };
+
+  belt.addEventListener("pointerenter", cache);
+  belt.addEventListener("pointermove", (e) => {
+    if (!rects.length) cache();
+    icons.forEach((el, i) => {
+      const b = rects[i];
+      if (!b) return;
+      const dx = e.clientX - (b.left + b.width / 2);
+      const dy = e.clientY - (b.top + b.height / 2);
+      const d = Math.hypot(dx, dy);
+      if (d > 240) { el.style.transform = ""; return; }
+      const k = 1 - d / 240;
+      const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+      el.style.transform =
+        "translate(" + (dx * 0.09 * k).toFixed(2) + "px," + (dy * 0.09 * k).toFixed(2) + "px) rotate(" + (ang * 0.11 * k).toFixed(2) + "deg)";
+    });
+  });
+  belt.addEventListener("pointerleave", () => {
+    icons.forEach((el) => { el.style.transform = ""; });
+    rects = [];
+  });
+}
+
+// 章节标尺：每节进来时标题下那条细线从左划出
+function abInitHeadRule() {
+  const secs = [...document.querySelectorAll(".ab-sec, .ab-hero")];
+  if (!secs.length) return;
+  if (!("IntersectionObserver" in window)) {
+    secs.forEach((s) => s.classList.add("is-head-in"));
+    return;
+  }
+  const io = new IntersectionObserver(
+    (es) => {
+      es.forEach((en) => {
+        if (!en.isIntersecting) return;
+        en.target.classList.add("is-head-in");
+        io.unobserve(en.target);
+      });
+    },
+    { threshold: 0.08 }
+  );
+  secs.forEach((s) => io.observe(s));
 }
 
 /* ============================================================
@@ -1054,6 +1276,10 @@ function abInitPager() {
   abInitAnim();
   abInitCopy();
   abInitInterests();
+  abInitPhilosophy();
+  abInitExperience();
+  abInitTools();
+  abInitHeadRule();
   abInitIndex(abRenderIndex());
   abInitPager();
 

@@ -147,6 +147,36 @@ const SITE = {
         { t: "the judgement stays mine", hl: true },
         { t: "." },
       ],
+      // 三个高亮短语各自展开成一张卡（悬停出现，点一下翻到例子那面）
+      principles: [
+        {
+          title: "Fix the friction first",
+          body:
+            "Every interface gets one question before it gets any styling: where do people hesitate, re-read the same label, or quietly give up? That gets fixed first. Decoration comes after.",
+          example:
+            "SunLink · the three charge states read as colour plus one line, not a percentage you have to interpret.",
+          href: "sunlink.html#states",
+          linkLabel: "Open SunLink",
+        },
+        {
+          title: "Polish has to justify itself",
+          body:
+            "Every visual decision should be able to say what it solved. If it cannot, it is decoration — and decoration is the first thing to go when a screen gets crowded.",
+          example:
+            "BusStop · the stop sign is ordered by what you actually look at while waiting, not by what balances on the page.",
+          href: "busstop.html#elements",
+          linkLabel: "Open BusStop",
+        },
+        {
+          title: "AI speeds it up, judgement stays mine",
+          body:
+            "I use AI to try more directions earlier and to pressure-test my own thinking, then I decide. Faster exploration, same accountability for the result.",
+          example:
+            "Chocolate · the vent hole came out of working the numbers first, not out of a render that looked fine.",
+          href: "chocolate.html#params",
+          linkLabel: "Open Chocolate",
+        },
+      ],
     },
 
     education: {
@@ -160,10 +190,10 @@ const SITE = {
       note:
         "Coursework ran across UI/UX, web and 3D form, which is still the shape of the work I take on.",
       courses: [
-        { name: "Principles of Interactive Animation", score: 84 },
-        { name: "Product Interaction Design", score: 82 },
-        { name: "Design Programming", score: 82 },
-        { name: "Advanced Web Design", score: 81 },
+        { name: "Principles of Interactive Animation", score: 84, note: "Motion and timing, studied frame by frame." },
+        { name: "Product Interaction Design", score: 82, note: "Interview, flow, prototype — on a real brief." },
+        { name: "Design Programming", score: 82, note: "Turning a layout into something that runs." },
+        { name: "Advanced Web Design", score: 81, note: "Type, grid and responsive behaviour in code." },
       ],
     },
 

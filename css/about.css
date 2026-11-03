@@ -1364,3 +1364,190 @@
      于是点开之后图还会慢慢"缩回去"一下 —— 展开态直接关掉，一步到位 */
   .ab-int__card.is-open .ab-int__media img { transition: none; }
 }
+
+/* ============================================================
+   About · 交互层
+   默认（含手机端）：下面这些新元素不参与排版、不显示。
+   电脑端（>=1024px）才启用，手机端表现和之前完全一致。
+   ============================================================ */
+.ab-principles,
+.ab-course__note,
+.ab-timeline__line { display: none; }
+
+@media (min-width: 1024px) {
+  /* ---- 章节标尺：进入这一节时，标题旁那条细线从左划出 ---- */
+  .ab-head__rule { transform: scaleX(0); transform-origin: left center; will-change: transform; }
+  .is-head-in .ab-head__rule { transform: scaleX(1); transition: transform 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) 0.05s; }
+
+  /* ---- 01 How I design：活的段落 ---- */
+  .ab-philosophy__body { position: relative; }
+  .ab-philosophy__statement .ab-ph,
+  .ab-philosophy__statement .hl { transition: opacity 0.32s ease, color 0.32s ease; }
+  .ab-philosophy__statement .hl { cursor: pointer; }
+  .ab-philosophy__statement .hl:focus-visible { outline: 2px solid var(--purple); outline-offset: 4px; border-radius: 4px; }
+  .ab-philosophy__statement.is-focus .ab-ph { opacity: 0.28; }
+  .ab-philosophy__statement.is-focus .hl:not(.is-on) { opacity: 0.28; }
+  .ab-philosophy__statement .hl.is-on { color: var(--purple-deep); }
+
+  /* 卡片区固定占位：出现/消失都不推动页面上下跳。
+     上面一行是三个原则标题（悬停/点击都能唤起卡片），下面右侧放卡片 */
+  .ab-principles { display: block; position: relative; height: 206px; margin-top: 24px; }
+  .ab-principles__cue { position: absolute; left: 0; top: 2px; display: flex; flex-wrap: wrap; gap: 10px 30px; }
+  .ab-principles__item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 9px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    font-size: 12.5px;
+    color: rgba(51, 61, 109, 0.52);
+    cursor: pointer;
+    transition: color 0.25s ease;
+  }
+  .ab-principles__item > span {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(116, 105, 182, 0.55);
+    transition: color 0.25s ease;
+  }
+  .ab-principles__item:hover,
+  .ab-principles__item:focus-visible { color: var(--navy); }
+  .ab-principles__item:hover > span { color: var(--purple); }
+  .ab-principles.has-on .ab-principles__cue { opacity: 0.25; }
+  .ab-principles__cue { transition: opacity 0.3s ease; }
+  .ab-principle {
+    position: absolute;
+    right: 0;
+    top: 34px;
+    width: min(370px, 34vw);
+    perspective: 1400px;
+    opacity: 0;
+    transform: translateY(14px);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.42s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .ab-principle.is-on { opacity: 1; transform: none; pointer-events: auto; }
+  .ab-principle__flip {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.66s cubic-bezier(0.32, 0.9, 0.24, 1);
+  }
+  .ab-principle.is-flipped .ab-principle__flip { transform: rotateY(180deg); }
+  .ab-principle__face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px 22px 18px;
+    box-shadow: 0 20px 46px rgba(51, 61, 109, 0.12);
+  }
+  .ab-principle__face--back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+    display: flex;
+    flex-direction: column;
+    background: var(--navy);
+    border-color: transparent;
+    color: #fff;
+    overflow: auto;
+  }
+  .ab-principle__idx {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--purple);
+  }
+  .ab-principle__face--back .ab-principle__idx { color: var(--orange); }
+  .ab-principle__t { margin-top: 9px; font-size: 17px; font-weight: 700; color: var(--navy); }
+  .ab-principle__b { margin-top: 8px; font-size: 12.6px; line-height: 1.74; color: var(--muted); }
+  .ab-principle__hint {
+    display: block;
+    margin-top: 13px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(51, 61, 109, 0.38);
+  }
+  .ab-principle__ex { margin-top: 10px; font-size: 12.8px; line-height: 1.7; color: rgba(255, 255, 255, 0.88); }
+  .ab-principle__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: auto;
+    padding-top: 14px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #fff;
+    text-decoration: none;
+  }
+  .ab-principle__link svg { width: 15px; height: 15px; transition: transform 0.3s ease; }
+  .ab-principle__link:hover svg { transform: translateX(4px); }
+
+  /* ---- 02 Education：课程条悬停 → 拉满 + 这一行底下浮出一句话 ----
+     说明文字始终在流里占好位置（只是透明），所以悬停不会把下面的行推来推去 */
+  .ab-course__note {
+    display: block;
+    grid-column: 1 / -1;
+    margin-top: 7px;
+    font-size: 11.8px;
+    line-height: 1.5;
+    color: var(--purple-deep);
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: opacity 0.24s ease, transform 0.24s ease;
+  }
+  .ab-course:hover .ab-course__note { opacity: 1; transform: none; }
+  .ab-course:hover .ab-course__fill { width: 100% !important; }
+  .ab-course:hover .ab-course__name { color: var(--purple-deep); }
+
+  /* ---- 03 Experience：从右侧飞入 + 时间轴填充 + 悬停聚焦 ---- */
+  .ab-timeline__line {
+    display: block;
+    position: absolute;
+    left: 7px;
+    top: 14px;
+    bottom: 14px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--purple), rgba(116, 105, 182, 0.28));
+    transform: scaleY(0);
+    transform-origin: top center;
+    will-change: transform;
+  }
+  .ab-exp.reveal {
+    opacity: 0;
+    transform: translate3d(58px, 0, 0);
+    transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.16, 0.84, 0.28, 1);
+  }
+  .ab-exp.reveal.is-in { opacity: 1; transform: none; }
+  .ab-timeline.is-hover .ab-exp:not(.is-on) { opacity: 0.4; }
+
+  /* ---- 04 Skills：图标朝光标 ---- */
+  .ab-tool { transition: transform 0.18s ease-out; will-change: transform; }
+
+  /* ---- 06 Contact：悬停时箭头滑出 ---- */
+  .ab-contact__row { position: relative; }
+  .ab-contact__row::after {
+    content: "";
+    position: absolute;
+    right: 22px;
+    bottom: 26px;
+    width: 7px;
+    height: 7px;
+    border-top: 1.6px solid currentColor;
+    border-right: 1.6px solid currentColor;
+    opacity: 0;
+    transform: rotate(45deg) translateX(-7px);
+    transition: opacity 0.26s ease, transform 0.26s ease;
+  }
+  .ab-contact__row:hover::after { opacity: 0.85; transform: rotate(45deg) translateX(0); }
+}
