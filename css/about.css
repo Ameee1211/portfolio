@@ -1604,3 +1604,33 @@
   30% { transform: scale(1.55); box-shadow: 0 0 0 9px rgba(116, 105, 182, 0.16); }
   100% { transform: scale(1); }
 }
+
+/* ============================================================
+   Hero → 01 的转场（只有 >=1024px 的 JS 会创建它，手机端不存在）
+   照片往屏幕深处飞走 → 左侧文字向左移出 → 渐变圆撑满整屏染成 01 的底色
+   ============================================================ */
+.ab-hero-wave {
+  position: fixed;
+  z-index: 90;
+  pointer-events: none;
+  background: var(--cream);   /* #fff0d9 = 01 How I design 的板块底色 */
+  border-radius: 50%;
+  overflow: hidden;
+  will-change: left, top, width, height, border-radius, opacity;
+}
+.ab-hero-wave__tint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(140deg, #ffe9c7 0%, #e2f7ef 52%, #e7e3f7 100%);
+  transition: opacity 0.62s ease;
+}
+
+/* 打字：每个字符一个 span，JS 逐个放出来 */
+.ab-ch.is-off { opacity: 0; }
+
+/* 打字期间不给高亮短语铺底色，否则还没打出来的字下面先有一条黄带；
+   也不接悬停（否则一边打字一边弹出原则卡，还让整段忽明忽暗） */
+#philosophy.is-typing .ab-philosophy__statement .hl { background-size: 0% 36% !important; pointer-events: none; }
+/* 打字期间下方那三个原则条目先不出现，打完再浮上来 */
+#philosophy .ab-principles { transition: opacity 0.5s ease; }
+#philosophy.is-typing .ab-principles { opacity: 0; pointer-events: none; }

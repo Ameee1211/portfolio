@@ -79,6 +79,12 @@ function abRenderHero() {
 }
 
 /* ---------- 2. 设计理念 ---------- */
+// 逐字打字用：把一段文本拆成字符 span。空格保留为普通空格（省一堆节点），
+// 这样只要按顺序 remove("is-off") 就能一个一个"打"出来。
+function abTypeChars(text) {
+  return [...text].map((ch) => (ch === " " ? " " : `<span class="ab-ch">${esc(ch)}</span>`)).join("");
+}
+
 // 段落本身保持完整可读；三个高亮短语是"活"的：
 // 鼠标移上去 → 其余文字淡到 32%，右侧浮出这张原则卡；点卡片 → 翻面看它在项目里的例子。
 function abRenderPhilosophy() {
@@ -86,9 +92,9 @@ function abRenderPhilosophy() {
   let hi = -1;
   const body = p.statement
     .map((s) => {
-      if (!s.hl) return `<span class="ab-ph">${esc(s.t)}</span>`;
+      if (!s.hl) return `<span class="ab-ph">${abTypeChars(s.t)}</span>`;
       hi += 1;
-      return `<span class="hl" data-p="${hi}" tabindex="0" role="button">${esc(s.t)}</span>`;
+      return `<span class="hl" data-p="${hi}" tabindex="0" role="button">${abTypeChars(s.t)}</span>`;
     })
     .join("");
 
@@ -671,6 +677,20 @@ function abInitPhilosophy() {
     h.addEventListener("blur", hide);
   });
 
+  // 供转场调用：开始打字前把可能残留的悬停状态清干净
+  // （页面瞬间跳到 01 时，鼠标可能正好落在某个高亮短语上，会让整段一直淡淡的、还浮着一张卡）
+  st.__abReset = () => {
+    on = -1;
+    clearTimeout(hideTimer);
+    st.classList.remove("is-focus");
+    wrap.classList.remove("has-on");
+    hls.forEach((h) => h.classList.remove("is-on"));
+    cards.forEach((c) => {
+      c.classList.remove("is-on");
+      c.classList.remove("is-flipped");
+    });
+  };
+
   wrap.addEventListener("pointerenter", () => clearTimeout(hideTimer));
   wrap.addEventListener("pointerleave", hide);
 
@@ -846,37 +866,6 @@ function abInitRelays() {
 
   const relays = {};
 
-  // ① Hero -> 01：最下面两行（12 个）字母收拢成那条橙色横线
-  relays["top>philosophy"] = () => {
-    const ghost = $("abGhost");
-    const mark = document.querySelector("#philosophy .ab-philosophy__mark");
-    if (!ghost || !mark) return;
-    const letters = [...ghost.children].slice(-12);
-    if (!letters.length) return;
-
-    const mr = R(mark);
-    letters.forEach((sp, i) => {
-      const { c, r } = clone(sp);
-      c.classList.add("ab-relay--letter");
-      const tx = mr.left + (mr.width * i) / Math.max(1, letters.length - 1) - (r.left + r.width / 2);
-      const ty = mr.top + mr.height / 2 - (r.top + r.height / 2);
-      const a = run(c, [
-        { transform: "none", opacity: 1 },
-        { transform: "translate(" + tx + "px," + ty + "px) scale(.28)", opacity: 0 },
-      ], { duration: 520, delay: i * 12 });
-      a.onfinish = () => c.remove();
-    });
-    letters.forEach((sp) => hide(sp, 1200));
-
-    mark.style.transformOrigin = "left center";
-    mark.style.transform = "scaleX(0)";
-    setTimeout(() => {
-      mark.style.transition = "transform .42s cubic-bezier(.2,.8,.3,1)";
-      mark.style.transform = "scaleX(1)";
-      setTimeout(() => { mark.style.transition = ""; mark.style.transform = ""; }, 620);
-    }, 420);
-  };
-
   // ② 01 -> 02：那条横线被"撑开"成一个圆，落成 GPA 环
   relays["philosophy>education"] = () => {
     const mark = document.querySelector("#philosophy .ab-philosophy__mark");
@@ -1049,6 +1038,285 @@ function abInitRelays() {
   const onScroll = () => { if (!raf) raf = requestAnimationFrame(check); };
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
+}
+
+/* ============================================================
+   打字：把 .ab-ch 一个个放出来（finish() 可以立刻补完）
+   ============================================================ */
+function abTypeRun(root, dur) {
+  const chars = root ? [...root.querySelectorAll(".ab-ch")] : [];
+  if (!chars.length) return null;
+
+  chars.forEach((c) => c.classList.add("is-off"));
+  const n = chars.length;
+  let shown = 0;
+  let raf = 0;
+  let done = false;
+  let resolve;
+  const finished = new Promise((r) => (resolve = r));
+
+  const finish = () => {
+    if (done) return;
+    done = true;
+    if (raf) cancelAnimationFrame(raf);
+    chars.forEach((c) => c.classList.remove("is-off"));
+    resolve();
+  };
+
+  const t0 = performance.now();
+  const tick = (now) => {
+    if (done) return;
+    const k = Math.min(1, (now - t0) / dur);
+    const upto = Math.min(n, Math.max(1, Math.round(k * n)));
+    while (shown < upto) {
+      chars[shown].classList.remove("is-off");
+      shown += 1;
+    }
+    if (k >= 1) { finish(); return; }
+    raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+  return { finish, finished };
+}
+
+/* ============================================================
+   Hero → 01 的转场（只在电脑端，手机端不存在这段逻辑）
+   ① 照片在原位往屏幕深处飞走、缩到没有
+   ② 左侧文字向左移出
+   ③ 只留下那个渐变圆 → 撑满整屏并染成 01 的底色（#fff0d9）
+   ④ 01 的标题直接出现
+   ⑤ 那段话像打字一样一个字一个字打出来（5 秒内打完）
+   ============================================================ */
+let AB_TRANSIT = null;
+
+function abInitHeroTransit() {
+  if (!window.matchMedia("(min-width: 1024px)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const hero = document.querySelector(".ab-hero");
+  const phil = $("philosophy");
+  const stage = $("abStage");
+  const photo = $("abPhoto");
+  const stmt = $("abPhilosophy");
+  const blob = hero && hero.querySelector(".ab-stage__blob");
+  const lead = hero && hero.querySelector(".ab-hero__lead");
+  const rest = hero && hero.querySelector(".ab-hero__rest");
+  if (!hero || !phil || !stage || !photo || !stmt || !blob || !lead) return;
+
+  const ring = hero.querySelector(".ab-stage__ring");
+  const cue = hero.querySelector(".ab-hero__cue");
+  const floats = [...hero.querySelectorAll(".ab-float")];
+
+  const T = {
+    out: 620,        // 照片飞走 / 文字左移
+    waveDelay: 470,  // 圆晚一拍起步：先把照片飞走这件事看清楚
+    wave: 820,       // 圆撑满整屏
+    fade: 420,       // 奶油色层淡出，露出 01
+    type: 4300,      // 打字总时长（5 秒内）
+  };
+
+  let busy = false;
+  let wentDown = false;
+  let typing = null;
+  let anims = [];
+  let timers = [];
+
+  const after = (ms, fn) => timers.push(setTimeout(fn, ms));
+  const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+
+  // html 上开着 scroll-behavior: smooth，普通 scrollTo 会变成平滑滚动（动画就错位了）。
+  // behavior: "instant" 是标准值，会明确覆盖 CSS 的 smooth —— 一步到位。
+  const setY = (v) => {
+    window.scrollTo({ top: Math.round(v), left: 0, behavior: "instant" });
+  };
+
+  // 从一个矩形出发，算「保持圆形、也能盖住四个角」所需的最终圆
+  const coverCircle = (r) => {
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const rad =
+      Math.max(
+        Math.hypot(cx, cy),
+        Math.hypot(window.innerWidth - cx, cy),
+        Math.hypot(cx, window.innerHeight - cy),
+        Math.hypot(window.innerWidth - cx, window.innerHeight - cy)
+      ) * 1.03;
+    return { cx, cy, rad };
+  };
+
+  const makeWave = (r) => {
+    const w = document.createElement("div");
+    w.className = "ab-hero-wave";
+    w.innerHTML = '<div class="ab-hero-wave__tint"></div>';
+    w.style.left = r.left + "px";
+    w.style.top = r.top + "px";
+    w.style.width = r.width + "px";
+    w.style.height = r.height + "px";
+    document.body.appendChild(w);
+    return w;
+  };
+
+  const startType = () => {
+    if (typing) return;
+    if (stmt.__abReset) stmt.__abReset();   // 清掉跳转瞬间可能落在短语上的悬停
+    phil.classList.add("is-typing");
+    typing = abTypeRun(stmt, T.type);
+    if (!typing) { phil.classList.remove("is-typing"); return; }
+    typing.finished.then(() => {
+      typing = null;
+      phil.classList.remove("is-typing");
+    });
+  };
+
+  // 往下：首屏 → 01
+  const down = () => {
+    if (busy) return true;
+    busy = true;
+    wentDown = true;
+    stage.style.pointerEvents = "none";
+
+    const r = blob.getBoundingClientRect();
+    const w = makeWave(r);
+    const tint = w.querySelector(".ab-hero-wave__tint");
+    const c = coverCircle(r);
+
+    // 圆：先按兵不动一小会儿（让照片先飞走），再保持圆形长大到盖住四个角
+    w.animate(
+      [
+        { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", borderRadius: "50%" },
+        { left: c.cx - c.rad + "px", top: c.cy - c.rad + "px", width: c.rad * 2 + "px", height: c.rad * 2 + "px", borderRadius: "50%" },
+      ],
+      { duration: T.wave, delay: T.waveDelay, easing: "cubic-bezier(.42,0,.25,1)", fill: "both" }
+    );
+    after(T.waveDelay + T.wave * 0.1, () => { tint.style.opacity = "0"; });
+
+    // 照片：往屏幕深处退（translateZ 负值）+ 缩小到没有
+    anims.push(
+      photo.animate(
+        [
+          { transform: "rotate(-3deg)", opacity: 1 },
+          { transform: "translateZ(-360px) rotate(-3deg) scale(.74)", opacity: 1, offset: 0.55 },
+          { transform: "translateZ(-940px) rotate(-3deg) scale(.26)", opacity: 0 },
+        ],
+        { duration: T.out, easing: "cubic-bezier(.45,0,.7,1)", fill: "both" }
+      )
+    );
+
+    // 左侧文字向左移出
+    [lead, rest].forEach((el, i) => {
+      if (!el) return;
+      anims.push(
+        el.animate(
+          [
+            { transform: "none", opacity: 1 },
+            { transform: "translateX(-96px)", opacity: 0 },
+          ],
+          { duration: T.out, delay: 40 + i * 40, easing: "cubic-bezier(.45,0,.75,1)", fill: "both" }
+        )
+      );
+    });
+
+    // 虚线光圈、浮动小标签、底部 scroll 提示一起退场
+    [ring, cue, ...floats].forEach((el) => {
+      if (el) el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "both" });
+    });
+
+    // 01 的文字在这时先全部藏起来：等黄色散开时是空白，再一个字一个字打出来
+    // （否则会先闪一下完整的段落，然后重新打）
+    stmt.querySelectorAll(".ab-ch").forEach((c) => c.classList.add("is-off"));
+
+    const swapAt = T.waveDelay + T.wave;
+    after(swapAt, () => {
+      setY(topOf(phil));                // 整屏被奶油色盖着，跳这一下看不见
+      if (stmt.__abReset) stmt.__abReset();   // 01 落到鼠标底下时不要立刻把卡片弹出来
+      anims.forEach((a) => a.cancel()); // hero 已在视口外，直接归位
+      anims = [];
+      stage.style.pointerEvents = "";
+      phil.classList.add("is-head-in"); // 01 的标题在黄色底下就位（直接出现）
+      after(90, () => {
+        w.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T.fade, fill: "both" }).onfinish = () => w.remove();
+      });
+      // 等黄色彻底散开、01 的底铺好，再开始打字（否则前几百毫秒的字被盖着）
+      after(120 + T.fade, () => {
+        busy = false;
+        startType();
+      });
+      // 兜底：万一打字被中途打断，别让段落永远停在"打了一半"
+      after(120 + T.fade + T.type + 2600, () => {
+        if (!typing) stmt.querySelectorAll(".ab-ch.is-off").forEach((c) => c.classList.remove("is-off"));
+      });
+    });
+
+    return true;
+  };
+
+  // 往上：01 → 首屏（把上面那一套倒着放一遍）
+  const up = () => {
+    if (!wentDown) return false;        // 刷新直接落在这里时没有可倒放的东西
+    if (busy) return true;
+    busy = true;
+
+    if (typing) { typing.finish(); typing = null; }
+    stmt.querySelectorAll(".ab-ch").forEach((c) => c.classList.remove("is-off"));
+    phil.classList.remove("is-typing");
+
+    setY(0);                            // 先回到首屏，此刻整屏还是奶油色
+
+    const r1 = blob.getBoundingClientRect();
+    const c = coverCircle(r1);
+    const w = makeWave({ left: c.cx - c.rad, top: c.cy - c.rad, width: c.rad * 2, height: c.rad * 2 });
+    const tint = w.querySelector(".ab-hero-wave__tint");
+    tint.style.opacity = "0";
+    const a = w.animate(
+      [
+        { left: c.cx - c.rad + "px", top: c.cy - c.rad + "px", width: c.rad * 2 + "px", height: c.rad * 2 + "px", borderRadius: "50%" },
+        { left: r1.left + "px", top: r1.top + "px", width: r1.width + "px", height: r1.height + "px", borderRadius: "50%" },
+      ],
+      { duration: 760, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" }
+    );
+    a.onfinish = () => { w.remove(); busy = false; };
+    after(50, () => { tint.style.opacity = "1"; });
+
+    // 照片飞回来
+    photo.animate(
+      [
+        { transform: "translateZ(-780px) rotate(-3deg) scale(.42)", opacity: 0 },
+        { transform: "rotate(-3deg)", opacity: 1 },
+      ],
+      { duration: 760, easing: "cubic-bezier(.2,.8,.3,1)" }
+    );
+
+    // 文字从左边归位
+    [lead, rest].forEach((el, i) => {
+      if (!el) return;
+      el.animate(
+        [
+          { transform: "translateX(-96px)", opacity: 0 },
+          { transform: "none", opacity: 1 },
+        ],
+        { duration: 700, delay: 60 + i * 40, easing: "cubic-bezier(.2,.8,.3,1)" }
+      );
+    });
+
+    return true;
+  };
+
+  // 打字途中用户往下走了：直接把剩下的字补完，别让他回来时看到打到一半的段落
+  let scrollRaf = 0;
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (scrollRaf || !typing) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        if (!typing) return;
+        if (window.scrollY > topOf(phil) + window.innerHeight * 0.4) typing.finish();
+      });
+    },
+    { passive: true }
+  );
+
+  AB_TRANSIT = { down, up, busy: () => busy };
 }
 
 /* ============================================================
@@ -1383,6 +1651,9 @@ function abInitPager() {
     const idx = indexAt();
     const cur = idx >= 0 ? sections[idx] : null;
 
+    // 首屏 → 01：交给专门的转场（照片往屏幕里飞走 / 圆撑满整屏 / 打字）
+    if (dir > 0 && !cur && AB_TRANSIT && AB_TRANSIT.down()) return true;
+
     if (dir > 0) {
       if (cur) {
         const endY = endOf(cur);
@@ -1417,6 +1688,8 @@ function abInitPager() {
       if (now < settleUntil) return true;
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
+    // 01 → 首屏：把刚才那套转场倒着放一遍
+    if (idx === 0 && prev === hero && AB_TRANSIT && AB_TRANSIT.up()) return true;
     if (!prev) return false;
     const prevTop = topOf(prev);
     const prevEnd = endOf(prev);
@@ -1439,6 +1712,8 @@ function abInitPager() {
   const onWheel = (e) => {
     if (e.ctrlKey) return; // 缩放
     if (e.target instanceof Element && inScroller(e.target)) return;
+    // 首屏那段转场还在播（约 1.1s）：先吞掉，别让它被后续滚轮推着走
+    if (AB_TRANSIT && AB_TRANSIT.busy()) { e.preventDefault(); return; }
 
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
@@ -1535,6 +1810,7 @@ function abInitPager() {
   abInitTools();
   abInitHeadRule();
   abInitRelays();
+  abInitHeroTransit();   // 必须在 abInitPager 之前：pager 会读 AB_TRANSIT
   abInitIndex(abRenderIndex());
   abInitPager();
 
