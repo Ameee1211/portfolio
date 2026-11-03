@@ -340,7 +340,8 @@
   background-repeat: no-repeat;
   background-position: 0 86%;
   background-size: 0% 36%;
-  transition: background-size 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) 0.4s;
+  /* 打字（约 1.85s）一结束就紧接着划线，整段显现控制在 2 秒出头 */
+  transition: background-size 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) 0.12s;
 }
 .ab-philosophy__statement.is-in .hl { background-size: 100% 36%; }
 
@@ -1652,5 +1653,5 @@
    也不接悬停（否则一边打字一边弹出原则卡，还让整段忽明忽暗） */
 #philosophy.is-typing .ab-philosophy__statement .hl { background-size: 0% 36% !important; pointer-events: none; }
 /* 打字期间下方那三个原则条目先不出现；打完字后和高亮划线同时浮上来 */
-#philosophy .ab-principles { transition: opacity 0.5s ease 0.32s; }
+#philosophy .ab-principles { transition: opacity 0.45s ease 0.1s; }
 #philosophy.is-typing .ab-principles { opacity: 0; pointer-events: none; transition: none; }
