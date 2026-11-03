@@ -661,7 +661,7 @@ function renderProjects() {
   initDeck();
 }
 
-/* 扑克牌堆：中间那张可进项目页，点两侧的牌把它换到中间；不支持滚轮切换 */
+/* 扑克牌堆：中间那张可进项目页，点两侧的牌把它换到中间 */
 function initDeck() {
   const stage = $("deckStage");
   const tags = $("deckTags");
@@ -677,21 +677,21 @@ function initDeck() {
   let tiltUntil = 0;            // 换牌位移期间不接悬停倾斜
 
   const select = (i) => {
-    cur = ((i % n) + n) % n;
+    // 一维排列，不绕圈：01..04 拉成一条直线，只在相邻之间来回切
+    cur = Math.max(0, Math.min(n - 1, i));
     cards.forEach((el, k) => {
-      // 环形排列：最前面那张的左侧是最后一张，三张永远对称
-      let off = k - cur;
-      if (off > n / 2) off -= n;
-      if (off < -n / 2) off += n;
+      const off = k - cur;               // 不再取模：第 1 张左边没有牌，第 4 张右边也没有
       const a = Math.abs(off);
       const spread = window.innerWidth < 900 ? 0.52 : 1;
-      const x = off * 148 * spread;      // 左右等距，以中间那张为轴镜像
+      // 看不见的那几张别真的飞出去（会把页面撑出横向滚动），夹在两侧的位子上
+      const pos = Math.max(-2, Math.min(2, off));
+      const x = pos * 148 * spread;      // 左右等距，以中间那张为轴镜像
       const y = a * 66 * spread;         // 两侧同时下沉，中间是最高点
       const z = (off === 0 ? 0 : -260) * spread; // 两侧同深度 → 一样大
       // 中间那张保持纯平面（不做 Z 位移和后仰）：它是翻牌动画的落点，
       // 一旦带透视，卡片里的图片和文字会被压出梯形，和翻牌卡差 2~4px，交接就会"跳"
       const rx = off === 0 ? 0 : 3;
-      const ry = off * -17;
+      const ry = pos * -17;
       const base = `translate(-50%, -50%) translateX(${x}%) translateY(${y}px) translateZ(${z}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
       el.dataset.base = base;
       // 换牌时一律按新位置走，哪怕鼠标正压在这张卡上也要把倾斜让位：
@@ -724,13 +724,16 @@ function initDeck() {
     select(i);
   };
 
-  // 给"滚轮翻牌"用：环形无限循环（最后一张再往下就是第一张，反之亦然）
+  // 给"滚轮翻牌"用：到头就停（第 1 张再往上、第 4 张再往下都不动）
   stage.__deck = {
     step(dir) {
       if (!n) return false;
-      select(cur + dir);        // select 内部会取模，负数也落到合法位置
+      const next = cur + dir;
+      if (next < 0 || next > n - 1) return false;
+      select(next);
       return true;
     },
+    index: () => cur,
   };
 
   window.addEventListener("pdeck-reset", () => tiltRect.clear());
@@ -748,7 +751,10 @@ function initDeck() {
     "touchend",
     (e) => {
       const dx = e.changedTouches[0].clientX - tx;
-      if (Math.abs(dx) > 40) select(cur + (dx < 0 ? 1 : -1));
+      if (Math.abs(dx) <= 40) return;
+      const next = cur + (dx < 0 ? 1 : -1);
+      if (next < 0 || next > n - 1) return;   // 手机端同样不绕圈
+      select(next);
     },
     { passive: true }
   );
@@ -1785,7 +1791,8 @@ function initHomeScenes() {
   /* ——— Projects 屏：滚轮翻牌 ———
      · 往下 = 切下一张（右边的卡转到中间，中间的转到左边）
      · 往上 = 切上一张（左边的卡转到中间）
-     两头都是无限循环，所以左/右永远都有牌，和眼睛看到的是一致的。
+     01→02→03→04 一条直线，两头不绕圈：第 1 张左边没有牌、第 4 张右边没有牌，
+     到头了再滑也不动，和眼睛看到的排列是一致的。
      退出这一屏靠顶部那行小字（点它倒放回 About），滚轮不再兼任返回。
      节奏：一次滑动只切一张，不管滚多滚少；两张之间至少隔 300ms。 */
   const W_GATE = 40;       // 攒够 40px 才算"一次滑动"（鼠标一格 100~150，触控板碎步也能攒到）
