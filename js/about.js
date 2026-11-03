@@ -2150,6 +2150,347 @@ function abInitSkillsInt() {
   AB_SI = { down, up, busy: () => busy };
 }
 
+/* ============================================================
+   05 → 06：三张卡合缝成一块 → 变成联系卡的深色 → 3D 翻牌（同时缩小到联系卡）
+   ------------------------------------------------------------
+   翻牌是真的两张面：正面空卡、背面就是联系卡的内容（转过来的那一半才看得到）。
+   卡片同时在缩小，所以背面的内容按联系卡的真实尺寸排好版、整体缩放，
+   免得翻的过程中每个字都在重排。
+   回程：联系卡内容退掉 → 翻回来（同时变大、由深色转白）→ 摊成三张卡
+   ============================================================ */
+function abInitIntContact() {
+  const it = document.getElementById("interests");
+  const ct = document.getElementById("contact");
+  if (!it || !ct) return;
+
+  const grid = it.querySelector(".ab-int");
+  const cards = [...it.querySelectorAll(".ab-int__card")];
+  const itHead = it.querySelector(".ab-head");
+  const intro = it.querySelector(".ab-int__intro");
+  const real = ct.querySelector(".ab-contact__card");
+  if (!grid || cards.length < 2 || !real) return;
+
+  const T_HEAD = 420;     // 05 标题 + 导语
+  const T_MERGE = 420;    // 合缝
+  const T_PAINT = 520;    // 变成深色
+  const T_FLIP = 660;     // 翻牌 + 缩小 / 放大
+  const RAD0 = 22;        // 合缝后那块沿用卡片的圆角
+  const RAD1 = 32;        // 联系卡的圆角
+  const FLIP_PERSP = 1700;
+
+  let busy = false;
+
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
+  const jumpTo = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, Math.max(0, Math.min(top, maxScroll())));
+    root.style.scrollBehavior = prev;
+  };
+  const hide = (n) => { if (n) n.classList.add("is-hid"); };
+  const unhide = (n) => { if (n) n.classList.remove("is-hid"); };
+
+  // 3 张卡各自的「格子」：缝合以后拼成整块
+  const cellStates = () => {
+    const g = grid.getBoundingClientRect();
+    const rects = cards.map((n) => ({
+      left: g.left + (n.offsetLeft - grid.offsetLeft),
+      top: g.top + (n.offsetTop - grid.offsetTop),
+      width: n.offsetWidth,
+      height: n.offsetHeight,
+    }));
+    const n = rects.length;
+    const gap = n > 1 ? rects[1].left - (rects[0].left + rects[0].width) : 0;
+    return rects.map((r, i) => {
+      const x = r.left - (i > 0 ? gap / 2 : 0);
+      const w = r.width + (i > 0 ? gap / 2 : 0) + (i < n - 1 ? gap / 2 : 0);
+      const l = i === 0 ? RAD0 : 0;
+      const rr = i === n - 1 ? RAD0 : 0;
+      return {
+        dx: (x + w / 2) - (r.left + r.width / 2),
+        sx: w / r.width,
+        bd: l + "px " + rr + "px " + rr + "px " + l + "px",
+      };
+    });
+  };
+
+  // 翻牌面板：正面空卡 + 背面（联系卡内容的克隆）
+  const newPanel = (st) => {
+    const el = document.createElement("div");
+    el.className = "ab-ic__panel";
+
+    const cs = getComputedStyle(real);
+    const cw = real.offsetWidth;
+    const ch = real.offsetHeight;
+
+    el.innerHTML =
+      '<div class="ab-ic__face ab-ic__front">' +
+        '<span class="ab-ic__paint"></span><span class="ab-ic__glow"></span>' +
+      '</div>' +
+      '<div class="ab-ic__face ab-ic__back">' +
+        '<span class="ab-ic__paint"></span>' +
+        '<div class="ab-ic__content" style="width:' + cw + "px;height:" + ch + 'px">' +
+          '<div class="ab-contact__card ab-ic__inner" style="width:' + cw + "px;height:" + ch + 'px;border-radius:' + cs.borderRadius + '">' +
+            real.innerHTML +
+          "</div>" +
+        "</div>" +
+      "</div>";
+
+    document.body.appendChild(el);
+    const faces = [...el.querySelectorAll(".ab-ic__face")];
+    faces.forEach((f) => { f.style.borderRadius = RAD0 + "px"; });
+    return {
+      el: el,
+      faces: faces,
+      paints: [...el.querySelectorAll(".ab-ic__paint")],
+      glow: el.querySelectorAll(".ab-ic__glow"),
+      content: el.querySelector(".ab-ic__content"),
+      cw: cw,
+      ch: ch,
+    };
+  };
+
+  // 逐帧摆位：位置 / 尺寸 / 翻牌角度
+  const place = (P, st) => {
+    P.el.style.width = st.w.toFixed(1) + "px";
+    P.el.style.height = st.h.toFixed(1) + "px";
+    P.el.style.left = (st.cx - st.w / 2).toFixed(1) + "px";
+    P.el.style.top = (st.cy - st.h / 2).toFixed(1) + "px";
+    P.el.style.transform = "perspective(" + FLIP_PERSP + "px) rotateY(" + (st.a || 0).toFixed(2) + "deg)";
+    // 背面内容按联系卡的真实尺寸等比缩放（不重排）
+    P.content.style.transform = "scale(" + (st.w / P.cw).toFixed(4) + ")";
+  };
+
+  /* ---------------- 05 → 06 ---------------- */
+  const down = () => {
+    if (busy || !abWide()) return false;
+    if (!grid.getBoundingClientRect().width) return false;
+    busy = true;
+
+    hide(real);                       // 06 整张卡先藏起来
+
+    const g = grid.getBoundingClientRect();
+    const U = { cx: g.left + g.width / 2, cy: g.top + g.height / 2, w: g.width, h: g.height, a: 0 };
+    const cells = cellStates();
+
+    const ctAbs = ct.getBoundingClientRect().top + window.scrollY;
+    const land = Math.max(0, Math.min(ctAbs, maxScroll()));
+    const drift = land - window.scrollY;
+    const pr = real.getBoundingClientRect();
+    const C = {
+      cx: pr.left + pr.width / 2, cy: pr.top + pr.height / 2 - drift,
+      w: pr.width, h: pr.height, a: 180,
+    };
+
+    /* 1. 05 的标题 / 导语退场 */
+    [itHead, intro].forEach((n, i) => {
+      if (!n) return;
+      const a = n.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: T_HEAD, delay: i * 40, easing: "ease", fill: "both" });
+      a.onfinish = () => { hide(n); a.cancel(); };
+    });
+
+    /* 2. 三张卡合缝（内容慢慢淡掉，只抹朝内的圆角） */
+    cards.forEach((n, i) => {
+      n.classList.add("is-merge");
+      n.style.borderRadius = cells[i].bd;
+    });
+    const merge = cards.map((n, i) => n.animate(
+      [{ transform: "none" }, { transform: "translate(" + cells[i].dx.toFixed(1) + "px,0) scale(" + cells[i].sx.toFixed(4) + ",1)" }],
+      { duration: T_MERGE, delay: 60, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" }
+    ));
+
+    /* 3. 面板接上 + 变色 */
+    const P = newPanel(U);
+    place(P, U);
+    P.el.style.opacity = "0";
+    // 初始阴影跟三张卡自带的一样，交叉淡化时不会「阴影一下子没了」
+    P.el.style.boxShadow = "0 10px 34px rgba(51, 61, 109, .07)";
+    P.el.style.transition = "opacity .18s ease, box-shadow .4s ease";
+
+    const T_IN = 60 + T_MERGE - 40;     // 440：面板淡入
+    const T_PAINT0 = T_IN + 180;        // 620：开始变深色
+    const T_FLIP0 = T_PAINT0 + T_PAINT + 40;   // 1180：开始翻
+    const T_FLIP1 = T_FLIP0 + T_FLIP;
+    const T_JUMP = T_FLIP0 + T_FLIP / 2;       // 正好转到 90°，卡片看不见的那一下跳
+
+    setTimeout(() => {
+      P.el.style.opacity = "1";
+      cards.forEach((n) => n.classList.add("is-gone"));
+    }, T_IN);
+
+    // 面板已经盖住整块：三张卡立刻复位（就在它下面）
+    setTimeout(() => {
+      merge.forEach((a) => a.cancel());
+      cards.forEach((n) => {
+        n.classList.remove("is-merge", "is-gone");
+        n.style.transform = "";
+        n.style.borderRadius = "";
+        hide(n);
+      });
+      void grid.offsetHeight;
+    }, T_IN + 30);
+
+    setTimeout(() => {
+      P.el.style.boxShadow = "none";        // 联系卡本身没有阴影，跟着变色一起收掉
+      P.paints.forEach((p) => {
+        p.style.transition = "opacity " + T_PAINT + "ms ease";
+        p.style.opacity = "1";
+      });
+    }, T_PAINT0);
+
+    let jumped = false;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const el = now - t0;
+      if (el < T_FLIP0) { requestAnimationFrame(tick); return; }
+
+      const p = easeInOut(clamp01((el - T_FLIP0) / T_FLIP));
+      // 翻牌的同时从「三张卡那么大的块」缩到联系卡
+      const st = {
+        cx: lerp(U.cx, C.cx, p), cy: lerp(U.cy, C.cy, p),
+        w: lerp(U.w, C.w, p), h: lerp(U.h, C.h, p),
+        a: lerp(0, 180, p),
+      };
+      place(P, st);
+      P.faces.forEach((f) => { f.style.borderRadius = lerp(RAD0, RAD1, p).toFixed(1) + "px"; });
+
+      if (!jumped && el >= T_JUMP) {
+        jumped = true;
+        jumpTo(land);
+      }
+
+      if (el < T_FLIP1) { requestAnimationFrame(tick); return; }
+
+      // 翻完了：背面和真身一模一样，直接换回来
+      P.el.remove();
+      unhide(real);
+      busy = false;
+    };
+    requestAnimationFrame(tick);
+
+    return true;
+  };
+
+  /* ---------------- 06 → 05 ---------------- */
+  const up = () => {
+    if (busy || !abWide()) return false;
+    busy = true;
+
+    /* 量几何：05 落位后的块 / 现在这张联系卡 */
+    const g = grid.getBoundingClientRect();
+    const gridAbs = g.top + window.scrollY;
+    const itAbs = it.getBoundingClientRect().top + window.scrollY;
+    const land = Math.max(0, Math.min(itAbs, maxScroll()));
+    const U = { cx: g.left + g.width / 2, cy: gridAbs + g.height / 2 - land, w: g.width, h: g.height, a: 0 };
+    const cells = cellStates();
+
+    const pr = real.getBoundingClientRect();
+    const C = { cx: pr.left + pr.width / 2, cy: pr.top + pr.height / 2, w: pr.width, h: pr.height, a: 0 };
+
+    /* 1. 06 的内容退场（卡片本身留着） */
+    [...real.children].forEach((n) => {
+      if (n.classList.contains("ab-contact__glow")) return;
+      const a = n.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: 320, easing: "ease", fill: "both" });
+      a.onfinish = () => a.cancel();
+    });
+
+    setTimeout(() => {
+      /* 2. 面板顶上去：深色空卡，正好盖住真身 */
+      cards.forEach((n, i) => {
+        n.classList.add("is-merge");
+        n.style.transform = "translate(" + cells[i].dx.toFixed(1) + "px,0) scale(" + cells[i].sx.toFixed(4) + ",1)";
+        n.style.borderRadius = cells[i].bd;
+        hide(n);
+      });
+      hide(itHead);
+      hide(intro);
+
+      const P = newPanel(C);
+      place(P, C);
+      P.paints.forEach((p) => { p.style.opacity = "1"; });
+      P.glow.forEach((p) => { p.style.opacity = "1"; });
+      P.content.style.opacity = "0";          // 回程不需要背面内容
+      P.el.style.transition = "box-shadow .3s ease";
+
+      hide(real);
+
+      const T_FLIP0 = 40;
+      const T_FLIP1 = T_FLIP0 + T_FLIP;
+      const T_JUMP = T_FLIP0 + T_FLIP / 2;
+
+      setTimeout(() => {
+        P.paints.forEach((p) => {
+          p.style.transition = "opacity " + (T_FLIP - 80) + "ms ease";
+          p.style.opacity = "0";              // 深色 → 白
+        });
+      }, T_FLIP0 + 40);
+
+      let jumped = false;
+      let split = false;
+      const t1 = performance.now();
+      const tick2 = (now) => {
+        const el = now - t1;
+        if (el < T_FLIP0) { requestAnimationFrame(tick2); return; }
+
+        const p = easeInOut(clamp01((el - T_FLIP0) / T_FLIP));
+        const st = {
+          cx: lerp(C.cx, U.cx, p), cy: lerp(C.cy, U.cy, p),
+          w: lerp(C.w, U.w, p), h: lerp(C.h, U.h, p),
+          a: lerp(0, 180, p),
+        };
+        place(P, st);
+        P.faces.forEach((f) => { f.style.borderRadius = lerp(RAD1, RAD0, p).toFixed(1) + "px"; });
+
+        if (!jumped && el >= T_JUMP) {
+          jumped = true;
+          jumpTo(land);
+        }
+
+        if (el < T_FLIP1) { requestAnimationFrame(tick2); return; }
+
+        if (!split) {
+          split = true;
+          P.el.remove();
+          cards.forEach(unhide);
+          cards.forEach((n, i) => {
+            const from = n.style.transform || "none";
+            n.classList.remove("is-merge");
+            n.style.borderRadius = "";
+            const a = n.animate([{ transform: from }, { transform: "none" }], {
+              duration: 500, delay: i * 26, easing: "cubic-bezier(.4,0,.2,1)", fill: "both",
+            });
+            a.onfinish = () => { n.style.transform = ""; a.cancel(); };
+          });
+          unhide(itHead);
+          unhide(intro);
+          unhide(real);          // 06 恢复（此刻在视口外，看不见）
+          // 动画播完一定要 cancel，否则 fill:both 会一直压着 opacity:1，
+          // 下一次的 .is-hid 就压不住它了（返回时会看到标题没消失）
+          [itHead, intro].forEach((n, i) => {
+            if (!n) return;
+            const a = n.animate([{ opacity: 0 }, { opacity: 1 }],
+              { duration: 380, delay: i * 60, easing: "ease", fill: "both" });
+            a.onfinish = () => a.cancel();
+          });
+          busy = false;
+        }
+      };
+      requestAnimationFrame(tick2);
+    }, 340);
+
+    return true;
+  };
+
+  AB_IC = { down, up, busy: () => busy };
+}
+
 /* ---------- 课程分数条：每次进 02 都从 0 一起长到各自的分值 ---------- */
 // 转场一开始先归零（此时 02 还在视口外，看不见），落位后再一起生长。
 // 普通入场（不经过转场）也走同一套，避免两条路径叠在一起。
@@ -2539,34 +2880,8 @@ function abInitRelays() {
   // ⑤ 04 -> 05：由 abInitSkillsInt() 的整段转场接管（8 卡合缝 → 大卡旋转 → 落成钩织卡）
   //    这里不再有 relay：转场期间滚动是锁住的，不会走到 32% 进度
 
-  // ⑥ 05 -> 06：三张卡收成一点，联系卡从这一点展开
-  relays["interests>contact"] = () => {
-    const cards = [...document.querySelectorAll("#interests .ab-int__card")];
-    const panel = document.querySelector("#contact .ab-contact__card");
-    if (!cards.length || !panel) return;
-    const pr = R(panel);
-    const cx = pr.left + pr.width / 2;
-    const cy = pr.top + pr.height / 2;
-
-    cards.forEach((card, i) => {
-      const { c, r } = clone(card);
-      const a = run(c, [
-        { transform: "none", opacity: 1 },
-        {
-          transform:
-            "translate(" + (cx - (r.left + r.width / 2)) + "px," + (cy - (r.top + r.height / 2)) + "px) scale(.28)",
-          opacity: 0,
-        },
-      ], { duration: 540, delay: i * 70, easing: "cubic-bezier(.5,0,.25,1)" });
-      a.onfinish = () => c.remove();
-      hide(card, 1200);
-    });
-
-    panel.animate([
-      { opacity: 0, transform: "scale(.94)" },
-      { opacity: 1, transform: "none" },
-    ], { duration: 440, delay: 340, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards" });
-  };
+  // ⑥ 05 -> 06：由 abInitIntContact() 的整段转场接管（三张卡合缝 → 变色 → 3D 翻牌）
+  //    这里不再有 relay：转场期间滚动是锁住的，不会走到 32% 进度
 
   /* ---- 触发：两节之间的滚动进度过 32% 播一次 ---- */
   let lastPlayed = -1;
@@ -2668,6 +2983,7 @@ let AB_PE = null;        // 01 → 02（高亮条聚成圆 → GPA 环）
 let AB_EE = null;        // 02 → 03（GPA 环 → 拉直 → 时间轴竖线）
 let AB_ES = null;        // 03 → 04（竖线 → 绕 8 张卡片画一圈）
 let AB_SI = null;        // 04 → 05（8 张小卡合成大卡 → 转 90° → 落成钩织卡）
+let AB_IC = null;        // 05 → 06（三张卡合缝 → 变色 → 3D 翻牌 → 联系卡）
 
 function abInitHeroTransit() {
   if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -3321,6 +3637,8 @@ function abInitPager() {
       if (cur && cur.id === "experience" && next.id === "skills" && AB_ES && AB_ES.down()) return true;
       // 04 → 05：8 张小卡合缝成一张大卡 → 转 90° → 落成左边的钩织卡
       if (cur && cur.id === "skills" && next.id === "interests" && AB_SI && AB_SI.down()) return true;
+      // 05 → 06：三张卡合缝 → 变成深色 → 3D 翻牌 → 联系卡
+      if (cur && cur.id === "interests" && next.id === "contact" && AB_IC && AB_IC.down()) return true;
       const target = topOf(next);
       if (Math.abs(target - y) < 4) return false;
       go(target, 1);
@@ -3360,6 +3678,8 @@ function abInitPager() {
     if (prev.id === "experience" && AB_ES && AB_ES.up()) return true;
     // 05 → 04：钩织卡长出来 → 顺时针转回横版 → 缩成 8 张小卡
     if (prev.id === "skills" && AB_SI && AB_SI.up()) return true;
+    // 06 → 05：联系卡内容退掉 → 翻回来变大变白 → 摊成三张卡
+    if (prev.id === "interests" && AB_IC && AB_IC.up()) return true;
     if (idx === 0 && prev === hero && AB_TRANSIT && AB_TRANSIT.up()) return true;
     if (cur && now < settleUntil) return true;
     const prevTop = topOf(prev);
@@ -3389,6 +3709,7 @@ function abInitPager() {
     if (AB_EE && AB_EE.busy()) { e.preventDefault(); return; }
     if (AB_ES && AB_ES.busy()) { e.preventDefault(); return; }
     if (AB_SI && AB_SI.busy()) { e.preventDefault(); return; }
+    if (AB_IC && AB_IC.busy()) { e.preventDefault(); return; }
 
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
@@ -3489,6 +3810,7 @@ function abInitPager() {
   abInitEduExp();        // 02 → 03 的整段转场
   abInitExpSkills();     // 03 → 04 的整段转场
   abInitSkillsInt();     // 04 → 05 的整段转场
+  abInitIntContact();    // 05 → 06 的整段转场
   abInitHeroTransit();   // 必须在 abInitPager 之前：pager 会读 AB_TRANSIT
   abInitIndex(abRenderIndex());
   abInitPager();

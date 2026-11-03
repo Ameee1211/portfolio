@@ -388,7 +388,8 @@
    离屏元素清内联样式会撞上浏览器的样式懒计算，样式会卡住）
    ============================================================ */
 #skills .is-hid,
-#interests .is-hid { opacity: 0; transition: none; }
+#interests .is-hid,
+#contact .is-hid { opacity: 0; transition: none; }
 
 /* 8 张小卡合缝时：里面的字先隐去，圆角只抹掉「朝内」的那几个角
    （朝外的那几个角保留 16px —— 合成的大卡本来就是圆角的，不能先变直角再圆回来）。
@@ -404,6 +405,56 @@
 /* 钩织卡落地时只有文字先留白，照片要直接接上（飞行时卡里就是这张图） */
 #interests .ab-int__card.is-blank > .ab-int__right,
 #interests .ab-int__card.is-blank > .ab-int__strip { opacity: 0; }
+
+/* ============================================================
+   05 → 06：三张卡合缝 → 变色 → 3D 翻牌（同时缩小）→ 联系卡
+   ============================================================ */
+/* 合缝时卡里的内容慢慢淡掉（用户要求「别太快」），只抹朝内的圆角 */
+#interests .ab-int__card > * { transition: opacity 0.45s ease; }
+#interests .ab-int__card.is-merge {
+  transition: border-radius 0.35s ease, opacity 0.18s ease;
+}
+#interests .ab-int__card.is-merge > * { opacity: 0; transition-duration: 0.6s; }
+#interests .ab-int__card.is-merge.is-gone { opacity: 0; }
+
+/* 翻牌用的面板：正面是空卡，背面是联系卡的内容（转到 90° 时在两面上切换） */
+.ab-ic__panel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 45;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  will-change: width, height, left, top, transform;
+}
+.ab-ic__face {
+  position: absolute;
+  inset: 0;
+  background: var(--white);
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.ab-ic__back { transform: rotateY(180deg); }
+.ab-ic__paint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #333d6d 0%, #2b3159 62%, #3a3663 100%);
+  opacity: 0;
+}
+.ab-ic__glow {
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  top: -190px;
+  right: -120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 207, 149, 0.28), transparent 66%);
+  opacity: 0;
+}
+/* 背面的内容按联系卡的真实尺寸排版，再整体缩放（这样翻的时候不会每个字都在重排） */
+.ab-ic__content { transform-origin: 0 0; }
+.ab-ic__inner { background: none; }
 
 /* 飞行的大卡（尺寸 / 位置 / 角度都由 JS 逐帧给）+ 背景幕 */
 .ab-si__shade {
