@@ -1192,6 +1192,380 @@ function abInitEduExp() {
   AB_EE = { down, up, busy: () => busy };
 }
 
+/* ============================================================
+   03 → 04：时间轴那条竖线守住原地 → 收成外框的左边 → 笔尖绕着 8 张卡片画一圈
+   ------------------------------------------------------------
+   几何上成立：03 的竖线在 x≈305、卡片外框左边缘在 x≈288，几乎是同一列，
+   所以「线就是框的左边」不用把它挪到屏幕中间，原地就能接上。
+   时序：03 内容退场 0.3s → 跳 04、线收成左边 0.24s → 笔尖绕一圈 1.3s（卡片依次亮）
+        → 标题淡入 0.38s → lead 与工具条从右进 0.43s
+   ============================================================ */
+function abInitExpSkills() {
+  const exp = document.getElementById("experience");
+  const skills = document.getElementById("skills");
+  if (!exp || !skills) return;
+
+  const line = document.getElementById("abExpLine");
+  const tlEl = exp.querySelector(".ab-timeline");
+  const grid = skills.querySelector(".ab-skillgrid");
+  const cards = [...skills.querySelectorAll(".ab-skill")];
+  const head = skills.querySelector(".ab-head");
+  const lead = skills.querySelector(".ab-skills__lead");
+  const belt = skills.querySelector(".ab-toolbelt");
+  if (!line || !tlEl || !grid || !cards.length) return;
+
+  const PAD = 10;      // 框在卡片外面留一点
+  const RAD = 22;      // 圆角
+  const T_OUT = 300;   // 03 内容退场
+  const T_JUMP = 300;  // 跳过去
+  const T_SEED = 240;  // 竖线收成框的左边
+  const T_DRAW = 1300; // 笔尖绕一圈
+  const T_HEAD = 380;  // 标题淡入
+  const T_REST = 430;  // lead + 工具条从右进
+  const NS = "http://www.w3.org/2000/svg";
+
+  let busy = false;
+  let expOut = [];     // down() 里把 03 内容淡出用的动画（回来时要撤回）
+
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  const jumpTo = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, top);
+    root.style.scrollBehavior = prev;
+  };
+
+  // 8 张卡片的外框（屏幕坐标，04 在视口里时才准）
+  const frameRect = () => {
+    const g = grid.getBoundingClientRect();
+    return { x: g.left - PAD, y: g.top - PAD, w: g.width + PAD * 2, h: g.height + PAD * 2 };
+  };
+
+  // 圆角矩形路径，从左上角起顺时针
+  const roundD = (r) => {
+    const x = r.x, y = r.y, w = r.w, h = r.h, k = RAD;
+    return "M " + (x + k) + " " + y +
+      " H " + (x + w - k) + " A " + k + " " + k + " 0 0 1 " + (x + w) + " " + (y + k) +
+      " V " + (y + h - k) + " A " + k + " " + k + " 0 0 1 " + (x + w - k) + " " + (y + h) +
+      " H " + (x + k) + " A " + k + " " + k + " 0 0 1 " + x + " " + (y + h - k) +
+      " V " + (y + k) + " A " + k + " " + k + " 0 0 1 " + (x + k) + " " + y + " Z";
+  };
+
+  const makeLayer = () => {
+    const el = (tag) => document.createElementNS(NS, tag);
+    const svg = el("svg");
+    svg.setAttribute("class", "ab-pe");
+
+    const defs = el("defs");
+    const grad = el("linearGradient");
+    grad.setAttribute("id", "abEsGrad");
+    grad.setAttribute("gradientUnits", "userSpaceOnUse");
+    const s0 = el("stop");
+    const s1 = el("stop");
+    s0.setAttribute("offset", "0%");
+    s0.setAttribute("stop-color", "#8b82c9");
+    s1.setAttribute("offset", "100%");
+    s1.setAttribute("stop-color", "#6f64b3");
+    grad.append(s0, s1);
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    const seed = el("path");
+    const frame = el("path");
+    [seed, frame].forEach((p) => {
+      p.setAttribute("fill", "none");
+      p.setAttribute("stroke", "url(#abEsGrad)");
+      p.setAttribute("stroke-width", "2");
+      p.setAttribute("stroke-linecap", "round");
+      p.setAttribute("stroke-linejoin", "round");
+    });
+    const glow = el("circle");
+    glow.setAttribute("r", "10");
+    glow.setAttribute("fill", "rgba(116,105,182,0.16)");
+    glow.setAttribute("opacity", "0");
+    const pen = el("circle");
+    pen.setAttribute("r", "4");
+    pen.setAttribute("fill", "#6f64b3");
+    pen.setAttribute("opacity", "0");
+    svg.append(seed, frame, glow, pen);
+    document.body.appendChild(svg);
+    return { svg, seed, frame, pen, glow, grad };
+  };
+
+  // 框的渐变按外框走，和卡片区域同宽
+  const setGrad = (layer, r) => {
+    layer.grad.setAttribute("x1", r.x);
+    layer.grad.setAttribute("y1", r.y);
+    layer.grad.setAttribute("x2", r.x + r.w);
+    layer.grad.setAttribute("y2", r.y + r.h);
+  };
+
+  // 04 的内容先藏起来。
+  // 这里刻意不用内联 opacity：03→04 返回时元素在视口外，清内联样式会撞上
+  // Chrome 的懒计算（样式不重算，计算值卡在 0），再进来就少几张卡。
+  const hideSkills = () => {
+    [head, lead, belt, ...cards].forEach((n) => { if (n) n.classList.add("is-pre"); });
+  };
+
+  // 淡入；dx / dy 是起始位移。结束时摘掉 is-pre 再撤动画，全程不写内联样式
+  const show = (n, dur, delay, dx, dy) => {
+    if (!n) return;
+    const from = { opacity: 0 };
+    const to = { opacity: 1 };
+    if (dx) { from.transform = "translateX(" + dx + "px)"; to.transform = "none"; }
+    if (dy) { from.transform = "translateY(" + dy + "px)"; to.transform = "none"; }
+    const a = n.animate([from, to], {
+      duration: dur,
+      delay: delay || 0,
+      easing: "cubic-bezier(.2,.8,.3,1)",
+      fill: "both",
+    });
+    a.onfinish = () => { n.classList.remove("is-pre"); a.cancel(); };
+  };
+
+  // 回程落位时，03 那条线应该长什么样（在 04 的时候就能算出来）
+  const expEndTarget = () => {
+    const tlR = tlEl.getBoundingClientRect();
+    const expAbs = exp.getBoundingClientRect().top + window.scrollY;
+    const scroll = Math.min(expAbs + exp.offsetHeight - window.innerHeight,
+      document.documentElement.scrollHeight - window.innerHeight);
+    const relTop = tlR.top + window.scrollY - expAbs;
+    const h0 = Math.max(1, tlR.height);
+    const p = clamp01((window.innerHeight * 0.78 - relTop) / h0);
+    const h = Math.max(1, (h0 - 28) * p);
+    const topV = tlR.top + window.scrollY + 14 - scroll;
+    return { x: tlR.left + 8, top: topV, bottom: topV + h, p: p, scroll: scroll };
+  };
+
+  const down = () => {
+    if (busy || !abWide()) return false;
+    const gr = grid.getBoundingClientRect();
+    if (!gr.width) return false;
+    busy = true;
+
+    const lr = line.getBoundingClientRect();   // 03 那条线此刻在屏幕上的位置
+    hideSkills();                              // 04 的内容先全部藏起来（此时还在 03，看不见）
+
+    // 03 的文字退场，只留下那条竖线
+    expOut = [];
+    [exp.querySelector(".ab-head"), ...exp.querySelectorAll(".ab-exp")].forEach((n, i) => {
+      if (!n) return;
+      expOut.push(n.animate(
+        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(42px)" }],
+        { duration: T_OUT, delay: Math.min(i, 3) * 34, easing: "ease", fill: "both" }
+      ));
+    });
+
+    setTimeout(() => {
+      const skTop = skills.getBoundingClientRect().top + window.scrollY;
+      jumpTo(skTop);
+
+      // 背景：先按成 03 的灰紫，再慢慢变回 04 的纯白
+      skills.style.transition = "none";
+      skills.style.backgroundColor = "var(--bg)";
+      void skills.offsetWidth;
+      skills.style.transition = "background-color .9s ease";
+      skills.style.backgroundColor = "";
+      setTimeout(() => { skills.style.transition = ""; }, 1000);
+
+      const layer = makeLayer();
+      const rect = frameRect();
+      setGrad(layer, rect);
+      layer.frame.setAttribute("d", roundD(rect));
+      const LEN = layer.frame.getTotalLength();
+      layer.frame.style.strokeDasharray = LEN + " " + LEN;
+      layer.frame.style.strokeDashoffset = LEN;
+
+      // 竖线的起点：03 那条线此刻的可见范围
+      const from = { x: lr.left + 1, top: lr.top, bottom: lr.bottom };
+      if (from.bottom - from.top < 80) {
+        from.top = window.innerHeight * 0.22;
+        from.bottom = window.innerHeight * 0.86;
+      }
+      // 终点：框的左边（直边那一段，不含圆角）
+      const to = { x: rect.x, top: rect.y + RAD, bottom: rect.y + rect.h - RAD };
+
+      // 卡片依次亮起（0.14s 一张，最后一张刚好在框画完时落定）
+      setTimeout(() => {
+        cards.forEach((n, i) => show(n, 340, 40 + i * 140, 0, 8));
+      }, T_SEED);
+
+      const t0 = performance.now();
+      const tick = (now) => {
+        const el = now - t0;
+
+        if (el < T_SEED) {
+          const p = easeInOut(el / T_SEED);
+          const x = lerp(from.x, to.x, p);
+          const top = lerp(from.top, to.top, p);
+          const bot = lerp(from.bottom, to.bottom, p);
+          layer.seed.setAttribute("d", "M " + x.toFixed(1) + " " + top.toFixed(1) +
+            " L " + x.toFixed(1) + " " + bot.toFixed(1));
+          requestAnimationFrame(tick);
+          return;
+        }
+
+        const q = clamp01((el - T_SEED) / T_DRAW);
+        layer.frame.style.strokeDashoffset = (LEN * (1 - q)).toFixed(2);
+        const pt = layer.frame.getPointAtLength(LEN * q);
+        layer.pen.setAttribute("cx", pt.x.toFixed(1));
+        layer.pen.setAttribute("cy", pt.y.toFixed(1));
+        layer.glow.setAttribute("cx", pt.x.toFixed(1));
+        layer.glow.setAttribute("cy", pt.y.toFixed(1));
+
+        // 最后一小段里慢慢淡：第 7 张亮起时已经变淡，LANG 落定那一刻归零
+        const op = q < 0.62 ? 1 : Math.max(0, 1 - (q - 0.62) / 0.38);
+        layer.seed.setAttribute("opacity", op.toFixed(3));
+        layer.frame.setAttribute("opacity", op.toFixed(3));
+        layer.pen.setAttribute("opacity", (op * 0.95).toFixed(3));
+        layer.glow.setAttribute("opacity", op.toFixed(3));
+
+        if (q < 1) { requestAnimationFrame(tick); return; }
+
+        layer.svg.remove();
+        // 标题先淡入，然后 lead 与工具条一起从右边进来
+        show(head, T_HEAD, 0, 0, 0);
+        setTimeout(() => {
+          show(lead, T_REST, 0, 52, 0);
+          show(belt, T_REST, 0, 52, 0);
+        }, T_HEAD - 40);
+        setTimeout(() => { busy = false; }, T_HEAD + T_REST - 40 + 120);
+      };
+      requestAnimationFrame(tick);
+    }, T_JUMP);
+
+    return true;
+  };
+
+  // 往上：04 → 03（整套倒着放）
+  const up = () => {
+    if (busy || !abWide()) return false;
+    const gr = grid.getBoundingClientRect();
+    if (!gr.width) return false;
+    busy = true;
+
+    // 04 的其余内容先退场。
+    // 退场一律用「类名 + CSS 过渡」，不用 WAAPI：
+    // 带 fill 的动画在元素移出视口后取消，样式会卡住不失效（试过，会剩几张卡不可见）
+    const dimOut = (n, delay) => {
+      if (!n) return;
+      n.style.transitionDelay = (delay || 0) + "ms";
+      n.classList.add("is-out");
+    };
+    dimOut(head, 0);
+    dimOut(lead, 40);
+    dimOut(belt, 40);
+
+    const rect = frameRect();
+    const layer = makeLayer();
+    setGrad(layer, rect);
+    layer.frame.setAttribute("d", roundD(rect));
+    const LEN = layer.frame.getTotalLength();
+    layer.frame.style.strokeDasharray = LEN + " " + LEN;
+    layer.frame.style.strokeDashoffset = "0";
+    layer.seed.setAttribute("d", "M " + rect.x + " " + (rect.y + RAD) +
+      " L " + rect.x + " " + (rect.y + rect.h - RAD));
+    layer.frame.setAttribute("opacity", "0");
+    layer.seed.setAttribute("opacity", "0");
+    layer.pen.setAttribute("opacity", "0");
+
+    // 背景：白 → 03 的灰紫
+    skills.style.transition = "background-color .8s ease";
+    skills.style.backgroundColor = "var(--bg)";
+
+    // 卡片倒着消失（LANG → 01）
+    [...cards].reverse().forEach((n, i) => dimOut(n, i * 140));
+
+    const T_UNDRAW = 1150;
+    const T_FOLD = 240;
+    const t0 = performance.now();
+    let phase = 0;
+    const target = expEndTarget();
+
+    const tick = (now) => {
+      const el = now - t0;
+
+      if (el < T_UNDRAW) {
+        const q = clamp01(el / T_UNDRAW);
+        layer.frame.style.strokeDashoffset = (LEN * q).toFixed(2);
+        const pt = layer.frame.getPointAtLength(LEN * (1 - q));
+        layer.pen.setAttribute("cx", pt.x.toFixed(1));
+        layer.pen.setAttribute("cy", pt.y.toFixed(1));
+        layer.glow.setAttribute("cx", pt.x.toFixed(1));
+        layer.glow.setAttribute("cy", pt.y.toFixed(1));
+        // 和正向完全镜像：正向是"最后 38% 淡出"，这里就是"前 38% 淡入"
+        const qf = 1 - q;
+        const op = qf < 0.62 ? 1 : Math.max(0, 1 - (qf - 0.62) / 0.38);
+        layer.seed.setAttribute("opacity", op.toFixed(3));
+        layer.frame.setAttribute("opacity", op.toFixed(3));
+        layer.pen.setAttribute("opacity", (op * 0.95).toFixed(3));
+        layer.glow.setAttribute("opacity", op.toFixed(3));
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      // 第二段：框的左边收成 03 那条竖线的样子
+      const f = clamp01((el - T_UNDRAW) / T_FOLD);
+      if (phase === 0) {
+        phase = 1;
+        layer.frame.setAttribute("opacity", "0");
+        layer.pen.setAttribute("opacity", "0");
+        layer.glow.setAttribute("opacity", "0");
+      }
+      const p = easeInOut(f);
+      const x = lerp(rect.x, target.x, p);
+      const top = lerp(rect.y + RAD, target.top, p);
+      const bot = lerp(rect.y + rect.h - RAD, target.bottom, p);
+      layer.seed.setAttribute("d", "M " + x.toFixed(1) + " " + top.toFixed(1) +
+        " L " + x.toFixed(1) + " " + bot.toFixed(1));
+      layer.seed.setAttribute("opacity", "1");
+
+      if (f < 1) { requestAnimationFrame(tick); return; }
+
+      // 落位：跳回 03，真身那条线直接按算好的长度接上
+      jumpTo(target.scroll);
+      line.style.transform = "scaleY(" + target.p.toFixed(4) + ")";
+      layer.svg.remove();
+
+      skills.style.transition = "none";
+      skills.style.backgroundColor = "";
+      setTimeout(() => { skills.style.transition = ""; }, 60);
+
+      // 04 的内容恢复正常（下次进来还是完整的）
+      [head, lead, belt, ...cards].forEach((n) => {
+        if (!n) return;
+        n.getAnimations().forEach((a) => a.cancel());
+        n.style.transitionDelay = "";
+        n.classList.remove("is-out");
+        n.classList.remove("is-pre");
+      });
+      void skills.offsetHeight;    // 强制算一次样式，别让离屏元素留着旧值
+
+      // 03 的内容重新浮出来（只有确实被淡出过才做，避免刷新直接落在 04 时闪一下）
+      if (expOut.length) {
+        expOut.forEach((a) => a.cancel());
+        expOut = [];
+        [exp.querySelector(".ab-head"), ...exp.querySelectorAll(".ab-exp")].forEach((n, i) => {
+          n.animate(
+            [{ opacity: 0, transform: "translateX(42px)" }, { opacity: 1, transform: "none" }],
+            { duration: 380, delay: i * 50, easing: "cubic-bezier(.2,.8,.3,1)" }
+          );
+        });
+      }
+
+      setTimeout(() => { busy = false; }, 140);
+    };
+    requestAnimationFrame(tick);
+    return true;
+  };
+
+  AB_ES = { down, up, busy: () => busy };
+}
+
 /* ---------- 课程分数条：每次进 02 都从 0 一起长到各自的分值 ---------- */
 // 转场一开始先归零（此时 02 还在视口外，看不见），落位后再一起生长。
 // 普通入场（不经过转场）也走同一套，避免两条路径叠在一起。
@@ -1735,6 +2109,7 @@ function abTypeRun(root, dur) {
 let AB_TRANSIT = null;   // 首屏 → 01
 let AB_PE = null;        // 01 → 02（高亮条聚成圆 → GPA 环）
 let AB_EE = null;        // 02 → 03（GPA 环 → 拉直 → 时间轴竖线）
+let AB_ES = null;        // 03 → 04（竖线 → 绕 8 张卡片画一圈）
 
 function abInitHeroTransit() {
   if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -2373,6 +2748,8 @@ function abInitPager() {
       if (cur && cur.id === "philosophy" && next.id === "education" && AB_PE && AB_PE.down()) return true;
       // 02 → 03：GPA 环转到屏幕中间再拉直成时间轴竖线
       if (cur && cur.id === "education" && next.id === "experience" && AB_EE && AB_EE.down()) return true;
+      // 03 → 04：竖线守在原地 → 收成外框的左边 → 笔尖绕 8 张卡片画一圈
+      if (cur && cur.id === "experience" && next.id === "skills" && AB_ES && AB_ES.down()) return true;
       const target = topOf(next);
       if (Math.abs(target - y) < 4) return false;
       go(target, 1);
@@ -2398,6 +2775,8 @@ function abInitPager() {
     if (prev.id === "philosophy" && AB_PE && AB_PE.up()) return true;
     // 03 → 02：时间轴竖线弯回成环，转回 GPA
     if (prev.id === "education" && AB_EE && AB_EE.up()) return true;
+    // 04 → 03：整套倒着放
+    if (prev.id === "experience" && AB_ES && AB_ES.up()) return true;
     if (idx === 0 && prev === hero && AB_TRANSIT && AB_TRANSIT.up()) return true;
     if (cur && now < settleUntil) return true;
     const prevTop = topOf(prev);
@@ -2425,6 +2804,7 @@ function abInitPager() {
     if (AB_TRANSIT && AB_TRANSIT.busy()) { e.preventDefault(); return; }
     if (AB_PE && AB_PE.busy()) { e.preventDefault(); return; }
     if (AB_EE && AB_EE.busy()) { e.preventDefault(); return; }
+    if (AB_ES && AB_ES.busy()) { e.preventDefault(); return; }
 
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
@@ -2523,6 +2903,7 @@ function abInitPager() {
   abInitRelays();
   abInitPhilEdu();       // 01 → 02 的整段转场，同样要在 pager 之前
   abInitEduExp();        // 02 → 03 的整段转场
+  abInitExpSkills();     // 03 → 04 的整段转场
   abInitHeroTransit();   // 必须在 abInitPager 之前：pager 会读 AB_TRANSIT
   abInitIndex(abRenderIndex());
   abInitPager();

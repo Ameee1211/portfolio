@@ -583,7 +583,7 @@
   border-radius: 16px;
   background: var(--white);
   border: 1px solid var(--line);
-  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, opacity 0.3s ease;
 }
 .ab-skill__num {
   font-size: 10px;
@@ -591,6 +591,18 @@
   letter-spacing: 0.14em;
   color: var(--purple);
 }
+/* 03→04 转场：内容先藏起来，由 JS 逐个揭幕（用类名而不是内联样式，
+   否则元素在视口外时清内联样式会撞上浏览器的样式懒计算） */
+#skills .is-pre { opacity: 0; transition: none; }
+#skills .ab-skill.is-pre { transform: translateY(8px); }
+/* 04→03 反向：内容退场也走类名 + 过渡（带 fill 的动画在离屏元素上取消会卡住样式） */
+#skills .is-out { opacity: 0; }
+#skills .ab-skill.is-out { transform: translateY(8px); }
+#skills .ab-skills__lead.is-out,
+#skills .ab-toolbelt.is-out { transform: translateX(52px); }
+#skills .ab-head,
+#skills .ab-skills__lead,
+#skills .ab-toolbelt { transition: opacity 0.3s ease, transform 0.34s ease; }
 .ab-skill__name {
   margin-top: 12px;
   font-size: 15px;
