@@ -1218,7 +1218,7 @@ function abInitExpSkills() {
   const RAD = 22;      // 圆角
   const T_OUT = 300;   // 03 内容退场
   const T_JUMP = 300;  // 跳过去
-  const T_SEED = 240;  // 竖线收成框的左边
+  const T_SEED = 430;  // 长竖线两端一起缩成框的左边
   const T_DRAW = 1300; // 笔尖绕一圈
   const T_HEAD = 380;  // 标题淡入
   const T_REST = 430;  // lead + 工具条从右进
@@ -1230,6 +1230,8 @@ function abInitExpSkills() {
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  // 缩线的专用缓动：两端同时起步、同时收住，中段也不过冲，读起来像「线在缩短」
+  const easeSine = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 
   const jumpTo = (top) => {
     const root = document.documentElement;
@@ -1245,14 +1247,20 @@ function abInitExpSkills() {
     return { x: g.left - PAD, y: g.top - PAD, w: g.width + PAD * 2, h: g.height + PAD * 2 };
   };
 
-  // 圆角矩形路径，从左上角起顺时针
-  const roundD = (r) => {
-    const x = r.x, y = r.y, w = r.w, h = r.h, k = RAD;
-    return "M " + (x + k) + " " + y +
-      " H " + (x + w - k) + " A " + k + " " + k + " 0 0 1 " + (x + w) + " " + (y + k) +
-      " V " + (y + h - k) + " A " + k + " " + k + " 0 0 1 " + (x + w - k) + " " + (y + h) +
-      " H " + (x + k) + " A " + k + " " + k + " 0 0 1 " + x + " " + (y + h - k) +
-      " V " + (y + k) + " A " + k + " " + k + " 0 0 1 " + (x + k) + " " + y + " Z";
+  // 一条不断开的路径：从竖线的上端点起笔 → 左上圆角 → 上边 → 右边 → 下边 → 左下圆角，
+  // 终点正好落在竖线的下端点。
+  // 旧版是「闭合矩形」，左上那个圆角被放在最后一笔补齐，所以画的过程中左上角一直是空的。
+  const frameD = (r) => {
+    const x = r.x, y = r.y, k = RAD;
+    const x1 = r.x + r.w, y1 = r.y + r.h;
+    return "M " + x + " " + (y + k) +
+      " A " + k + " " + k + " 0 0 1 " + (x + k) + " " + y +
+      " H " + (x1 - k) +
+      " A " + k + " " + k + " 0 0 1 " + x1 + " " + (y + k) +
+      " V " + (y1 - k) +
+      " A " + k + " " + k + " 0 0 1 " + (x1 - k) + " " + y1 +
+      " H " + (x + k) +
+      " A " + k + " " + k + " 0 0 1 " + x + " " + (y1 - k);
   };
 
   const makeLayer = () => {
@@ -1375,7 +1383,7 @@ function abInitExpSkills() {
       const layer = makeLayer();
       const rect = frameRect();
       setGrad(layer, rect);
-      layer.frame.setAttribute("d", roundD(rect));
+      layer.frame.setAttribute("d", frameD(rect));
       const LEN = layer.frame.getTotalLength();
       layer.frame.style.strokeDasharray = LEN + " " + LEN;
       layer.frame.style.strokeDashoffset = LEN;
@@ -1386,7 +1394,7 @@ function abInitExpSkills() {
         from.top = window.innerHeight * 0.22;
         from.bottom = window.innerHeight * 0.86;
       }
-      // 终点：框的左边（直边那一段，不含圆角）
+      // 终点：框的左边（直边那一段，不含圆角）——也就是竖线缩完以后的样子
       const to = { x: rect.x, top: rect.y + RAD, bottom: rect.y + rect.h - RAD };
 
       // 卡片依次亮起（0.14s 一张，最后一张刚好在框画完时落定）
@@ -1398,13 +1406,16 @@ function abInitExpSkills() {
       const tick = (now) => {
         const el = now - t0;
 
+        // 缩线：上下两个端点同时往中间收，收到和 04 那条短线一样长。
+        // 每帧都按 p≤1 重算一次，保证进入画框那一帧正好落在框的左端点上（差 1px 就会看到缺口）
+        const p = easeSine(Math.min(1, el / T_SEED));
+        const x = lerp(from.x, to.x, p);
+        const top = lerp(from.top, to.top, p);
+        const bot = lerp(from.bottom, to.bottom, p);
+        layer.seed.setAttribute("d", "M " + x.toFixed(1) + " " + top.toFixed(1) +
+          " L " + x.toFixed(1) + " " + bot.toFixed(1));
+
         if (el < T_SEED) {
-          const p = easeInOut(el / T_SEED);
-          const x = lerp(from.x, to.x, p);
-          const top = lerp(from.top, to.top, p);
-          const bot = lerp(from.bottom, to.bottom, p);
-          layer.seed.setAttribute("d", "M " + x.toFixed(1) + " " + top.toFixed(1) +
-            " L " + x.toFixed(1) + " " + bot.toFixed(1));
           requestAnimationFrame(tick);
           return;
         }
@@ -1463,10 +1474,11 @@ function abInitExpSkills() {
     const rect = frameRect();
     const layer = makeLayer();
     setGrad(layer, rect);
-    layer.frame.setAttribute("d", roundD(rect));
+    layer.frame.setAttribute("d", frameD(rect));
     const LEN = layer.frame.getTotalLength();
     layer.frame.style.strokeDasharray = LEN + " " + LEN;
     layer.frame.style.strokeDashoffset = "0";
+    // 左边那条竖线（框的左边）单独一根，回程时它就是 03 的时间轴
     layer.seed.setAttribute("d", "M " + rect.x + " " + (rect.y + RAD) +
       " L " + rect.x + " " + (rect.y + rect.h - RAD));
     layer.frame.setAttribute("opacity", "0");
@@ -1527,6 +1539,19 @@ function abInitExpSkills() {
       if (f < 1) { requestAnimationFrame(tick); return; }
 
       // 落位：跳回 03，真身那条线直接按算好的长度接上
+      // 03 的文字先摆到「还没滑进来」的位置（内联压住）：
+      // 否则 cancel 掉退场动画的那一帧会露出 CSS 终态，字先闪一下再滑进来
+      let back = [];
+      if (expOut.length) {
+        back = [exp.querySelector(".ab-head"), ...exp.querySelectorAll(".ab-exp")].filter(Boolean);
+        back.forEach((n) => {
+          n.classList.add("is-in");
+          n.style.transition = "none";
+          n.style.transitionDelay = "";
+          n.style.opacity = "0";
+          n.style.transform = "translate3d(42px,0,0)";
+        });
+      }
       jumpTo(target.scroll);
       line.style.transform = "scaleY(" + target.p.toFixed(4) + ")";
       layer.svg.remove();
@@ -1545,15 +1570,27 @@ function abInitExpSkills() {
       });
       void skills.offsetHeight;    // 强制算一次样式，别让离屏元素留着旧值
 
-      // 03 的内容重新浮出来（只有确实被淡出过才做，避免刷新直接落在 04 时闪一下）
-      if (expOut.length) {
+      // 03 的内容顺滑地从右边滑回来（只有确实被淡出过才做，避免刷新直接落在 04 时闪一下）
+      if (back.length) {
         expOut.forEach((a) => a.cancel());
         expOut = [];
-        [exp.querySelector(".ab-head"), ...exp.querySelectorAll(".ab-exp")].forEach((n, i) => {
-          n.animate(
-            [{ opacity: 0, transform: "translateX(42px)" }, { opacity: 1, transform: "none" }],
-            { duration: 380, delay: i * 50, easing: "cubic-bezier(.2,.8,.3,1)" }
+        back.forEach((n, i) => {
+          const a = n.animate(
+            [{ opacity: 0, transform: "translate3d(42px,0,0)" }, { opacity: 1, transform: "none" }],
+            {
+              duration: 460,
+              delay: 40 + i * 60,
+              easing: "cubic-bezier(.16,.84,.28,1)",
+              fill: "both",
+            }
           );
+          a.onfinish = () => {
+            n.style.transitionDelay = "";
+            n.style.transition = "";
+            n.style.opacity = "1";
+            n.style.transform = "none";
+            a.cancel();
+          };
         });
       }
 
@@ -2679,6 +2716,7 @@ function abInitPager() {
   let lockDir = 0;
   let lockTo = -1;
   let settleUntil = 0;
+  let holdEdge = 0;         // 1 = 刚被「夹」到本板块底部，-1 = 刚被夹到顶部：同一次滑动不许顺势翻页
   let acc = 0;
   let accTimer = 0;
   let lastWheelAt = 0;
@@ -2730,17 +2768,27 @@ function abInitPager() {
     if (dir > 0 && !cur && AB_TRANSIT && AB_TRANSIT.down()) return true;
 
     if (dir > 0) {
+      if (holdEdge < 0) holdEdge = 0;     // 方向反了，先把另一头的闩拆掉
       if (cur) {
         const endY = endOf(cur);
         if (y < endY - EDGE) {
           // 板块底部还没露出来：跟手推进，最多推到「底部对齐」为止，绝不冲进下一块
           const target = Math.min(y + delta, endY);
           jump(target);
-          if (target >= endY - 1) settleUntil = now + SETTLE_MS;
+          if (target >= endY - 1) {
+            settleUntil = now + SETTLE_MS;
+            holdEdge = 1;                 // 刚被夹到板块底部
+          }
           return true;
         }
         // 刚到板块底部：先停住，让底部留白被看到；同一次滑动的惯性也一并吞掉
         if (now < settleUntil) return true;
+      }
+      // 这一下是「同一次滑动」的余量（触控板惯性 / 一口气滚很多格）：
+      // 不管还剩多少，都只停在本板块结尾，不放它翻到下一块
+      if (cur && holdEdge === 1) {
+        if (sinceLast < GESTURE_GAP) return true;
+        holdEdge = 0;
       }
       const next = sections[idx + 1];
       if (!next) return false;
@@ -2757,15 +2805,25 @@ function abInitPager() {
     }
 
     // 向上
+    if (holdEdge > 0) holdEdge = 0;
     if (cur) {
       const curTop = topOf(cur);
       if (y > curTop + EDGE) {
         // 板块内部：跟手回退，最多回到板块顶部
         const target = Math.max(y - delta, curTop);
         jump(target);
-        if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
+        if (target <= curTop + 1) {
+          settleUntil = now + SETTLE_MS;
+          holdEdge = -1;       // 这一次滑动就到板块顶部为止
+        }
         return true;
       }
+    }
+    // 刚从板块内部滑到顶部：这次滑动剩下的滚轮（含触控板惯性）一律吞掉。
+    // 用户松手、隔一下再滑，才算新的一次操作，这时才往上翻一块。
+    if (cur && holdEdge === -1) {
+      if (sinceLast < GESTURE_GAP) return true;
+      holdEdge = 0;
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
     if (!prev) return false;
