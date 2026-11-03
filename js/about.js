@@ -544,6 +544,201 @@ function abInitHero() {
   }
 }
 
+/* ============================================================
+   01 → 02：正文三处高亮条聚成有缺口的圆，转成 GPA 环
+   ------------------------------------------------------------
+   三段弧的角度（度）：
+   A = 刚聚成圆时：段间留 4° 细缝，顶部一个 34° 大缺口
+   B = 落到 GPA 时：三段无缝连成 306°，缺口 54° —— 正好是 GPA 的 3.4/4
+   ============================================================ */
+function abInitPhilEdu() {
+  const phil = document.getElementById("philosophy");
+  const edu = document.getElementById("education");
+  const gpa = edu && edu.querySelector(".ab-gpa");
+  if (!phil || !edu || !gpa) return;
+
+  let busy = false;
+
+  const SEG_A = [[0, 106], [110, 216], [220, 326]];
+  const SEG_B = [[0, 102], [102, 204], [204, 306]];
+  const SAMPLES = 30;
+  const R_MID = 130;   // 屏幕中央那个圆的半径（直径约 260px）
+  const SPIN = 630;    // 边转边落位的总转角：1.75 圈后正好停在 GPA 的 -90° 起点
+
+  const YEL = [255, 207, 149];
+  const BLUE = [126, 181, 236];
+  const PURPLE = [116, 105, 182];
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  const mix = (a, b, t) =>
+    "rgb(" + Math.round(lerp(a[0], b[0], t)) + "," + Math.round(lerp(a[1], b[1], t)) + "," +
+    Math.round(lerp(a[2], b[2], t)) + ")";
+
+  // 高亮条的真实几何：background-position: 0 86% + background-size: 100% 36%
+  const barGeom = (el) => {
+    const rs = el.getClientRects();
+    if (!rs.length) return null;
+    const r = rs[0];
+    return { x0: r.left, x1: r.right, y: r.top + r.height * 0.5504, h: r.height * 0.36 };
+  };
+
+  const jumpTo = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, top);
+    root.style.scrollBehavior = prev;
+  };
+
+  const down = () => {
+    if (busy || !abWide()) return false;
+    // 打字还没打完就滚走：高亮条宽度还是 0，转场没有起点，直接普通翻页
+    if (phil.querySelector(".ab-ch.is-off")) return false;
+    const hls = [...phil.querySelectorAll(".ab-philosophy__statement .hl")];
+    if (hls.length < 3) return false;
+    const bars = hls.slice(0, 3).map(barGeom);
+    if (bars.some((b) => !b)) return false;
+
+    const gr = gpa.getBoundingClientRect();
+    const er = edu.getBoundingClientRect();
+    if (!gr.width) return false;
+    const k = gr.width / 200;              // SVG viewBox 是 200，换算成实际像素
+    const gR = 86 * k;
+    const gW = 13 * k;
+    const gCx = gr.left + gr.width / 2;
+    // 转场结束会跳到 02 顶部，GPA 届时的视口纵坐标
+    const gCy = gr.top - er.top + gr.height / 2;
+
+    busy = true;
+    phil.classList.add("is-relay");
+
+    const cx0 = window.innerWidth / 2;
+    const cy0 = window.innerHeight / 2;
+
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "ab-pe");
+    const defs = document.createElementNS(NS, "defs");
+    const grad = document.createElementNS(NS, "linearGradient");
+    grad.setAttribute("id", "abPeGrad");
+    grad.setAttribute("gradientUnits", "userSpaceOnUse");
+    const s0 = document.createElementNS(NS, "stop");
+    s0.setAttribute("offset", "0%");
+    const s1 = document.createElementNS(NS, "stop");
+    s1.setAttribute("offset", "100%");
+    grad.appendChild(s0);
+    grad.appendChild(s1);
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    const paths = [0, 1, 2].map(() => {
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("fill", "none");
+      p.setAttribute("stroke", "url(#abPeGrad)");
+      p.setAttribute("stroke-linecap", "round");
+      p.setAttribute("stroke-linejoin", "round");
+      svg.appendChild(p);
+      return p;
+    });
+    document.body.appendChild(svg);
+
+    const T_A = 880;    // 三条杠飘到屏幕中央、弯成弧、拼成圆
+    const T_B = 1050;   // 边转边变色边缩小，落到 GPA 上
+    const t0 = performance.now();
+    let raf = 0;
+
+    const frame = (now) => {
+      const el = now - t0;
+
+      if (el < T_A) {
+        const p = easeInOut(el / T_A);
+        bars.forEach((b, i) => {
+          const a0 = SEG_A[i][0];
+          const a1 = SEG_A[i][1];
+          let d = "";
+          for (let s = 0; s < SAMPLES; s++) {
+            const u = s / (SAMPLES - 1);
+            const ang = ((a0 + (a1 - a0) * u) * Math.PI) / 180;
+            const x = lerp(lerp(b.x0, b.x1, u), cx0 + R_MID * Math.cos(ang), p);
+            const y = lerp(b.y + b.h / 2, cy0 + R_MID * Math.sin(ang), p);
+            d += (s ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+          }
+          paths[i].setAttribute("d", d);
+          paths[i].setAttribute("stroke-width", b.h.toFixed(1));
+        });
+        s0.setAttribute("stop-color", mix(YEL, YEL, 0));
+        s1.setAttribute("stop-color", mix(YEL, YEL, 0));
+        grad.setAttribute("x1", cx0 - R_MID);
+        grad.setAttribute("y1", cy0 - R_MID);
+        grad.setAttribute("x2", cx0 + R_MID);
+        grad.setAttribute("y2", cy0 + R_MID);
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+
+      const q = Math.min(1, (el - T_A) / T_B);
+      const p = easeInOut(q);
+      const rot = SPIN * easeOut(q);
+      const cx = lerp(cx0, gCx, p);
+      const cy = lerp(cy0, gCy, p);
+      const rr = lerp(R_MID, gR, p);
+
+      bars.forEach((b, i) => {
+        const a0 = lerp(SEG_A[i][0], SEG_B[i][0], p);
+        const a1 = lerp(SEG_A[i][1], SEG_B[i][1], p);
+        let d = "";
+        for (let s = 0; s < SAMPLES; s++) {
+          const u = s / (SAMPLES - 1);
+          const ang = ((a0 + (a1 - a0) * u + rot) * Math.PI) / 180;
+          d += (s ? "L" : "M") + (cx + rr * Math.cos(ang)).toFixed(1) + " " +
+            (cy + rr * Math.sin(ang)).toFixed(1);
+        }
+        paths[i].setAttribute("d", d);
+        paths[i].setAttribute("stroke-width", lerp(b.h, gW, p).toFixed(1));
+      });
+      s0.setAttribute("stop-color", mix(YEL, BLUE, p));
+      s1.setAttribute("stop-color", mix(YEL, PURPLE, p));
+      grad.setAttribute("x1", cx - rr);
+      grad.setAttribute("y1", cy - rr);
+      grad.setAttribute("x2", cx + rr);
+      grad.setAttribute("y2", cy + rr);
+
+      if (q < 1) { raf = requestAnimationFrame(frame); return; }
+
+      // 落位：圆已经是 306° 了，GPA 直接摆到最终进度，别再长一次
+      const arc = edu.querySelector("#abGpaArc");
+      if (arc) {
+        arc.style.transition = "none";
+        arc.style.strokeDashoffset = arc.dataset.off;
+        requestAnimationFrame(() => { arc.style.transition = ""; });
+      }
+      // 其余内容随后浮出来
+      [edu.querySelector(".ab-head"), edu.querySelector(".ab-edu__body")].forEach((n) => {
+        if (!n) return;
+        n.animate(
+          [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }],
+          { duration: 520, delay: 200, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards" }
+        );
+      });
+
+      jumpTo(er.top + window.scrollY);
+      svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "both" })
+        .onfinish = () => svg.remove();
+
+      // 01 已经滚出视口，悄悄还原，下次滚回来还是正常的
+      setTimeout(() => phil.classList.remove("is-relay"), 600);
+      setTimeout(() => { busy = false; }, 140);
+    };
+
+    raf = requestAnimationFrame(frame);
+    return true;
+  };
+
+  AB_PE = { down, busy: () => busy };
+}
+
 // 滚动到这里时：理念高亮扫过、GPA 环填色、课程分数条生长
 function abInitAnim() {
   const targets = document.querySelectorAll("#abPhilosophy, #education");
@@ -865,56 +1060,8 @@ function abInitRelays() {
 
   const relays = {};
 
-  // ② 01 -> 02：那条横线被"撑开"成一个圆，落成 GPA 环
-  relays["philosophy>education"] = () => {
-    const head = document.querySelector("#philosophy .ab-head");
-    const gpa = document.querySelector("#education .ab-gpa");
-    if (!head || !gpa) return;
-    // 原来那条橙色短线已移除，接力起点按标题下方同样的位置算出来（54×4 横条）
-    const hr = R(head);
-    const mr = { left: hr.left, top: hr.bottom + 28, width: 54, height: 4 };
-    const gr = R(gpa);
-
-    // 一条粗横线：靠"边框"撑开成圆环（背景随尺寸淡掉，只剩描边）
-    const c = document.createElement("div");
-    c.className = "ab-relay ab-relay--ring";
-    c.style.left = mr.left + "px";
-    c.style.top = mr.top + "px";
-    c.style.width = mr.width + "px";
-    c.style.height = Math.max(6, mr.height) + "px";
-    layer.appendChild(c);
-
-    const size = Math.min(gr.width, gr.height) * 0.94;
-    const a = c.animate([
-      {
-        left: mr.left + "px",
-        top: mr.top + "px",
-        width: mr.width + "px",
-        height: Math.max(6, mr.height) + "px",
-        backgroundColor: "rgba(255,207,149,1)",
-        opacity: 1,
-      },
-      {
-        left: (gr.left + (gr.width - size) / 2) + "px",
-        top: (gr.top + (gr.height - size) / 2) + "px",
-        width: size + "px",
-        height: size + "px",
-        backgroundColor: "rgba(255,207,149,0)",
-        opacity: 1,
-      },
-    ], { duration: 600, easing: "cubic-bezier(.55,0,.25,1)", fill: "both" });
-    a.onfinish = () => {
-      c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "both" }).onfinish = () => c.remove();
-    };
-
-
-    gpa.style.opacity = "0";
-    setTimeout(() => {
-      gpa.style.transition = "opacity .3s ease";
-      gpa.style.opacity = "";
-      setTimeout(() => { gpa.style.transition = ""; }, 380);
-    }, 420);
-  };
+  // ② 01 -> 02 由 abInitPhilEdu() 的整段转场接管（高亮条聚成有缺口的圆 → GPA 环）
+  //    这里不再有 relay：转场期间滚动是锁住的，不会走到 32% 进度
 
   // ③ 02 -> 03：环缩小，落成时间轴的第一个点
   relays["education>experience"] = () => {
@@ -1087,7 +1234,8 @@ function abTypeRun(root, dur) {
    ④ 01 的标题直接出现
    ⑤ 那段话像打字一样一个字一个字打出来（5 秒内打完）
    ============================================================ */
-let AB_TRANSIT = null;
+let AB_TRANSIT = null;   // 首屏 → 01
+let AB_PE = null;        // 01 → 02（高亮条聚成圆 → GPA 环）
 
 function abInitHeroTransit() {
   if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -1718,6 +1866,8 @@ function abInitPager() {
       }
       const next = sections[idx + 1];
       if (!next) return false;
+      // 01 → 02：交给专门的转场（高亮条聚成有缺口的圆 → GPA 环），期间锁滚动
+      if (cur && cur.id === "philosophy" && next.id === "education" && AB_PE && AB_PE.down()) return true;
       const target = topOf(next);
       if (Math.abs(target - y) < 4) return false;
       go(target, 1);
@@ -1763,6 +1913,7 @@ function abInitPager() {
     if (e.target instanceof Element && inScroller(e.target)) return;
     // 首屏那段转场还在播（约 1.1s）：先吞掉，别让它被后续滚轮推着走
     if (AB_TRANSIT && AB_TRANSIT.busy()) { e.preventDefault(); return; }
+    if (AB_PE && AB_PE.busy()) { e.preventDefault(); return; }
 
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
@@ -1859,6 +2010,7 @@ function abInitPager() {
   abInitTools();
   abInitHeadRule();
   abInitRelays();
+  abInitPhilEdu();       // 01 → 02 的整段转场，同样要在 pager 之前
   abInitHeroTransit();   // 必须在 abInitPager 之前：pager 会读 AB_TRANSIT
   abInitIndex(abRenderIndex());
   abInitPager();
