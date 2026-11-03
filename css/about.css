@@ -382,6 +382,52 @@
 }
 
 /* ============================================================
+   04 → 05 转场：8 张小卡合缝拼成一块 → 大卡旋转 → 落成钩织卡
+   ------------------------------------------------------------
+   转场期间要藏的元素一律加 .is-hid（只用类名，别写内联样式：
+   离屏元素清内联样式会撞上浏览器的样式懒计算，样式会卡住）
+   ============================================================ */
+#skills .is-hid,
+#interests .is-hid { opacity: 0; transition: none; }
+
+/* 8 张小卡合缝时：圆角抹平、里面的字先隐去。
+   边框要留着——白卡在白底上，边框一没就完全看不见「缝在合上」了；
+   等大卡淡入盖住时，里面的细线自然跟着一起消失 */
+#skills .ab-skill > * { transition: opacity 0.22s ease; }
+#skills .ab-skill.is-merge {
+  border-radius: 0;
+  transition: border-radius 0.32s ease, opacity 0.16s ease;
+}
+#skills .ab-skill.is-merge > * { opacity: 0; }
+#skills .ab-skill.is-merge.is-gone { opacity: 0; }
+
+/* 钩织卡落地时内容先留白，随后再浮出来 */
+#interests .ab-int__card.is-blank > * { opacity: 0; }
+
+/* 飞行的大卡（尺寸 / 位置 / 角度都由 JS 逐帧给）+ 背景幕 */
+.ab-si__shade {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  background: var(--bg);
+  opacity: 0;
+}
+.ab-si__card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 45;
+  pointer-events: none;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(51, 61, 109, 0.1);
+  transform-origin: 50% 50%;
+  will-change: width, height, left, top, transform, box-shadow;
+}
+
+/* ============================================================
    3. 教育背景
    ============================================================ */
 .ab-edu {

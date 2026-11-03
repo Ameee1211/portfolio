@@ -1624,6 +1624,498 @@ function abInitExpSkills() {
   AB_ES = { down, up, busy: () => busy };
 }
 
+/* ============================================================
+   04 → 05：8 张小卡合缝拼成一整块 → 变成一张大卡并放大 10%（加重阴影）
+   → 逆时针转 90°（白底换成 05 的灰紫）→ 缩回左边的钩织卡
+   → 钩织卡内容浮出来 → 另外两张从卡后左右滑出；回程整套倒放
+   ------------------------------------------------------------
+   几何：8 张小卡拼成的块（U8）→ 竖版大卡 → 钩织卡。
+   旋转时按「转过去以后的投影不超出安全区」等比收一点：1050 宽的卡转到 45°
+   时投影有 1070 高，不收就会把导航和视口底一起顶穿。
+   ============================================================ */
+function abInitSkillsInt() {
+  const sk = document.getElementById("skills");
+  const it = document.getElementById("interests");
+  if (!sk || !it) return;
+
+  const grid = sk.querySelector(".ab-skillgrid");
+  const tiles = [...sk.querySelectorAll(".ab-skill")];
+  const skHead = sk.querySelector(".ab-head");
+  const lead = sk.querySelector(".ab-skills__lead");
+  const belt = sk.querySelector(".ab-toolbelt");
+
+  const itHead = it.querySelector(".ab-head");
+  const intro = it.querySelector(".ab-int__intro");
+  const itGrid = it.querySelector(".ab-int");
+  const list = [...it.querySelectorAll(".ab-int__card")];
+  if (!grid || tiles.length < 2 || !itGrid || list.length < 2) return;
+
+  const pick = list[0];                 // 钩织
+  const others = list.slice(1);         // Games / Swimming
+  const pickKids = [...pick.children];
+
+  const T_FADE = 240;    // 04 的文字退场
+  const T_MERGE = 380;   // 缝隙合上
+  const T_LIFT = 260;    // 放大 10%
+  const T_ROT = 620;     // 旋转 90°
+  const T_MOVE = 420;    // 缩回钩织卡
+  const T_SPLIT = 560;   // 另外两张滑出
+  const SAFE = 26;       // 旋转时离导航 / 视口底的余量
+
+  let busy = false;
+
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
+  const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
+  const jumpTo = (top) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, Math.max(0, Math.min(top, maxScroll())));
+    root.style.scrollBehavior = prev;
+  };
+  const navB = () => {
+    const nav = document.getElementById("nav");
+    if (!nav || !nav.classList.contains("is-solid")) return 0;
+    return Math.max(0, Math.min(nav.getBoundingClientRect().bottom, window.innerHeight));
+  };
+
+  const hide = (n) => { if (n) n.classList.add("is-hid"); };
+  const unhide = (n) => { if (n) n.classList.remove("is-hid"); };
+
+  // 淡入：先起动画（fill both 压住起始态）再摘 .is-hid，不会闪
+  const show = (n, dur, delay, dx, dy) => {
+    if (!n) return;
+    const from = { opacity: 0 };
+    const to = { opacity: 1 };
+    if (dx || dy) {
+      from.transform = "translate3d(" + (dx || 0) + "px," + (dy || 0) + "px,0)";
+      to.transform = "none";
+    }
+    const a = n.animate([from, to], {
+      duration: dur,
+      delay: delay || 0,
+      easing: "cubic-bezier(.2,.8,.3,1)",
+      fill: "both",
+    });
+    unhide(n);
+    a.onfinish = () => a.cancel();
+  };
+
+  // 飞行大卡：尺寸 / 位置 / 角度全由 JS 逐帧给
+  const place = (el, st) => {
+    el.style.width = st.w.toFixed(1) + "px";
+    el.style.height = st.h.toFixed(1) + "px";
+    el.style.left = (st.cx - st.w / 2).toFixed(1) + "px";
+    el.style.top = (st.cy - st.h / 2).toFixed(1) + "px";
+    el.style.transform = "rotate(" + (st.a || 0).toFixed(2) + "deg)";
+  };
+
+  // 旋转时按投影等比收一点，保证不出安全区
+  const fit = (st) => {
+    const rad = Math.abs(st.a) * Math.PI / 180;
+    const c = Math.abs(Math.cos(rad));
+    const s = Math.abs(Math.sin(rad));
+    const pw = st.w * c + st.h * s;
+    const ph = st.w * s + st.h * c;
+    const top = navB() + SAFE;
+    const maxW = window.innerWidth - SAFE * 2;
+    const maxH = window.innerHeight - top - SAFE;
+    const k = Math.min(1, maxW / pw, maxH / ph);
+    if (k >= 1) return st;
+    const w = st.w * k;
+    const h = st.h * k;
+    const nh = w * s + h * c;
+    const cy = Math.max(top + nh / 2, Math.min(st.cy, window.innerHeight - SAFE - nh / 2));
+    return { cx: st.cx, cy: cy, w: w, h: h, a: st.a };
+  };
+
+  const newCard = (r) => {
+    const el = document.createElement("div");
+    el.className = "ab-si__card";
+    el.style.opacity = "0";
+    el.style.transition = "opacity .16s ease, box-shadow .34s ease, border-color .32s ease, border-radius .3s ease";
+    place(el, r);
+    document.body.appendChild(el);
+    return el;
+  };
+
+  const newShade = () => {
+    const el = document.createElement("div");
+    el.className = "ab-si__shade";
+    el.style.transition = "opacity .5s ease";
+    document.body.appendChild(el);
+    return el;
+  };
+
+  // 8 张小卡各自「合缝后」该占的格子：把缝对半分给相邻的卡，拼起来正好是整个块
+  const cellStates = () => {
+    const rects = tiles.map((n) => n.getBoundingClientRect());
+    const cols = rects.filter((r) => Math.abs(r.top - rects[0].top) < 1).length;
+    const rows = Math.max(1, Math.round(rects.length / cols));
+    const gx = cols > 1 ? rects[1].left - (rects[0].left + rects[0].width) : 0;
+    const gy = rows > 1 ? rects[cols].top - (rects[0].top + rects[0].height) : 0;
+    return rects.map((r, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = r.left - (col > 0 ? gx / 2 : 0);
+      const y = r.top - (row > 0 ? gy / 2 : 0);
+      const w = r.width + (col > 0 ? gx / 2 : 0) + (col < cols - 1 ? gx / 2 : 0);
+      const h = r.height + (row > 0 ? gy / 2 : 0) + (row < rows - 1 ? gy / 2 : 0);
+      return {
+        dx: (x + w / 2) - (r.left + r.width / 2),
+        dy: (y + h / 2) - (r.top + r.height / 2),
+        sx: w / r.width,
+        sy: h / r.height,
+      };
+    });
+  };
+
+  const tf = (c) => "translate(" + c.dx.toFixed(1) + "px," + c.dy.toFixed(1) + "px) scale(" +
+    c.sx.toFixed(4) + "," + c.sy.toFixed(4) + ")";
+
+  /* ---------------- 04 → 05 ---------------- */
+  const down = () => {
+    if (busy || !abWide()) return false;
+    if (!grid.getBoundingClientRect().width) return false;
+    busy = true;
+
+    /* 0. 05 先归位再藏好（此时还在 04，看不见） */
+    list.forEach((n) => { n.classList.add("is-in"); hide(n); });
+    hide(itHead);
+    hide(intro);
+    pick.classList.add("is-blank");
+    void it.offsetHeight;      // .is-hid 是 transition:none，.reveal 的 26px 位移立刻归零
+
+    /* 1. 量几何 */
+    const gr = grid.getBoundingClientRect();
+    const U8 = { cx: gr.left + gr.width / 2, cy: gr.top + gr.height / 2, w: gr.width, h: gr.height, a: 0 };
+    const cells = cellStates();
+
+    const itAbs = it.getBoundingClientRect().top + window.scrollY;
+    const land = Math.max(0, Math.min(itAbs, maxScroll()));
+    const drift = land - window.scrollY;          // 跳过去以后所有元素的视口坐标上移这么多
+    const pr = pick.getBoundingClientRect();
+    const P = { cx: pr.left + pr.width / 2, cy: pr.top + pr.height / 2 - drift, w: pr.width, h: pr.height };
+
+    const navTop = navB();
+    const vh = Math.min(700, window.innerHeight - navTop - SAFE * 2);
+    const S1 = { cx: U8.cx, cy: U8.cy, w: U8.w * 1.1, h: U8.h * 1.1, a: 0 };
+    const S2 = { cx: window.innerWidth / 2, cy: (navTop + SAFE + window.innerHeight - SAFE) / 2,
+      w: vh, h: vh * U8.h / U8.w, a: -90 };
+    const S3 = { cx: P.cx, cy: P.cy, w: P.h, h: P.w, a: -90 };
+
+    /* 2. 04 的文字退场 */
+    [skHead, lead, belt].forEach((n, i) => {
+      if (!n) return;
+      const a = n.animate(
+        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(-26px)" }],
+        { duration: T_FADE, delay: i * 30, easing: "ease", fill: "both" }
+      );
+      a.onfinish = () => { hide(n); a.cancel(); };
+    });
+
+    /* 3. 8 张卡合缝 */
+    tiles.forEach((n) => n.classList.add("is-merge"));
+    const merge = tiles.map((n, i) => n.animate(
+      [{ transform: "none" }, { transform: tf(cells[i]) }],
+      { duration: T_MERGE, delay: 60, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" }
+    ));
+
+    /* 4. 大卡 + 背景幕 */
+    const card = newCard(U8);
+    const shade = newShade();
+
+    const T_IN = 60 + T_MERGE - 40;        // 440：大卡淡入
+    const T_L1 = T_IN + 80;                // 520：抬起
+    const T_L2 = T_L1 + T_LIFT;            // 820：开始转
+    const T_R2 = T_L2 + T_ROT;             // 1460：跳过去
+    const T_LAND = T_R2 + T_MOVE;          // 1920：落位
+
+    setTimeout(() => {
+      card.style.opacity = "1";
+      tiles.forEach((n) => n.classList.add("is-gone"));
+    }, T_IN);
+
+    // 大卡已经盖住整块：8 张卡立刻复位（就在它下面，看不见）
+    setTimeout(() => {
+      merge.forEach((a) => a.cancel());
+      tiles.forEach((n) => {
+        n.classList.remove("is-merge", "is-gone");
+        n.style.transform = "";
+        hide(n);
+      });
+      void sk.offsetHeight;
+    }, T_L1 - 20);
+
+    setTimeout(() => {
+      card.style.boxShadow = "0 46px 84px rgba(51,61,109,.22), 0 10px 26px rgba(51,61,109,.10)";
+      shade.style.opacity = "1";           // 白 → 05 的灰紫
+    }, T_L1);
+
+    let jumped = false;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const el = now - t0;
+      if (el < T_L1) { requestAnimationFrame(tick); return; }
+
+      if (el < T_L2) {
+        const p = easeOut(clamp01((el - T_L1) / T_LIFT));
+        place(card, { cx: U8.cx, cy: U8.cy, w: lerp(U8.w, S1.w, p), h: lerp(U8.h, S1.h, p), a: 0 });
+      } else if (el < T_R2) {
+        const p = easeInOut(clamp01((el - T_L2) / T_ROT));
+        place(card, fit({
+          cx: lerp(S1.cx, S2.cx, p), cy: lerp(S1.cy, S2.cy, p),
+          w: lerp(S1.w, S2.w, p), h: lerp(S1.h, S2.h, p),
+          a: lerp(0, -90, p),
+        }));
+      } else {
+        if (!jumped) {
+          jumped = true;
+          jumpTo(land);
+          shade.remove();                                   // 此刻正好是页面底色，撤掉无缝
+          card.style.boxShadow = "0 10px 34px rgba(51, 61, 109, .07)";
+          card.style.borderColor = "transparent";
+          card.style.borderRadius = "22px";
+        }
+        const p = easeInOut(clamp01((el - T_R2) / T_MOVE));
+        place(card, {
+          cx: lerp(S2.cx, S3.cx, p), cy: lerp(S2.cy, S3.cy, p),
+          w: lerp(S2.w, S3.w, p), h: lerp(S2.h, S3.h, p),
+          a: -90,
+        });
+      }
+
+      if (el < T_LAND) { requestAnimationFrame(tick); return; }
+      land_();
+    };
+
+    const land_ = () => {
+      card.remove();
+      unhide(pick);                          // 真身就位（内容还被 .is-blank 压着）
+      pick.style.zIndex = "6";
+
+      setTimeout(() => {
+        show(itHead, 300, 0, 0, 6);
+        show(intro, 300, 70, 0, 6);
+      }, 40);
+
+      // 钩织卡内容浮出来（侧边那条竖排标签平时是隐藏的，别动它）
+      setTimeout(() => {
+        const kids = pickKids.filter((n) => !n.classList.contains("ab-int__strip"));
+        kids.forEach((n, i) => {
+          const a = n.animate([{ opacity: 0 }, { opacity: 1 }],
+            { duration: 280, delay: i * 40, easing: "ease", fill: "both" });
+          a.onfinish = () => a.cancel();
+        });
+        // 动画已经用 fill 压住起始态，这时候摘掉 .is-blank 不会闪
+        pick.classList.remove("is-blank");
+      }, 150);
+
+      // 另外两张从卡后左右滑出（等钩织卡内容基本到位再走）
+      setTimeout(() => {
+        const base = pick.getBoundingClientRect();
+        const cx = base.left + base.width / 2;
+        const cy = base.top + base.height / 2;
+        others.forEach((n, i) => {
+          const r = n.getBoundingClientRect();
+          n.style.zIndex = String(5 - i);   // 左边那张压在上面，像一副牌抽出来
+          unhide(n);
+          const a = n.animate(
+            [{ transform: "translate(" + (cx - (r.left + r.width / 2)).toFixed(1) + "px," +
+              (cy - (r.top + r.height / 2)).toFixed(1) + "px)" }, { transform: "none" }],
+            { duration: T_SPLIT, delay: 0, easing: "cubic-bezier(.22,.8,.28,1)", fill: "both" }
+          );
+          a.onfinish = () => { n.style.zIndex = ""; a.cancel(); };
+        });
+        setTimeout(() => { pick.style.zIndex = ""; }, T_SPLIT + 240);
+      }, 450);
+
+      setTimeout(() => { busy = false; }, 450 + T_SPLIT + 120);
+    };
+    requestAnimationFrame(tick);
+
+    return true;
+  };
+
+  /* ---------------- 05 → 04 ---------------- */
+  const up = () => {
+    if (busy || !abWide()) return false;
+    if (!grid.getBoundingClientRect().width) return false;
+    busy = true;
+
+    // 04 那边先全部藏起来（等会儿落位再一个个揭）
+    [skHead, lead, belt, ...tiles].forEach(hide);
+
+    /* 量几何：04 落位后的块 / 05 现在的位置 */
+    const gr = grid.getBoundingClientRect();
+    const skAbs = sk.getBoundingClientRect().top + window.scrollY;
+    const land = Math.max(0, Math.min(skAbs + sk.offsetHeight - window.innerHeight, maxScroll()));
+    const rise = window.scrollY - land;      // 跳回去以后所有元素的视口坐标下移这么多
+    const U8 = {
+      cx: gr.left + gr.width / 2,
+      cy: gr.top + gr.height / 2 + rise,
+      w: gr.width, h: gr.height, a: 0,
+    };
+    const cells = cellStates();
+
+    const g5 = itGrid.getBoundingClientRect();
+    const pr = pick.getBoundingClientRect();
+    const P = { cx: g5.left + pr.width / 2, cy: g5.top + pr.height / 2, w: pr.width, h: pr.height, a: -90 };
+
+    const navTop = navB();
+    const vh = Math.min(700, window.innerHeight - navTop - SAFE * 2);
+    const S2 = { cx: window.innerWidth / 2, cy: (navTop + SAFE + window.innerHeight - SAFE) / 2,
+      w: vh, h: vh * U8.h / U8.w, a: -90 };
+    const S1 = { cx: window.innerWidth / 2, cy: S2.cy, w: U8.w * 1.12, h: U8.h * 1.12, a: 0 };
+    const S3 = { cx: P.cx, cy: P.cy, w: P.h, h: P.w, a: -90 };
+
+    /* 1. 05 的内容退场 */
+    [itHead, intro].forEach((n, i) => {
+      if (!n) return;
+      const a = n.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-8px)" }],
+        { duration: 220, delay: i * 40, easing: "ease", fill: "both" });
+      a.onfinish = () => { hide(n); a.cancel(); };
+    });
+
+    // 卡里的内容先淡掉；动画不急着 cancel（cancel 会露出正常态，等于闪一下），
+    // 等下面 hide(pick) 把它整个藏起来时再一起收
+    const kidsOut = pickKids.map(() => null);
+    setTimeout(() => {
+      pickKids.forEach((n, i) => {
+        kidsOut[i] = n.animate([{ opacity: 1 }, { opacity: 0 }],
+          { duration: 190, delay: i * 30, easing: "ease", fill: "both" });
+      });
+    }, 240);
+
+    // 另外两张缩回卡里
+    const base = pick.getBoundingClientRect();
+    const cx0 = base.left + base.width / 2;
+    const cy0 = base.top + base.height / 2;
+    others.forEach((n, i) => {
+      const r = n.getBoundingClientRect();
+      n.style.zIndex = String(5 - i);
+      pick.style.zIndex = "6";
+      const a = n.animate(
+        [{ transform: "none" }, { transform: "translate(" + (cx0 - (r.left + r.width / 2)).toFixed(1) + "px," +
+          (cy0 - (r.top + r.height / 2)).toFixed(1) + "px)" }],
+        { duration: T_SPLIT, delay: i * 70, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" }
+      );
+      a.onfinish = () => { hide(n); n.style.zIndex = ""; a.cancel(); };
+    });
+
+    /* 2. 大卡从钩织卡的位置长出来 */
+    setTimeout(() => {
+      hide(pick);
+      pick.classList.add("is-blank");
+      kidsOut.forEach((a) => a.cancel());
+      const card = newCard(P);
+      const shade = newShade();
+      shade.style.opacity = "1";     // 05 的底色，先垫住（和页面同色，看不出来）
+
+      setTimeout(() => { card.style.opacity = "1"; }, 30);
+
+      const T_GROW0 = 60;
+      const T_GROW1 = T_GROW0 + 360;        // 420：长成竖版大卡并挪到中间
+      const T_ROT0 = T_GROW1 + 60;          // 480
+      const T_ROT1 = T_ROT0 + T_ROT;        // 1120
+      const T_JUMP = T_ROT1;                // 跳回 04
+      const T_SHRINK = T_JUMP + 400;        // 1520：缩到 8 张小卡的大小
+      const T_SPLIT0 = T_SHRINK + 60;       // 1580：分成 8 张
+
+      setTimeout(() => {
+        card.style.boxShadow = "0 46px 84px rgba(51,61,109,.22), 0 10px 26px rgba(51,61,109,.10)";
+        card.style.borderColor = "transparent";
+      }, T_GROW0);
+
+      let jumped = false;
+      const t1 = performance.now();
+      const tick2 = (now) => {
+        const el = now - t1;
+
+        if (el < T_GROW1) {
+          const p = easeOut(clamp01((el - T_GROW0) / (T_GROW1 - T_GROW0)));
+          place(card, {
+            cx: lerp(S3.cx, S2.cx, p), cy: lerp(S3.cy, S2.cy, p),
+            w: lerp(S3.w, S2.w, p), h: lerp(S3.h, S2.h, p), a: -90,
+          });
+        } else if (el < T_ROT1) {
+          const p = easeInOut(clamp01((el - T_ROT0) / (T_ROT1 - T_ROT0)));
+          place(card, fit({
+            cx: lerp(S2.cx, S1.cx, p), cy: lerp(S2.cy, S1.cy, p),
+            w: lerp(S2.w, S1.w, p), h: lerp(S2.h, S1.h, p),
+            a: lerp(-90, 0, p),
+          }));
+        } else if (el < T_SHRINK) {
+          if (!jumped) {
+            jumped = true;
+            jumpTo(land);
+            shade.style.opacity = "0";                       // 白底露出来
+            card.style.borderColor = "var(--line)";
+            card.style.borderRadius = "16px";
+            card.style.boxShadow = "0 16px 36px rgba(51,61,109,.10)";
+            // 8 张小卡先摆到「合缝」的格子上，藏在大卡底下
+            tiles.forEach((n, i) => {
+              n.classList.add("is-merge");
+              n.style.transform = tf(cells[i]);
+            });
+          }
+          const p = easeInOut(clamp01((el - T_JUMP) / (T_SHRINK - T_JUMP)));
+          place(card, {
+            cx: lerp(S1.cx, U8.cx, p), cy: lerp(S1.cy, U8.cy, p),
+            w: lerp(S1.w, U8.w, p), h: lerp(S1.h, U8.h, p), a: 0,
+          });
+        }
+
+        if (el < T_SHRINK) { requestAnimationFrame(tick2); return; }
+
+        /* 3. 大卡淡出、8 张卡从合缝的格子摊回原位 */
+        card.style.transition = "opacity .16s ease";
+        card.style.opacity = "0";
+        card.style.borderColor = "transparent";
+        card.style.borderRadius = "0";
+        card.style.boxShadow = "none";
+        tiles.forEach(unhide);
+        setTimeout(() => { card.remove(); shade.remove(); }, 220);
+
+        tiles.forEach((n, i) => {
+          const from = n.style.transform || "none";
+          n.classList.remove("is-merge");
+          const a = n.animate([{ transform: from }, { transform: "none" }], {
+            duration: 520, delay: i * 20, easing: "cubic-bezier(.4,0,.2,1)", fill: "both",
+          });
+          a.onfinish = () => { n.style.transform = ""; a.cancel(); };
+        });
+
+        setTimeout(() => {
+          show(skHead, 320, 0, 0, 6);
+          show(lead, 320, 60, -26, 0);
+          show(belt, 320, 110, -26, 0);
+        }, 120);
+
+        setTimeout(() => {
+          // 05 恢复成「正常可见」：此刻它整个在视口外，改类名看不见；
+          // 下次再从 04 下来时 down() 会重新把该藏的藏起来
+          pick.classList.remove("is-blank");
+          pick.style.zIndex = "";
+          others.forEach((n) => { n.style.zIndex = ""; });
+          [itHead, intro, pick, ...others].forEach(unhide);
+          void it.offsetHeight;
+          busy = false;
+        }, 620);
+      };
+      requestAnimationFrame(tick2);
+    }, T_SPLIT + 30);
+
+    return true;
+  };
+
+  AB_SI = { down, up, busy: () => busy };
+}
+
 /* ---------- 课程分数条：每次进 02 都从 0 一起长到各自的分值 ---------- */
 // 转场一开始先归零（此时 02 还在视口外，看不见），落位后再一起生长。
 // 普通入场（不经过转场）也走同一套，避免两条路径叠在一起。
@@ -2010,35 +2502,8 @@ function abInitRelays() {
     });
   };
 
-  // ⑤ 04 -> 05：瓷砖缩成卡片的位置，卡片在原地长出来
-  relays["skills>interests"] = () => {
-    const tiles = [...document.querySelectorAll("#skills .ab-skill")];
-    const cards = [...document.querySelectorAll("#interests .ab-int__card")];
-    if (!tiles.length || !cards.length) return;
-
-    cards.forEach((card, i) => {
-      const tile = tiles[i * 2] || tiles[i];
-      if (!tile) return;
-      const { c, r } = clone(tile);
-      const d = R(card);
-      const a = run(c, [
-        { transform: "none", opacity: 1 },
-        {
-          transform:
-            "translate(" + (d.left + d.width / 2 - (r.left + r.width / 2)) + "px," +
-            (d.top + d.height / 2 - (r.top + r.height / 2)) + "px) scale(.82)",
-          opacity: 0,
-        },
-      ], { duration: 520, delay: i * 70, easing: "cubic-bezier(.45,0,.2,1)" });
-      a.onfinish = () => c.remove();
-      hide(tile, 1100);
-
-      card.animate([
-        { opacity: 0, transform: "scale(.96)" },
-        { opacity: 1, transform: "none" },
-      ], { duration: 420, delay: 280 + i * 70, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards" });
-    });
-  };
+  // ⑤ 04 -> 05：由 abInitSkillsInt() 的整段转场接管（8 卡合缝 → 大卡旋转 → 落成钩织卡）
+  //    这里不再有 relay：转场期间滚动是锁住的，不会走到 32% 进度
 
   // ⑥ 05 -> 06：三张卡收成一点，联系卡从这一点展开
   relays["interests>contact"] = () => {
@@ -2168,6 +2633,7 @@ let AB_TRANSIT = null;   // 首屏 → 01
 let AB_PE = null;        // 01 → 02（高亮条聚成圆 → GPA 环）
 let AB_EE = null;        // 02 → 03（GPA 环 → 拉直 → 时间轴竖线）
 let AB_ES = null;        // 03 → 04（竖线 → 绕 8 张卡片画一圈）
+let AB_SI = null;        // 04 → 05（8 张小卡合成大卡 → 转 90° → 落成钩织卡）
 
 function abInitHeroTransit() {
   if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -2819,6 +3285,8 @@ function abInitPager() {
       if (cur && cur.id === "education" && next.id === "experience" && AB_EE && AB_EE.down()) return true;
       // 03 → 04：竖线守在原地 → 收成外框的左边 → 笔尖绕 8 张卡片画一圈
       if (cur && cur.id === "experience" && next.id === "skills" && AB_ES && AB_ES.down()) return true;
+      // 04 → 05：8 张小卡合缝成一张大卡 → 转 90° → 落成左边的钩织卡
+      if (cur && cur.id === "skills" && next.id === "interests" && AB_SI && AB_SI.down()) return true;
       const target = topOf(next);
       if (Math.abs(target - y) < 4) return false;
       go(target, 1);
@@ -2856,6 +3324,8 @@ function abInitPager() {
     if (prev.id === "education" && AB_EE && AB_EE.up()) return true;
     // 04 → 03：整套倒着放
     if (prev.id === "experience" && AB_ES && AB_ES.up()) return true;
+    // 05 → 04：钩织卡长出来 → 顺时针转回横版 → 缩成 8 张小卡
+    if (prev.id === "skills" && AB_SI && AB_SI.up()) return true;
     if (idx === 0 && prev === hero && AB_TRANSIT && AB_TRANSIT.up()) return true;
     if (cur && now < settleUntil) return true;
     const prevTop = topOf(prev);
@@ -2884,6 +3354,7 @@ function abInitPager() {
     if (AB_PE && AB_PE.busy()) { e.preventDefault(); return; }
     if (AB_EE && AB_EE.busy()) { e.preventDefault(); return; }
     if (AB_ES && AB_ES.busy()) { e.preventDefault(); return; }
+    if (AB_SI && AB_SI.busy()) { e.preventDefault(); return; }
 
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
@@ -2983,6 +3454,7 @@ function abInitPager() {
   abInitPhilEdu();       // 01 → 02 的整段转场，同样要在 pager 之前
   abInitEduExp();        // 02 → 03 的整段转场
   abInitExpSkills();     // 03 → 04 的整段转场
+  abInitSkillsInt();     // 04 → 05 的整段转场
   abInitHeroTransit();   // 必须在 abInitPager 之前：pager 会读 AB_TRANSIT
   abInitIndex(abRenderIndex());
   abInitPager();
