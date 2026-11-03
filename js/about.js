@@ -1233,6 +1233,18 @@ function abInitExpSkills() {
   // 缩线的专用缓动：两端同时起步、同时收住，中段也不过冲，读起来像「线在缩短」
   const easeSine = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 
+  // 导航栏底边（屏幕坐标）——只算「导航确实盖住了内容」的情况（.nav.is-solid）。
+  // 03 的时间轴竖线在板块底部时会一直伸到导航底下，那一段用户根本看不见；
+  // 转场用的是独立飞行层，不把这一段剪掉的话，线就会「跳」到导航上面去。
+  // 所以两端（正向的起点、回程的终点）都从导航底边算起，跟肉眼看到的线头严丝合缝。
+  const navBottom = () => {
+    const nav = document.getElementById("nav");
+    if (!nav || !nav.classList.contains("is-solid")) return 0;
+    const r = nav.getBoundingClientRect();
+    if (!r.height) return 0;
+    return Math.max(0, Math.min(r.bottom, window.innerHeight));
+  };
+
   const jumpTo = (top) => {
     const root = document.documentElement;
     const prev = root.style.scrollBehavior;
@@ -1336,16 +1348,20 @@ function abInitExpSkills() {
   };
 
   // 回程落位时，03 那条线应该长什么样（在 04 的时候就能算出来）
+  // 注意：落位是停在 03 的「底部」（板块比视口高），所以要用落位后的真实视口位置算进度，
+  // 不能拿「时间轴相对板块顶部」的偏移算——那样会算出一条比真身短一截的线，落位瞬间会跳。
+  // 这里的公式跟 abInitExperience() 里随滚动填充的 paint() 完全一致。
   const expEndTarget = () => {
     const tlR = tlEl.getBoundingClientRect();
     const expAbs = exp.getBoundingClientRect().top + window.scrollY;
     const scroll = Math.min(expAbs + exp.offsetHeight - window.innerHeight,
       document.documentElement.scrollHeight - window.innerHeight);
-    const relTop = tlR.top + window.scrollY - expAbs;
+    const tlAbsTop = tlR.top + window.scrollY;
+    const visTop = tlAbsTop - scroll;        // 落位后时间轴在视口里的 top
     const h0 = Math.max(1, tlR.height);
-    const p = clamp01((window.innerHeight * 0.78 - relTop) / h0);
+    const p = clamp01((window.innerHeight * 0.78 - visTop) / h0);
     const h = Math.max(1, (h0 - 28) * p);
-    const topV = tlR.top + window.scrollY + 14 - scroll;
+    const topV = visTop + 14;
     return { x: tlR.left + 8, top: topV, bottom: topV + h, p: p, scroll: scroll };
   };
 
@@ -1388,8 +1404,9 @@ function abInitExpSkills() {
       layer.frame.style.strokeDasharray = LEN + " " + LEN;
       layer.frame.style.strokeDashoffset = LEN;
 
-      // 竖线的起点：03 那条线此刻的可见范围
-      const from = { x: lr.left + 1, top: lr.top, bottom: lr.bottom };
+      // 竖线的起点：03 那条线此刻的可见范围（伸到导航底下那截剪掉）
+      const navB = navBottom();
+      const from = { x: lr.left + 1, top: Math.max(lr.top, navB), bottom: lr.bottom };
       if (from.bottom - from.top < 80) {
         from.top = window.innerHeight * 0.22;
         from.bottom = window.innerHeight * 0.86;
@@ -1497,6 +1514,10 @@ function abInitExpSkills() {
     const t0 = performance.now();
     let phase = 0;
     const target = expEndTarget();
+    // 回程终点同样从导航底边算起：那条线落回 03 时上半截本来就在导航底下，
+    // 不剪的话收线会先长到导航上面去再落下来（用户看到的就是「跳到 home bar 再落回去」）
+    const navB = navBottom();
+    target.top = Math.max(target.top, Math.min(navB, target.bottom - 24));
 
     const tick = (now) => {
       const el = now - t0;

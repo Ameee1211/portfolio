@@ -368,13 +368,15 @@
 #education.is-bg-shift { background-color: var(--bg); }
 #experience.is-bg-shift { background-color: var(--white); }
 
-/* 转场专用的弧线层（JS 逐帧算 path） */
+/* 转场专用的弧线层（JS 逐帧算 path）
+   层级必须低于导航（.nav 是 50）：03 那条竖线在板块底部时会伸到导航底下，
+   飞行层要是压过导航，缩线那一下就会看到线「跳到导航上面」。 */
 .ab-pe {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 85;
+  z-index: 45;
   pointer-events: none;
   overflow: visible;
 }
