@@ -2220,7 +2220,7 @@ function abInitIntContact() {
   };
 
   // 翻牌面板：正面空卡 + 背面（联系卡内容的克隆）
-  const newPanel = (st) => {
+  const newPanel = (st, radius) => {
     const el = document.createElement("div");
     el.className = "ab-ic__panel";
 
@@ -2243,7 +2243,10 @@ function abInitIntContact() {
 
     document.body.appendChild(el);
     const faces = [...el.querySelectorAll(".ab-ic__face")];
-    faces.forEach((f) => { f.style.borderRadius = RAD0 + "px"; });
+    // 面板一起手就要和它「顶替」的那张卡圆角一致，
+    // 否则起手那几十毫秒里角会比真卡小一圈 —— 看起来就是「四个角闪一下」
+    const r0 = radius == null ? RAD0 : radius;
+    faces.forEach((f) => { f.style.borderRadius = r0 + "px"; });
     return {
       el: el,
       faces: faces,
@@ -2327,7 +2330,7 @@ function abInitIntContact() {
     const T_JUMP = T_FLIP0 + T_FLIP / 2;       // 正好转到 90°，卡片看不见的那一下跳
 
     setTimeout(() => {
-      P = newPanel(U);
+      P = newPanel(U, RAD0);
       // 预热：先用一个极小的角度渲染一帧（这时面板还是全透明的）。
       // 否则真正起转的第一帧要现场把这一层按 3D 光栅化一次，会整整卡 30ms
       P.el.style.opacity = "0";
@@ -2426,7 +2429,7 @@ function abInitIntContact() {
       hide(itHead);
       hide(intro);
 
-      const P = newPanel(C);
+      const P = newPanel(C, RAD1);
       // 同样先给个极小的角度：这一层按 3D 渲染一次，起转那一帧才不会卡
       place(P, { cx: C.cx, cy: C.cy, w: C.w, h: C.h, a: 0.05 });
       P.paints.forEach((p) => { p.style.opacity = "1"; });
