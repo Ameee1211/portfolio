@@ -798,6 +798,261 @@ function abInitHeadRule() {
 }
 
 /* ============================================================
+   板块接力（仅 >=1024px）
+   每个边界都把上一节的一件**真实物件**带到下一节，而不是盖一层遮罩：
+   字母 -> 横线 -> 环 -> 点 -> 标签 -> 瓷砖 -> 卡片
+   触发点：两节之间的滚动进度过 32% 时播一次（往回滚到 12% 以下重置）
+   ============================================================ */
+function abInitRelays() {
+  if (!window.matchMedia("(min-width: 1024px)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const ORDER = ["top", "philosophy", "education", "experience", "skills", "interests", "contact"];
+  const secs = ORDER.map((id) => document.getElementById(id));
+  if (secs.some((x) => !x)) return;
+
+  const layer = document.createElement("div");
+  layer.className = "ab-relay-layer";
+  document.body.appendChild(layer);
+
+  const R = (el) => el.getBoundingClientRect();
+
+  const clone = (el) => {
+    const r = R(el);
+    const c = el.cloneNode(true);
+    c.classList.add("ab-relay");
+    c.style.left = r.left + "px";
+    c.style.top = r.top + "px";
+    c.style.width = r.width + "px";
+    c.style.height = r.height + "px";
+    layer.appendChild(c);
+    return { c, r };
+  };
+
+  const run = (el, frames, opts) =>
+    el.animate(frames, Object.assign({ fill: "both", easing: "cubic-bezier(.4,0,.2,1)" }, opts));
+
+  // 真身先隐身，过一会儿自动恢复（此时它已经在视口外）
+  const hide = (el, ms) => {
+    if (!el) return;
+    el.style.opacity = "0";
+    setTimeout(() => { el.style.opacity = ""; }, ms);
+  };
+
+  const flash = (el, ms) => {
+    if (!el) return;
+    el.classList.add("is-received");
+    setTimeout(() => el.classList.remove("is-received"), ms);
+  };
+
+  const relays = {};
+
+  // ① Hero -> 01：最下面两行（12 个）字母收拢成那条橙色横线
+  relays["top>philosophy"] = () => {
+    const ghost = $("abGhost");
+    const mark = document.querySelector("#philosophy .ab-philosophy__mark");
+    if (!ghost || !mark) return;
+    const letters = [...ghost.children].slice(-12);
+    if (!letters.length) return;
+
+    const mr = R(mark);
+    letters.forEach((sp, i) => {
+      const { c, r } = clone(sp);
+      c.classList.add("ab-relay--letter");
+      const tx = mr.left + (mr.width * i) / Math.max(1, letters.length - 1) - (r.left + r.width / 2);
+      const ty = mr.top + mr.height / 2 - (r.top + r.height / 2);
+      const a = run(c, [
+        { transform: "none", opacity: 1 },
+        { transform: "translate(" + tx + "px," + ty + "px) scale(.28)", opacity: 0 },
+      ], { duration: 520, delay: i * 12 });
+      a.onfinish = () => c.remove();
+    });
+    letters.forEach((sp) => hide(sp, 1200));
+
+    mark.style.transformOrigin = "left center";
+    mark.style.transform = "scaleX(0)";
+    setTimeout(() => {
+      mark.style.transition = "transform .42s cubic-bezier(.2,.8,.3,1)";
+      mark.style.transform = "scaleX(1)";
+      setTimeout(() => { mark.style.transition = ""; mark.style.transform = ""; }, 620);
+    }, 420);
+  };
+
+  // ② 01 -> 02：那条横线被"撑开"成一个圆，落成 GPA 环
+  relays["philosophy>education"] = () => {
+    const mark = document.querySelector("#philosophy .ab-philosophy__mark");
+    const gpa = document.querySelector("#education .ab-gpa");
+    if (!mark || !gpa) return;
+    const mr = R(mark);
+    const gr = R(gpa);
+
+    // 一条粗横线：靠"边框"撑开成圆环（背景随尺寸淡掉，只剩描边）
+    const c = document.createElement("div");
+    c.className = "ab-relay ab-relay--ring";
+    c.style.left = mr.left + "px";
+    c.style.top = mr.top + "px";
+    c.style.width = mr.width + "px";
+    c.style.height = Math.max(6, mr.height) + "px";
+    layer.appendChild(c);
+
+    const size = Math.min(gr.width, gr.height) * 0.94;
+    const a = c.animate([
+      {
+        left: mr.left + "px",
+        top: mr.top + "px",
+        width: mr.width + "px",
+        height: Math.max(6, mr.height) + "px",
+        backgroundColor: "rgba(255,207,149,1)",
+        opacity: 1,
+      },
+      {
+        left: (gr.left + (gr.width - size) / 2) + "px",
+        top: (gr.top + (gr.height - size) / 2) + "px",
+        width: size + "px",
+        height: size + "px",
+        backgroundColor: "rgba(255,207,149,0)",
+        opacity: 1,
+      },
+    ], { duration: 600, easing: "cubic-bezier(.55,0,.25,1)", fill: "both" });
+    a.onfinish = () => {
+      c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "both" }).onfinish = () => c.remove();
+    };
+
+    hide(mark, 900);
+
+    gpa.style.opacity = "0";
+    setTimeout(() => {
+      gpa.style.transition = "opacity .3s ease";
+      gpa.style.opacity = "";
+      setTimeout(() => { gpa.style.transition = ""; }, 380);
+    }, 420);
+  };
+
+  // ③ 02 -> 03：环缩小，落成时间轴的第一个点
+  relays["education>experience"] = () => {
+    const gpa = document.querySelector("#education .ab-gpa");
+    const dot = document.querySelector("#experience .ab-exp__dot");
+    if (!gpa || !dot) return;
+    const gr = R(gpa);
+    const dr = R(dot);
+    const { c } = clone(gpa);
+    const s = Math.max(0.02, dr.width / gr.width);
+    const a = run(c, [
+      { transform: "none", opacity: 1 },
+      { transform: "translate(" + (dr.left + dr.width / 2 - (gr.left + gr.width / 2)) + "px," + (dr.top + dr.height / 2 - (gr.top + gr.height / 2)) + "px) scale(" + s.toFixed(3) + ")", opacity: 0 },
+    ], { duration: 540 });
+    a.onfinish = () => { c.remove(); flash(dot, 700); };
+    hide(gpa, 1000);
+  };
+
+  // ④ 03 -> 04：每条经历最后一个标签，飞进技能瓷砖的 chips
+  relays["experience>skills"] = () => {
+    const rows = [...document.querySelectorAll("#experience .ab-exp")];
+    const chips = [...document.querySelectorAll("#skills .ab-skill__chips .tag")];
+    if (!rows.length || !chips.length) return;
+
+    rows.forEach((row, i) => {
+      const tags = [...row.querySelectorAll(".tag")];
+      const tag = tags[tags.length - 1];
+      const dst = chips[i];
+      if (!tag || !dst) return;
+      const { c, r } = clone(tag);
+      const d = R(dst);
+      const a = run(c, [
+        { transform: "none", opacity: 1 },
+        { transform: "translate(" + (d.left - r.left) + "px," + (d.top - r.top) + "px)", opacity: 0.92 },
+      ], { duration: 620, delay: i * 80, easing: "cubic-bezier(.3,.8,.3,1)" });
+      a.onfinish = () => { c.remove(); flash(dst, 700); };
+      hide(tag, 1300);
+    });
+  };
+
+  // ⑤ 04 -> 05：瓷砖缩成卡片的位置，卡片在原地长出来
+  relays["skills>interests"] = () => {
+    const tiles = [...document.querySelectorAll("#skills .ab-skill")];
+    const cards = [...document.querySelectorAll("#interests .ab-int__card")];
+    if (!tiles.length || !cards.length) return;
+
+    cards.forEach((card, i) => {
+      const tile = tiles[i * 2] || tiles[i];
+      if (!tile) return;
+      const { c, r } = clone(tile);
+      const d = R(card);
+      const a = run(c, [
+        { transform: "none", opacity: 1 },
+        {
+          transform:
+            "translate(" + (d.left + d.width / 2 - (r.left + r.width / 2)) + "px," +
+            (d.top + d.height / 2 - (r.top + r.height / 2)) + "px) scale(.82)",
+          opacity: 0,
+        },
+      ], { duration: 520, delay: i * 70, easing: "cubic-bezier(.45,0,.2,1)" });
+      a.onfinish = () => c.remove();
+      hide(tile, 1100);
+
+      card.animate([
+        { opacity: 0, transform: "scale(.96)" },
+        { opacity: 1, transform: "none" },
+      ], { duration: 420, delay: 280 + i * 70, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards" });
+    });
+  };
+
+  // ⑥ 05 -> 06：三张卡收成一点，联系卡从这一点展开
+  relays["interests>contact"] = () => {
+    const cards = [...document.querySelectorAll("#interests .ab-int__card")];
+    const panel = document.querySelector("#contact .ab-contact__card");
+    if (!cards.length || !panel) return;
+    const pr = R(panel);
+    const cx = pr.left + pr.width / 2;
+    const cy = pr.top + pr.height / 2;
+
+    cards.forEach((card, i) => {
+      const { c, r } = clone(card);
+      const a = run(c, [
+        { transform: "none", opacity: 1 },
+        {
+          transform:
+            "translate(" + (cx - (r.left + r.width / 2)) + "px," + (cy - (r.top + r.height / 2)) + "px) scale(.28)",
+          opacity: 0,
+        },
+      ], { duration: 540, delay: i * 70, easing: "cubic-bezier(.5,0,.25,1)" });
+      a.onfinish = () => c.remove();
+      hide(card, 1200);
+    });
+
+    panel.animate([
+      { opacity: 0, transform: "scale(.94)" },
+      { opacity: 1, transform: "none" },
+    ], { duration: 440, delay: 340, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards" });
+  };
+
+  /* ---- 触发：两节之间的滚动进度过 32% 播一次 ---- */
+  let lastPlayed = -1;
+  let raf = 0;
+
+  const check = () => {
+    raf = 0;
+    const y = window.scrollY;
+    const tops = secs.map((x) => x.getBoundingClientRect().top + y);
+    let i = -1;
+    for (let k = 0; k < tops.length; k++) if (tops[k] <= y + 2) i = k;
+    if (i < 0 || i >= secs.length - 1) return;
+
+    const p = (y - tops[i]) / Math.max(1, tops[i + 1] - tops[i]);
+    if (p < 0.12) { lastPlayed = -1; return; }
+    if (p > 0.32 && lastPlayed !== i) {
+      lastPlayed = i;
+      const fn = relays[ORDER[i] + ">" + ORDER[i + 1]];
+      if (fn) { try { fn(); } catch (e) { /* 单段失败不影响滚动 */ } }
+    }
+  };
+
+  const onScroll = () => { if (!raf) raf = requestAnimationFrame(check); };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+}
+
+/* ============================================================
    左侧板块索引（fixed，不随页面滚动）
    ============================================================ */
 const AB_SECTIONS = [
@@ -1280,6 +1535,7 @@ function abInitPager() {
   abInitExperience();
   abInitTools();
   abInitHeadRule();
+  abInitRelays();
   abInitIndex(abRenderIndex());
   abInitPager();
 
