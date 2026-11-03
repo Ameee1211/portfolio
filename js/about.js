@@ -2629,6 +2629,102 @@ function abInitCopy() {
    ============================================================ */
 const abWide = () => window.matchMedia("(min-width: 1024px)").matches;
 
+/* ============================================================
+   左侧索引的「直达」跳转
+   ------------------------------------------------------------
+   索引不是分页器，点它是「跳着看」而不是「一路读下去」，所以：
+   ① 落点必须和分页器一致（板块顶对齐视口顶）——不能用 scrollIntoView，
+      它会被 css 里给锚点留的 scroll-margin-top(92px) 顶住，上面露出上一块；
+   ② 路上经过的板块不该播飞入 / 接力（那就是用户说的「元素乱飞」），
+      所以整段滚动挂个 ab-noanim（关掉所有过渡）+ abSilentUntil（接力不许播）；
+   ③ 到站后把**所有**板块恢复到静止态 —— 跳着走会跳过转场，
+      04/05/06 的卡片可能还停在 is-hid / is-merge 这类中间态，不收拾就会一片空白。
+   ============================================================ */
+let abSilentUntil = 0;
+let abDirectSeq = 0;               // 连点时用：只有最后一次的滚动帧有效
+const abSilent = () => performance.now() < abSilentUntil;
+
+// 转场留下的中间态类（静止态里这些都不该存在）
+const AB_MID_CLASS = ["is-hid", "is-pre", "is-out", "is-gone", "is-merge", "is-blank",
+  "is-line-out", "is-bg-shift", "is-typing"];
+
+function abResetSection(sec) {
+  if (!sec) return;
+  [sec, ...sec.querySelectorAll("*")].forEach((n) => {
+    let touched = false;
+    AB_MID_CLASS.forEach((c) => { if (n.classList.contains(c)) { n.classList.remove(c); touched = true; } });
+    if (n.style.opacity) n.style.opacity = "";
+    if (n.style.transform) n.style.transform = "";
+    if (n.style.transitionDelay) n.style.transitionDelay = "";
+    if (n.style.transition) n.style.transition = "";
+    if (touched) { /* 只为可读性，无副作用 */ }
+  });
+}
+
+// 到站：视口里该看见的东西直接摆好（不播动画），放开过渡
+function abSettleArrive(sec) {
+  const vh = window.innerHeight;
+  if (sec) {
+    const mark = (n) => {
+      const r = n.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < vh) n.classList.add("is-in");
+    };
+    if (sec.classList.contains("reveal")) mark(sec);
+    sec.querySelectorAll(".reveal").forEach(mark);
+    sec.classList.add("is-head-in");
+  }
+  void document.documentElement.offsetWidth;
+  // 让所有靠 scroll 重算的东西（时间轴竖线、GPA 进度…）在这里对齐一次
+  window.dispatchEvent(new Event("scroll"));
+  setTimeout(() => document.documentElement.classList.remove("ab-noanim"), 40);
+}
+
+function abDirectTo(id) {
+  const sec = document.getElementById(id);
+  if (!sec) return false;
+  // 转场正在播：先别掺和，等它自己走完（否则会抢 jumpTo）
+  if ((AB_PE && AB_PE.busy()) || (AB_EE && AB_EE.busy()) || (AB_ES && AB_ES.busy()) ||
+      (AB_SI && AB_SI.busy()) || (AB_IC && AB_IC.busy()) || (AB_TRANSIT && AB_TRANSIT.busy())) return false;
+
+  const root = document.documentElement;
+  const max = root.scrollHeight - window.innerHeight;
+  const to = Math.max(0, Math.min(sec.getBoundingClientRect().top + window.scrollY, max));
+  const from = window.scrollY;
+  const dist = to - from;
+  const dur = Math.abs(dist) < 4 ? 0 : Math.min(620, 260 + Math.abs(dist) * 0.055);
+
+  // 先把所有板块收拾回静止态（此刻还看不见，不会闪）
+  AB_SECTIONS.forEach((x) => abResetSection(document.getElementById(x.id)));
+
+  abSilentUntil = performance.now() + dur + 300;
+  root.classList.add("ab-noanim");
+
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const prevSB = root.style.scrollBehavior;
+  root.style.scrollBehavior = "auto";
+
+  if (!dur) {
+    window.scrollTo(0, to);
+    root.style.scrollBehavior = prevSB;
+    abSettleArrive(sec);
+    return true;
+  }
+
+  const t0 = performance.now();
+  const seq = ++abDirectSeq;
+  const tick = (now) => {
+    if (seq !== abDirectSeq) return;      // 又点了一下：这一趟作废
+    const k = Math.min(1, (now - t0) / dur);
+    window.scrollTo(0, Math.round(from + dist * ease(k)));
+    if (k < 1) { requestAnimationFrame(tick); return; }
+    window.scrollTo(0, to);
+    root.style.scrollBehavior = prevSB;
+    abSettleArrive(sec);
+  };
+  requestAnimationFrame(tick);
+  return true;
+}
+
 // 01 理念：高亮短语 -> 原则卡（悬停出现，点一下翻面看例子）
 function abInitPhilosophy() {
   const st = $("abPhilosophy");
@@ -2908,6 +3004,8 @@ function abInitRelays() {
 
   const check = () => {
     raf = 0;
+    // 索引「直达」期间：路上经过的板块不播接力，否则标签会满屏飞
+    if (abSilent()) { lastPlayed = -1; return; }
     const y = window.scrollY;
     const tops = secs.map((x) => x.getBoundingClientRect().top + y);
     let i = -1;
@@ -3374,11 +3472,11 @@ function abInitIndex(rail) {
 
   items.forEach((it) => {
     it.addEventListener("click", (e) => {
-      const el = document.getElementById(it.dataset.target);
-      if (!el) return;
+      const id = it.dataset.target;
+      if (!document.getElementById(id)) return;
       e.preventDefault();
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      history.replaceState(null, "", "#" + it.dataset.target);
+      abDirectTo(id);
+      history.replaceState(null, "", "#" + id);
     });
   });
 }
@@ -3836,4 +3934,27 @@ function abInitPager() {
 
   // main.js 的滚动入场在这里补挂一次（内容刚生成）
   if (typeof initReveal === "function") initReveal();
+
+  // 带 #hash 打开 / 刷新：浏览器会按 scroll-margin-top(92px) 落位，上面露出一截上一块。
+  // 桌面端这里自己定位（手机端不分页，保持浏览器默认行为，让导航别盖住内容）。
+  // 注意要校正两次：DOMContentLoaded 时先摆一次，load 之后浏览器可能又按锚点重新对了一次。
+  if (abWide() && location.hash.length > 1) {
+    const syncHash = () => {
+      const id = decodeURIComponent(location.hash.slice(1));
+      const sec = document.getElementById(id);
+      if (!sec) return;
+      const root = document.documentElement;
+      root.classList.add("ab-noanim");
+      root.style.scrollBehavior = "auto";
+      AB_SECTIONS.forEach((x) => abResetSection(document.getElementById(x.id)));
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(sec.getBoundingClientRect().top + window.scrollY, max)));
+      abSettleArrive(sec);
+    };
+    syncHash();
+    window.addEventListener("load", () => {
+      syncHash();
+      requestAnimationFrame(() => requestAnimationFrame(syncHash));
+    });
+  }
 })();

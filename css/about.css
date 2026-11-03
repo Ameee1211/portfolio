@@ -391,6 +391,15 @@
 #interests .is-hid,
 #contact .is-hid { opacity: 0; transition: none; }
 
+/* 左侧索引「直达」跳转期间：关掉一切过渡。
+   滚动会经过别的板块，那些板块的入场动画（飞入 / 划线 / 接力）就会开始播，
+   看起来就是「一片元素乱飞」；这里整段压掉，到站后再放开 */
+html.ab-noanim *,
+html.ab-noanim *::before,
+html.ab-noanim *::after {
+  transition: none !important;
+}
+
 /* 8 张小卡合缝时：里面的字先隐去，圆角只抹掉「朝内」的那几个角
    （朝外的那几个角保留 16px —— 合成的大卡本来就是圆角的，不能先变直角再圆回来）。
    边框要留着——白卡在白底上，边框一没就完全看不见「缝在合上」了；
