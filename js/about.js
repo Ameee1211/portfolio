@@ -1762,8 +1762,7 @@ function abInitSkillsInt() {
     const img = document.createElement("img");
     img.className = "ab-si__img";
     img.alt = "";
-    img.style.opacity = "0";
-    img.style.transition = "opacity .24s ease";
+    img.style.opacity = "0";        // 具体值由转场逐帧给（别用 CSS 过渡，否则起始会闪）
     if (photo) img.src = photo;
     el.appendChild(img);
     el.__img = img;
@@ -1877,7 +1876,6 @@ function abInitSkillsInt() {
 
     setTimeout(() => {
       card.style.opacity = "1";
-      card.__img.style.opacity = "1";
       tiles.forEach((n) => n.classList.add("is-gone"));
     }, T_IN);
 
@@ -1899,6 +1897,10 @@ function abInitSkillsInt() {
     const t0 = performance.now();
     const tick = (now) => {
       const el = now - t0;
+
+      // 图片的透明度跟着时间慢慢提，铺满 → 收到照片区这一整段都在提（约 620ms）
+      card.__img.style.opacity = clamp01((el - T_IN) / 620).toFixed(3);
+
       if (el < T_ROT0) { requestAnimationFrame(tick); return; }
 
       const p = easeInOut(clamp01((el - T_ROT0) / T_ROT));
@@ -2047,11 +2049,13 @@ function abInitSkillsInt() {
       // 起始就顶着钩织卡自带的阴影和那张图，才不会在交接那一帧「闪一下」
       const card = newCard({ cx: S3.cx, cy: S3.cy, w: S3.w, h: S3.h, a: -90, iw: MW, ih: MH, iy: MOY },
         "0 10px 34px rgba(51, 61, 109, .07)");
+      // 这张卡一开始就必须「立刻」完全出现：它和底下的真卡一模一样，
+      // 但凡有个淡入过程，中间就有一帧画面是空的 —— 用户看到的就是「闪一下」
+      card.style.transition = "box-shadow .32s ease, border-color .32s ease, border-radius .3s ease";
+      card.style.opacity = "1";
       card.__img.style.opacity = "1";
       const shade = newShade();
       shade.style.opacity = "1";     // 05 的底色，先垫住（和页面同色，看不出来）
-
-      setTimeout(() => { card.style.opacity = "1"; }, 30);
 
       const T_ROT0 = 60;
       const T_ROT1 = T_ROT0 + T_ROT;        // 转完就已经在 04 那块的位置上
@@ -2065,13 +2069,16 @@ function abInitSkillsInt() {
         const el = now - t1;
 
         if (el < T_ROT1) {
-          const p = easeInOut(clamp01((el - T_ROT0) / (T_ROT1 - T_ROT0)));
+          const pr = clamp01((el - T_ROT0) / (T_ROT1 - T_ROT0));
+          const p = easeInOut(pr);
           place(card, fit({
             cx: lerp(S3.cx, S1.cx, p), cy: lerp(S3.cy, S1.cy, p),
             w: lerp(S3.w, S1.w, p), h: lerp(S3.h, S1.h, p),
             a: lerp(-90, 0, p),
             iw: lerp(MW, U8.w, p), ih: lerp(MH, U8.h, p), iy: lerp(MOY, 0, p),
           }));
+          // 照片一边转一边慢慢退（用线性进度，别用缓动后的，不然全挤在后半段）
+          card.__img.style.opacity = (1 - clamp01((pr - 0.12) / 0.76)).toFixed(3);
           // 快横过来时把边框补上，落地摊成 8 张卡时边线是连续的
           if (!toned && p > 0.7) {
             toned = true;
@@ -2082,10 +2089,7 @@ function abInitSkillsInt() {
           if (p > 0.3 && card.style.boxShadow !== "none") {
             card.style.boxShadow = "none";
           }
-          // 快到 8 卡那块时照片退掉，落下来就是一块干净的白卡，摊成 8 张不闪
-          if (p > 0.72 && card.__img.style.opacity !== "0") {
-            card.__img.style.opacity = "0";
-          }
+
           requestAnimationFrame(tick2);
           return;
         }
