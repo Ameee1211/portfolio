@@ -2328,10 +2328,12 @@ function abInitIntContact() {
 
     setTimeout(() => {
       P = newPanel(U);
-      place(P, U);
+      // 预热：先用一个极小的角度渲染一帧（这时面板还是全透明的）。
+      // 否则真正起转的第一帧要现场把这一层按 3D 光栅化一次，会整整卡 30ms
       P.el.style.opacity = "0";
       P.el.style.transition = "opacity .18s ease";
-      setTimeout(() => { P.el.style.opacity = "1"; }, 10);
+      place(P, { cx: U.cx, cy: U.cy, w: U.w, h: U.h, a: 0.05 });
+      requestAnimationFrame(() => { P.el.style.opacity = "1"; });
       cards.forEach((n) => n.classList.add("is-gone"));
     }, T_IN);
 
@@ -2365,7 +2367,7 @@ function abInitIntContact() {
       const st = {
         cx: lerp(U.cx, C.cx, p), cy: lerp(U.cy, C.cy, p),
         w: lerp(U.w, C.w, p), h: lerp(U.h, C.h, p),
-        a: lerp(0, 180, p),
+        a: lerp(0.05, 180, p),
       };
       place(P, st);
       P.faces.forEach((f) => { f.style.borderRadius = lerp(RAD0, RAD1, p).toFixed(1) + "px"; });
@@ -2425,7 +2427,8 @@ function abInitIntContact() {
       hide(intro);
 
       const P = newPanel(C);
-      place(P, C);
+      // 同样先给个极小的角度：这一层按 3D 渲染一次，起转那一帧才不会卡
+      place(P, { cx: C.cx, cy: C.cy, w: C.w, h: C.h, a: 0.05 });
       P.paints.forEach((p) => { p.style.opacity = "1"; });
       P.glow.forEach((p) => { p.style.opacity = "1"; });
       P.content.style.opacity = "0";          // 回程不需要背面内容
@@ -2456,7 +2459,7 @@ function abInitIntContact() {
         const st = {
           cx: lerp(C.cx, U.cx, p), cy: lerp(C.cy, U.cy, p),
           w: lerp(C.w, U.w, p), h: lerp(C.h, U.h, p),
-          a: lerp(0, 180, p),
+          a: lerp(0.05, 180, p),
         };
         place(P, st);
         P.faces.forEach((f) => { f.style.borderRadius = lerp(RAD1, RAD0, p).toFixed(1) + "px"; });
