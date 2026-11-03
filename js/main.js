@@ -1343,6 +1343,7 @@ function initHomeScenes() {
       pdeck: document.querySelector(".pdeck"),
       ptags: document.querySelector(".pdeck__tags"),
       card: document.getElementById("aboutCard"),
+      cast: document.getElementById("aboutCardCast"),
       cardInner: document.getElementById("aboutCardInner"),
       cardImg: document.getElementById("aboutCardImg"),
       cardBack: document.getElementById("aboutCardBack"),
@@ -1383,6 +1384,21 @@ function initHomeScenes() {
   // 起止几何：起点是 About 里的照片卡，终点是 pdeck 当前那张卡
   const W = 380;
   const H = 506.7;
+
+  // —— 阴影 ——
+  // 照片的阴影是 0 26px 60px .18（悬停时更大），真卡的阴影是 0 24px 48px -24px .42 那套，
+  // 两者完全不是一个量级。以前两面各自带自己的阴影，翻到 90° 那一帧正面消失、背面出现，
+  // 阴影就硬切一下 —— 用户看到的就是「阴影跳一下」。
+  // 现在两面都不画阴影，统一由 .abcard__cast（不参与翻面）来画，并整段平滑变化。
+  let photoShadow = "";
+  let cardShadow = "";
+  let lastShadow = null;
+  const readShadows = () => {
+    if (els.photo) photoShadow = getComputedStyle(els.photo).boxShadow || "";
+    const face = document.querySelector(".pcard.is-current .pcard__face");
+    if (face) cardShadow = getComputedStyle(face).boxShadow || "";
+    lastShadow = null;      // 强制下一帧写一次
+  };
 
   // 翻牌卡是 position:fixed + left:50% + translate(-50%,-50%)，
   // 它的 50% 是相对**内容区**（initial containing block，不含滚动条）算的；
@@ -1621,6 +1637,7 @@ function initHomeScenes() {
       }
       syncCard();
       settleDeck();     // 把被鼠标吸歪的卡片按回去
+      readShadows();    // 接住照片此刻的阴影（悬停时更大）和真卡此刻的阴影
       measure();        // 重新量起点与终点
       // 起点改成「掰正之前」的样子，接得上用户眼睛看到的那一帧
       if (before && before.width > 0 && els.cardGeom) {
@@ -1664,6 +1681,17 @@ function initHomeScenes() {
     // 标签错后一拍，让画面一直有东西在变，直到时间轴最后一帧（不会出现"到了却不结束"的干等）
     const pIn = Math.min(1, pR / 0.55);
     const pText = clamp01((pR - 0.42) / 0.58);
+
+    // 阴影：翻过 90° 换成「卡片」那一套（这时卡片侧成一条线，看不出切换），
+    // 浓度则跟着真卡的显现程度交出去 —— 两张重叠时也不会叠成两层影子
+    if (els.cast) {
+      els.cast.style.opacity = String(Math.max(0, 1 - pIn));
+      const want = pF > 0.5 ? cardShadow : photoShadow;
+      if (want && want !== lastShadow) {
+        lastShadow = want;
+        els.cast.style.boxShadow = want;
+      }
+    }
     if (els.pdeck) els.pdeck.style.opacity = String(pIn);
     if (els.ptags) els.ptags.style.opacity = String(pText);
     // 标题带：牌组和标签都铺满之后才露出来（不做淡入，见 mqShow 的入场）
@@ -1764,6 +1792,7 @@ function initHomeScenes() {
     // 不倒放前同步的话，翻回去的还是上次进来时那张（会看到卡片突然换了一张）
     syncCard();
     settleDeck();     // 鼠标可能还停在某张牌上（歪的），先按回原位再量落点
+    readShadows();    // 悬停时真卡阴影更大，重新接一次
     measureEnd();
     playTo(TL.morphA * vh);
   };
