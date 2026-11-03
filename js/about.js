@@ -1108,9 +1108,9 @@ function abInitHeroTransit() {
   const floats = [...hero.querySelectorAll(".ab-float")];
 
   const T = {
-    out: 620,        // 照片飞走 / 文字左移
-    waveDelay: 470,  // 圆晚一拍起步：先把照片飞走这件事看清楚
-    wave: 820,       // 圆撑满整屏
+    out: 620,        // 照片（连同旁边的标签）缩到一个点消失 / 文字左移
+    waveDelay: 640,  // 等它们彻底缩没，圆才开始长大
+    wave: 760,       // 圆撑满整屏
     fade: 420,       // 奶油色层淡出，露出 01
     type: 4300,      // 打字总时长（5 秒内）
   };
@@ -1142,6 +1142,23 @@ function abInitHeroTransit() {
         Math.hypot(window.innerWidth - cx, window.innerHeight - cy)
       ) * 1.03;
     return { cx, cy, rad };
+  };
+
+  // 把一个元素缩到照片中心那一点（不是淡出）。先压掉它自己的 CSS 动画，
+  // 否则 abFloat / abSpin 会盖掉这里写的 transform。
+  const collapseTo = (el, cx, cy, dur, delay) => {
+    if (!el) return null;
+    el.style.animation = "none";
+    const r = el.getBoundingClientRect();
+    const dx = cx - (r.left + r.width / 2);
+    const dy = cy - (r.top + r.height / 2);
+    return el.animate(
+      [
+        { transform: "none", opacity: 1 },
+        { transform: "translate(" + dx + "px," + dy + "px) scale(.04)", opacity: 0 },
+      ],
+      { duration: dur, delay: delay, easing: "cubic-bezier(.5,0,.72,1)", fill: "both" }
+    );
   };
 
   const makeWave = (r) => {
@@ -1202,6 +1219,16 @@ function abInitHeroTransit() {
       )
     );
 
+    // 照片旁边的四个标签 + 那圈虚线，和照片一起收进照片中心那一点
+    const pr = photo.getBoundingClientRect();
+    const pcx = pr.left + pr.width / 2;
+    const pcy = pr.top + pr.height / 2;
+    // 和照片同一时长、同一节奏：一起缩，而不是照片先没、标签还挂着
+    [ring, ...floats].forEach((el) => {
+      const a = collapseTo(el, pcx, pcy, T.out, 0);
+      if (a) anims.push(a);
+    });
+
     // 左侧文字向左移出
     [lead, rest].forEach((el, i) => {
       if (!el) return;
@@ -1216,13 +1243,14 @@ function abInitHeroTransit() {
       );
     });
 
-    // 虚线光圈、浮动小标签、底部 scroll 提示一起退场
-    [ring, cue, ...floats].forEach((el) => {
-      if (el) el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "both" });
-    });
+    // 底部 scroll 提示直接淡出
+    if (cue) anims.push(cue.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, fill: "both" }));
 
-    // 01 的文字在这时先全部藏起来：等黄色散开时是空白，再一个字一个字打出来
-    // （否则会先闪一下完整的段落，然后重新打）
+    // 01 先整体进"打字态"：
+    // · 字符全部藏起来 —— 否则黄色散开的一瞬间会先闪出完整的一段话
+    // · 高亮短语的底色归零 —— 否则字符虽然透明，那三条黄底纹还留在那儿
+    // · 下面 01/02/03 三个条目隐藏，等打完字再浮上来
+    phil.classList.add("is-typing");
     stmt.querySelectorAll(".ab-ch").forEach((c) => c.classList.add("is-off"));
 
     const swapAt = T.waveDelay + T.wave;
@@ -1231,6 +1259,7 @@ function abInitHeroTransit() {
       if (stmt.__abReset) stmt.__abReset();   // 01 落到鼠标底下时不要立刻把卡片弹出来
       anims.forEach((a) => a.cancel()); // hero 已在视口外，直接归位
       anims = [];
+      [ring, ...floats].forEach((el) => { if (el) el.style.animation = ""; });
       stage.style.pointerEvents = "";
       phil.classList.add("is-head-in"); // 01 的标题在黄色底下就位（直接出现）
       after(90, () => {
@@ -1285,6 +1314,26 @@ function abInitHeroTransit() {
       ],
       { duration: 760, easing: "cubic-bezier(.2,.8,.3,1)" }
     );
+
+    // 标签和光圈从那个点重新长回来（和照片一起）
+    const pr2 = photo.getBoundingClientRect();
+    const pcx2 = pr2.left + pr2.width / 2;
+    const pcy2 = pr2.top + pr2.height / 2;
+    [ring, ...floats].forEach((el, i) => {
+      if (!el) return;
+      el.style.animation = "none";
+      const r = el.getBoundingClientRect();
+      const dx = pcx2 - (r.left + r.width / 2);
+      const dy = pcy2 - (r.top + r.height / 2);
+      const a = el.animate(
+        [
+          { transform: "translate(" + dx + "px," + dy + "px) scale(.04)", opacity: 0 },
+          { transform: "none", opacity: 1 },
+        ],
+        { duration: 700, delay: 30 + i * 22, easing: "cubic-bezier(.2,.8,.3,1)" }
+      );
+      a.onfinish = () => { el.style.animation = ""; };
+    });
 
     // 文字从左边归位
     [lead, rest].forEach((el, i) => {

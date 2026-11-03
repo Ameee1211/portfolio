@@ -1631,6 +1631,6 @@
 /* 打字期间不给高亮短语铺底色，否则还没打出来的字下面先有一条黄带；
    也不接悬停（否则一边打字一边弹出原则卡，还让整段忽明忽暗） */
 #philosophy.is-typing .ab-philosophy__statement .hl { background-size: 0% 36% !important; pointer-events: none; }
-/* 打字期间下方那三个原则条目先不出现，打完再浮上来 */
-#philosophy .ab-principles { transition: opacity 0.5s ease; }
-#philosophy.is-typing .ab-principles { opacity: 0; pointer-events: none; }
+/* 打字期间下方那三个原则条目先不出现；打完字后和高亮划线同时浮上来 */
+#philosophy .ab-principles { transition: opacity 0.5s ease 0.32s; }
+#philosophy.is-typing .ab-principles { opacity: 0; pointer-events: none; transition: none; }
