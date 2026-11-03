@@ -2172,7 +2172,6 @@ function abInitIntContact() {
 
   const T_HEAD = 420;     // 05 标题 + 导语
   const T_MERGE = 420;    // 合缝
-  const T_PAINT = 520;    // 变成深色
   const T_FLIP = 660;     // 翻牌 + 缩小 / 放大
   const RAD0 = 22;        // 合缝后那块沿用卡片的圆角
   const RAD1 = 32;        // 联系卡的圆角
@@ -2309,13 +2308,12 @@ function abInitIntContact() {
     const P = newPanel(U);
     place(P, U);
     P.el.style.opacity = "0";
-    // 初始阴影跟三张卡自带的一样，交叉淡化时不会「阴影一下子没了」
-    P.el.style.boxShadow = "0 10px 34px rgba(51, 61, 109, .07)";
-    P.el.style.transition = "opacity .18s ease, box-shadow .4s ease";
+    P.el.style.transition = "opacity .18s ease";
+    // 一上来就是深色：合缝完直接变深色，不再有「先白一下再变色」那一拍
+    P.paints.forEach((p) => { p.style.opacity = "1"; });
 
-    const T_IN = 60 + T_MERGE - 40;     // 440：面板淡入
-    const T_PAINT0 = T_IN + 180;        // 620：开始变深色
-    const T_FLIP0 = T_PAINT0 + T_PAINT + 40;   // 1180：开始翻
+    const T_IN = 60 + T_MERGE - 40;     // 440：深色面板接上
+    const T_FLIP0 = T_IN + 160;         // 600：立刻开始翻
     const T_FLIP1 = T_FLIP0 + T_FLIP;
     const T_JUMP = T_FLIP0 + T_FLIP / 2;       // 正好转到 90°，卡片看不见的那一下跳
 
@@ -2335,14 +2333,6 @@ function abInitIntContact() {
       });
       void grid.offsetHeight;
     }, T_IN + 30);
-
-    setTimeout(() => {
-      P.el.style.boxShadow = "none";        // 联系卡本身没有阴影，跟着变色一起收掉
-      P.paints.forEach((p) => {
-        p.style.transition = "opacity " + T_PAINT + "ms ease";
-        p.style.opacity = "1";
-      });
-    }, T_PAINT0);
 
     let jumped = false;
     const t0 = performance.now();
