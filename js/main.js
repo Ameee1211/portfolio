@@ -1599,6 +1599,12 @@ function initHomeScenes() {
     if (pM > 0 && !backSynced) {
       backSynced = true;
       document.body.dataset.hsLock = "1";
+      // 先记住照片「此刻在屏幕上的样子」：鼠标停在 About 区时它是歪的（rotateX/rotateY + 1.03 缩放），
+      // 翻牌卡必须从**这个**位置和大小接手。之前是先把它瞬间掰正、再按掰正后的位置量 ——
+      // 于是照片忽然回正缩回去，看起来就是卡片「跳一下」。
+      const vw2 = window.innerWidth || 1;
+      const vh2 = window.innerHeight || 1;
+      const before = els.photo ? els.photo.getBoundingClientRect() : null;
       if (els.photo) {
         els.photo.style.transition = "none";
         els.photo.style.transform = "rotate(-2deg)";
@@ -1606,6 +1612,13 @@ function initHomeScenes() {
       syncCard();
       settleDeck();     // 把被鼠标吸歪的卡片按回去
       measure();        // 重新量起点与终点
+      // 起点改成「掰正之前」的样子，接得上用户眼睛看到的那一帧
+      if (before && before.width > 0 && els.cardGeom) {
+        els.cardGeom.dx = before.left + before.width / 2 - vw2 / 2;
+        els.cardGeom.dy = before.top + before.height / 2 - vh2 / 2;
+        els.cardGeom.sx = before.width / W;
+        els.cardGeom.sy = before.height / H;
+      }
     } else if (pM <= 0 && backSynced) {
       backSynced = false;
       document.body.dataset.hsLock = "";
@@ -1740,6 +1753,7 @@ function initHomeScenes() {
     // 重新克隆"当前这张"：用户可能已经在牌堆里翻到了第 3 张，
     // 不倒放前同步的话，翻回去的还是上次进来时那张（会看到卡片突然换了一张）
     syncCard();
+    settleDeck();     // 鼠标可能还停在某张牌上（歪的），先按回原位再量落点
     measureEnd();
     playTo(TL.morphA * vh);
   };
