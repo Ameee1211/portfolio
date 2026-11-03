@@ -1401,11 +1401,19 @@ function initHomeScenes() {
   };
 
   // 正反两面写同一个阴影值（背面是克隆出来的，每次 syncCard 后要重新找一遍）
-  const setCast = (v) => {
+  // instant：刚接手的那一帧必须**立刻**生效。否则会从 box-shadow:none 渐变出来（0.42s），
+  // 视觉上就是「照片没了 → 影子先消失、再长回来」—— 用户说的「阴影跳一下」就是这个。
+  const setCast = (v, instant) => {
     if (!v) return;
-    if (els.cardFront) els.cardFront.style.boxShadow = v;
     const bf = els.cardBack ? els.cardBack.querySelector(".pcard__face") : null;
-    if (bf) bf.style.boxShadow = v;
+    [els.cardFront, bf].forEach((n) => {
+      if (!n) return;
+      if (!instant) { n.style.boxShadow = v; return; }
+      n.style.transition = "none";
+      n.style.boxShadow = v;
+      void n.offsetWidth;          // 让这一帧立刻落定，别带着过渡起来
+      n.style.transition = "";
+    });
   };
 
   // 翻牌卡是 position:fixed + left:50% + translate(-50%,-50%)，
@@ -1694,8 +1702,9 @@ function initHomeScenes() {
     // 正反两面写同一个值 —— 正面藏、背面露的那一帧，两面的影子完全一样，所以不跳
     const wantShadow = pF > 0.5 ? cardShadow : photoShadow;
     if (wantShadow && wantShadow !== lastShadow) {
+      const instant = lastShadow === null;   // null = 刚接手（readShadows 之后的第一帧）
       lastShadow = wantShadow;
-      setCast(wantShadow);
+      setCast(wantShadow, instant);
     }
     if (els.pdeck) els.pdeck.style.opacity = String(pIn);
     if (els.ptags) els.ptags.style.opacity = String(pText);
