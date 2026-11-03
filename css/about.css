@@ -390,19 +390,20 @@
 #skills .is-hid,
 #interests .is-hid { opacity: 0; transition: none; }
 
-/* 8 张小卡合缝时：圆角抹平、里面的字先隐去。
+/* 8 张小卡合缝时：里面的字先隐去，圆角只抹掉「朝内」的那几个角
+   （朝外的那几个角保留 16px —— 合成的大卡本来就是圆角的，不能先变直角再圆回来）。
    边框要留着——白卡在白底上，边框一没就完全看不见「缝在合上」了；
    等大卡淡入盖住时，里面的细线自然跟着一起消失 */
 #skills .ab-skill > * { transition: opacity 0.22s ease; }
 #skills .ab-skill.is-merge {
-  border-radius: 0;
   transition: border-radius 0.32s ease, opacity 0.16s ease;
 }
 #skills .ab-skill.is-merge > * { opacity: 0; }
 #skills .ab-skill.is-merge.is-gone { opacity: 0; }
 
-/* 钩织卡落地时内容先留白，随后再浮出来 */
-#interests .ab-int__card.is-blank > * { opacity: 0; }
+/* 钩织卡落地时只有文字先留白，照片要直接接上（飞行时卡里就是这张图） */
+#interests .ab-int__card.is-blank > .ab-int__right,
+#interests .ab-int__card.is-blank > .ab-int__strip { opacity: 0; }
 
 /* 飞行的大卡（尺寸 / 位置 / 角度都由 JS 逐帧给）+ 背景幕 */
 .ab-si__shade {
@@ -422,7 +423,17 @@
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 16px;
+  overflow: hidden;              /* 图被卡片裁切，卡片转、图不转 */
   transform-origin: 50% 50%;
+  will-change: width, height, left, top, transform;
+}
+/* 卡片里那张钩织图：位置 / 尺寸 / 反向角度都由 JS 逐帧给 */
+.ab-si__img {
+  position: absolute;
+  display: block;
+  max-width: none;               /* 盖掉全站的 img { max-width:100% } */
+  object-fit: cover;
+  object-position: center;
   will-change: width, height, left, top, transform;
 }
 
@@ -630,7 +641,8 @@
   border-radius: 16px;
   background: var(--white);
   border: 1px solid var(--line);
-  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, opacity 0.3s ease;
+  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease,
+    border-radius 0.32s ease, opacity 0.3s ease;
 }
 .ab-skill__num {
   font-size: 10px;

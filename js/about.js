@@ -1653,6 +1653,9 @@ function abInitSkillsInt() {
   const pick = list[0];                 // 钩织
   const others = list.slice(1);         // Games / Swimming
   const pickKids = [...pick.children];
+  const pickText = pick.querySelector(".ab-int__right");
+  const pickImg = pick.querySelector(".ab-int__media img");
+  const photo = pickImg ? pickImg.getAttribute("src") : "";
 
   const T_FADE = 240;    // 04 的文字退场
   const T_MERGE = 380;   // 缝隙合上
@@ -1704,12 +1707,30 @@ function abInitSkillsInt() {
   };
 
   // 飞行大卡：尺寸 / 位置 / 角度全由 JS 逐帧给
+  // 卡里那张图是「反向转」的：卡片转多少，图就回转多少，所以图在屏幕上始终正立，
+  // 只是被转着的卡片裁掉边角。图的屏幕位置用 (0, iy) 表示（相对卡片中心，
+  // 负值 = 往上），再换算回卡片的局部坐标，这样它才不会跟着卡片一起歪。
   const place = (el, st) => {
+    const a = st.a || 0;
     el.style.width = st.w.toFixed(1) + "px";
     el.style.height = st.h.toFixed(1) + "px";
     el.style.left = (st.cx - st.w / 2).toFixed(1) + "px";
     el.style.top = (st.cy - st.h / 2).toFixed(1) + "px";
-    el.style.transform = "rotate(" + (st.a || 0).toFixed(2) + "deg)";
+    el.style.transform = "rotate(" + a.toFixed(2) + "deg)";
+
+    const img = el.__img;
+    if (!img) return;
+    const iw = st.iw == null ? st.w : st.iw;
+    const ih = st.ih == null ? st.h : st.ih;
+    const iy = st.iy || 0;
+    const rad = -a * Math.PI / 180;
+    const lx = st.w / 2 - iy * Math.sin(rad);
+    const ly = st.h / 2 + iy * Math.cos(rad);
+    img.style.width = iw.toFixed(1) + "px";
+    img.style.height = ih.toFixed(1) + "px";
+    img.style.left = (lx - iw / 2).toFixed(1) + "px";
+    img.style.top = (ly - ih / 2).toFixed(1) + "px";
+    img.style.transform = "rotate(" + (-a).toFixed(2) + "deg)";
   };
 
   // 旋转时按投影等比收一点，保证不出安全区
@@ -1728,14 +1749,25 @@ function abInitSkillsInt() {
     const h = st.h * k;
     const nh = w * s + h * c;
     const cy = Math.max(top + nh / 2, Math.min(st.cy, window.innerHeight - SAFE - nh / 2));
-    return { cx: st.cx, cy: cy, w: w, h: h, a: st.a };
+    return { cx: st.cx, cy: cy, w: w, h: h, a: st.a, iw: st.iw, ih: st.ih, iy: st.iy };
   };
 
-  const newCard = (r) => {
+  const newCard = (r, shadow) => {
     const el = document.createElement("div");
     el.className = "ab-si__card";
     el.style.opacity = "0";
-    el.style.transition = "opacity .16s ease, border-color .32s ease, border-radius .3s ease";
+    el.style.boxShadow = shadow || "none";
+    el.style.transition = "opacity .16s ease, border-color .32s ease, border-radius .3s ease, box-shadow .32s ease";
+
+    const img = document.createElement("img");
+    img.className = "ab-si__img";
+    img.alt = "";
+    img.style.opacity = "0";
+    img.style.transition = "opacity .24s ease";
+    if (photo) img.src = photo;
+    el.appendChild(img);
+    el.__img = img;
+
     place(el, r);
     document.body.appendChild(el);
     return el;
@@ -1763,11 +1795,18 @@ function abInitSkillsInt() {
       const y = r.top - (row > 0 ? gy / 2 : 0);
       const w = r.width + (col > 0 ? gx / 2 : 0) + (col < cols - 1 ? gx / 2 : 0);
       const h = r.height + (row > 0 ? gy / 2 : 0) + (row < rows - 1 ? gy / 2 : 0);
+      // 只保留「朝外」的圆角，朝内的那几条缝要拼成一条直线
+      const R = 16;
+      const tl = (col === 0 && row === 0) ? R : 0;
+      const tr = (col === cols - 1 && row === 0) ? R : 0;
+      const br = (col === cols - 1 && row === rows - 1) ? R : 0;
+      const bl = (col === 0 && row === rows - 1) ? R : 0;
       return {
         dx: (x + w / 2) - (r.left + r.width / 2),
         dy: (y + h / 2) - (r.top + r.height / 2),
         sx: w / r.width,
         sy: h / r.height,
+        radius: tl + "px " + tr + "px " + br + "px " + bl + "px",
       };
     });
   };
@@ -1803,6 +1842,11 @@ function abInitSkillsInt() {
     // 所以卡片再大也大不过 05 里那张卡，转过 45° 也不会扫到左边的板块索引
     const S3 = { cx: P.cx, cy: P.cy, w: P.h, h: P.w, a: -90 };
 
+    // 卡里那张钩织图：从「铺满整张大卡」收到「钩织卡顶部那块 4:3」
+    const MW = P.w;
+    const MH = P.w * 0.75;
+    const MOY = (MH - P.h) / 2;          // 图心相对卡片中心上移多少（负值）
+
     /* 2. 04 的文字退场 */
     [skHead, lead, belt].forEach((n, i) => {
       if (!n) return;
@@ -1813,8 +1857,11 @@ function abInitSkillsInt() {
       a.onfinish = () => { hide(n); a.cancel(); };
     });
 
-    /* 3. 8 张卡合缝 */
-    tiles.forEach((n) => n.classList.add("is-merge"));
+    /* 3. 8 张卡合缝（只抹掉朝内的圆角，外面四个角保持 16px） */
+    tiles.forEach((n, i) => {
+      n.classList.add("is-merge");
+      n.style.borderRadius = cells[i].radius;
+    });
     const merge = tiles.map((n, i) => n.animate(
       [{ transform: "none" }, { transform: tf(cells[i]) }],
       { duration: T_MERGE, delay: 60, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" }
@@ -1830,6 +1877,7 @@ function abInitSkillsInt() {
 
     setTimeout(() => {
       card.style.opacity = "1";
+      card.__img.style.opacity = "1";
       tiles.forEach((n) => n.classList.add("is-gone"));
     }, T_IN);
 
@@ -1839,6 +1887,7 @@ function abInitSkillsInt() {
       tiles.forEach((n) => {
         n.classList.remove("is-merge", "is-gone");
         n.style.transform = "";
+        n.style.borderRadius = "";
         hide(n);
       });
       void sk.offsetHeight;
@@ -1857,13 +1906,15 @@ function abInitSkillsInt() {
         cx: lerp(U8.cx, S3.cx, p), cy: lerp(U8.cy, S3.cy, p),
         w: lerp(U8.w, S3.w, p), h: lerp(U8.h, S3.h, p),
         a: lerp(0, -90, p),
+        iw: lerp(U8.w, MW, p), ih: lerp(U8.h, MH, p), iy: lerp(0, MOY, p),
       }));
 
       // 收尾把边框和圆角换成钩织卡的样子（趁它还在飞，落位那一刻不会有硬边消失）
-      if (!toned && p > 0.68) {
+      if (!toned && p > 0.5) {
         toned = true;
         card.style.borderColor = "transparent";
         card.style.borderRadius = "22px";
+        card.style.boxShadow = "0 10px 34px rgba(51, 61, 109, .07)";   // 钩织卡自带的柔光，淡进来
       }
 
       if (el < T_LAND) { requestAnimationFrame(tick); return; }
@@ -1883,15 +1934,13 @@ function abInitSkillsInt() {
         show(intro, 300, 70, 0, 6);
       }, 40);
 
-      // 钩织卡内容浮出来（侧边那条竖排标签平时是隐藏的，别动它）
+      // 照片在飞行时就已经在卡里了，落地直接接上；这里只把文字浮出来
       setTimeout(() => {
-        const kids = pickKids.filter((n) => !n.classList.contains("ab-int__strip"));
-        kids.forEach((n, i) => {
-          const a = n.animate([{ opacity: 0 }, { opacity: 1 }],
-            { duration: 280, delay: i * 40, easing: "ease", fill: "both" });
+        if (pickText) {
+          const a = pickText.animate([{ opacity: 0 }, { opacity: 1 }],
+            { duration: 300, easing: "ease", fill: "both" });
           a.onfinish = () => a.cancel();
-        });
-        // 动画已经用 fill 压住起始态，这时候摘掉 .is-blank 不会闪
+        }
         pick.classList.remove("is-blank");
       }, 150);
 
@@ -1948,6 +1997,11 @@ function abInitSkillsInt() {
 
     // 竖版卡就是钩织卡的净尺寸；横过来以后正好等于 8 张卡拼成的那块（U8）
     const S3 = { cx: P.cx, cy: P.cy, w: P.h, h: P.w, a: -90 };
+
+    // 卡里那张钩织图：从「铺满整张大卡」收到「钩织卡顶部那块 4:3」
+    const MW = P.w;
+    const MH = P.w * 0.75;
+    const MOY = (MH - P.h) / 2;          // 图心相对卡片中心上移多少（负值）
     const S1 = { cx: U8.cx, cy: U8.cy, w: U8.w, h: U8.h, a: 0 };
 
     /* 1. 05 的内容退场 */
@@ -1960,12 +2014,13 @@ function abInitSkillsInt() {
 
     // 卡里的内容先淡掉；动画不急着 cancel（cancel 会露出正常态，等于闪一下），
     // 等下面 hide(pick) 把它整个藏起来时再一起收
-    const kidsOut = pickKids.map(() => null);
+    // 只淡文字：照片要一直留着，等飞行卡里的同一张图把它接管，中间不能闪
+    const kidsOut = [];
     setTimeout(() => {
-      pickKids.forEach((n, i) => {
-        kidsOut[i] = n.animate([{ opacity: 1 }, { opacity: 0 }],
-          { duration: 190, delay: i * 30, easing: "ease", fill: "both" });
-      });
+      if (pickText) {
+        kidsOut.push(pickText.animate([{ opacity: 1 }, { opacity: 0 }],
+          { duration: 190, easing: "ease", fill: "both" }));
+      }
     }, 240);
 
     // 另外两张缩回卡里
@@ -1989,7 +2044,10 @@ function abInitSkillsInt() {
       hide(pick);
       pick.classList.add("is-blank");
       kidsOut.forEach((a) => a.cancel());
-      const card = newCard(P);
+      // 起始就顶着钩织卡自带的阴影和那张图，才不会在交接那一帧「闪一下」
+      const card = newCard({ cx: S3.cx, cy: S3.cy, w: S3.w, h: S3.h, a: -90, iw: MW, ih: MH, iy: MOY },
+        "0 10px 34px rgba(51, 61, 109, .07)");
+      card.__img.style.opacity = "1";
       const shade = newShade();
       shade.style.opacity = "1";     // 05 的底色，先垫住（和页面同色，看不出来）
 
@@ -2012,12 +2070,21 @@ function abInitSkillsInt() {
             cx: lerp(S3.cx, S1.cx, p), cy: lerp(S3.cy, S1.cy, p),
             w: lerp(S3.w, S1.w, p), h: lerp(S3.h, S1.h, p),
             a: lerp(-90, 0, p),
+            iw: lerp(MW, U8.w, p), ih: lerp(MH, U8.h, p), iy: lerp(MOY, 0, p),
           }));
           // 快横过来时把边框补上，落地摊成 8 张卡时边线是连续的
           if (!toned && p > 0.7) {
             toned = true;
             card.style.borderColor = "var(--line)";
             card.style.borderRadius = "16px";
+          }
+          // 飞离钩织卡以后阴影就撤掉（8 卡那块本来就没有阴影）
+          if (p > 0.3 && card.style.boxShadow !== "none") {
+            card.style.boxShadow = "none";
+          }
+          // 快到 8 卡那块时照片退掉，落下来就是一块干净的白卡，摊成 8 张不闪
+          if (p > 0.72 && card.__img.style.opacity !== "0") {
+            card.__img.style.opacity = "0";
           }
           requestAnimationFrame(tick2);
           return;
@@ -2031,6 +2098,7 @@ function abInitSkillsInt() {
           tiles.forEach((n, i) => {
             n.classList.add("is-merge");
             n.style.transform = tf(cells[i]);
+            n.style.borderRadius = cells[i].radius;
           });
         }
 
@@ -2045,6 +2113,7 @@ function abInitSkillsInt() {
         tiles.forEach((n, i) => {
           const from = n.style.transform || "none";
           n.classList.remove("is-merge");
+          n.style.borderRadius = "";
           const a = n.animate([{ transform: from }, { transform: "none" }], {
             duration: 520, delay: i * 20, easing: "cubic-bezier(.4,0,.2,1)", fill: "both",
           });
