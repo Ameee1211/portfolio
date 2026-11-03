@@ -363,6 +363,11 @@
   background-image: none;
 }
 
+/* 转场时的背景过渡：02 的白 ↔ 03 的淡灰紫，在圈圈转的同时渐变过去 */
+.ab-sec.is-bg-shift { transition: background-color 0.95s ease; }
+#education.is-bg-shift { background-color: var(--bg); }
+#experience.is-bg-shift { background-color: var(--white); }
+
 /* 转场专用的弧线层（JS 逐帧算 path） */
 .ab-pe {
   position: fixed;
@@ -542,17 +547,8 @@
   line-height: 1.82;
   color: var(--text);
 }
-.ab-exp__points li::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: 11px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--orange);
-  border: 1px solid rgba(51, 61, 109, 0.16);
-}
+/* 条目前面那个黄色小圆点去掉，只留时间轴上那颗 */
+.ab-exp__points li::before { display: none; }
 .ab-exp__tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
 .ab-exp__tags .tag {
   font-size: 10px;
@@ -1550,6 +1546,10 @@
     transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.16, 0.84, 0.28, 1);
   }
   .ab-exp.reveal.is-in { opacity: 1; transform: none; }
+  /* 三条经历依次从右边飞进来（不是三条一起），最后一条在 1.1s 内到位 */
+  .ab-exp.reveal:nth-of-type(2) { transition-delay: 0.2s; }
+  .ab-exp.reveal:nth-of-type(3) { transition-delay: 0.4s; }
+  .ab-exp.reveal:nth-of-type(n + 4) { transition-delay: 0.6s; }
   .ab-timeline.is-hover .ab-exp:not(.is-on) { opacity: 0.4; }
 
   /* ---- 04 Skills：图标朝光标 ---- */

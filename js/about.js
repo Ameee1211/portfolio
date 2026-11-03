@@ -922,9 +922,9 @@ function abInitEduExp() {
   const lineAfter = () => {
     const tlR = tl.getBoundingClientRect();
     const expR = exp.getBoundingClientRect();
-    const top = tlR.top - expR.top + 14;
-    const p = clamp01((window.innerHeight * 0.78 - (tlR.top - expR.top)) / Math.max(1, tlR.height));
-    return { x: tlR.left + 8, top: top, h: Math.max(1, (tlR.height - 28) * p) };
+    const relTop = tlR.top - expR.top;
+    const p = clamp01((window.innerHeight * 0.78 - relTop) / Math.max(1, tlR.height));
+    return { x: tlR.left + 8, top: relTop + 14, h: Math.max(1, (tlR.height - 28) * p), p: p };
   };
 
   // 现在这条线在屏幕上的真实位置（03 就在视口里时用得上）
@@ -950,6 +950,8 @@ function abInitEduExp() {
     busy = true;
     gpa.dataset.peHidden = "1";
     gpa.style.opacity = "0";
+    line.style.opacity = "0";            // 真身那根线先让位，落位再接上
+    edu.classList.add("is-bg-shift");    // 02 的白 → 03 的淡灰紫，和圈圈同时渐变
     // 02 其余内容退场
     const outs = [];
     [edu.querySelector(".ab-head"), edu.querySelector(".ab-edu__body")].forEach((n) => {
@@ -979,9 +981,11 @@ function abInitEduExp() {
         path.setAttribute("stroke-width", lerp(gW, gW, p).toFixed(1));
         s0.setAttribute("stop-color", mix(BLUE, BLUE, 0));
         s1.setAttribute("stop-color", mix(PURPLE, PURPLE, 0));
-        grad.setAttribute("x1", cx);
+        // 渐变走外接框的对角线 —— 和 GPA 自身那个 x1/y1 → x2/y2 对角渐变一致，
+        // 否则克隆和真环的配色分布不一样，交接时会闪一下
+        grad.setAttribute("x1", cx - rr);
         grad.setAttribute("y1", cy - rr);
-        grad.setAttribute("x2", cx);
+        grad.setAttribute("x2", cx + rr);
         grad.setAttribute("y2", cy + rr);
         raf = requestAnimationFrame(frame);
         return;
@@ -1005,21 +1009,25 @@ function abInitEduExp() {
       s0.setAttribute("stop-color", mix(BLUE, LINE0, p));
       s1.setAttribute("stop-color", mix(PURPLE, LINE1, p));
       s1.setAttribute("stop-opacity", lerp(1, 0.28, p).toFixed(2));
-      grad.setAttribute("x1", lerp(cx0, dst.x, p));
+      grad.setAttribute("x1", lerp(cx0 - R_MID, dst.x, p));
       grad.setAttribute("y1", lerp(cy0 - R_MID, dst.top, p));
-      grad.setAttribute("x2", lerp(cx0, dst.x, p));
+      grad.setAttribute("x2", lerp(cx0 + R_MID, dst.x, p));
       grad.setAttribute("y2", lerp(cy0 + R_MID, dst.top + dst.h, p));
 
       if (q < 1) { raf = requestAnimationFrame(frame); return; }
 
-      // 落位：跳到 03，克隆撤走，竖线交给真身（滚动会继续把它填满）
+      // 落位：跳到 03，真身那根线立刻接在克隆的位置上（不留空档），克隆再淡出撤走
       const expTop = exp.getBoundingClientRect().top + window.scrollY;
       jumpTo(expTop);
-      svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "both" })
-        .onfinish = () => { svg.remove(); line.style.opacity = ""; };
+      line.style.transform = "scaleY(" + dst.p.toFixed(4) + ")";
+      line.style.opacity = "";
+      svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "both" })
+        .onfinish = () => svg.remove();
       outs.forEach((a) => a.cancel());
       delete gpa.dataset.peHidden;
       gpa.style.opacity = "";
+      // 03 已经是自己的底色了，02 慢慢变回去（此时它已在视口外）
+      setTimeout(() => edu.classList.remove("is-bg-shift"), 700);
       setTimeout(() => { busy = false; }, 140);
     };
 
@@ -1047,7 +1055,18 @@ function abInitEduExp() {
     busy = true;
     gpa.dataset.peHidden = "1";
     gpa.style.opacity = "0";
-    line.style.opacity = "0";   // 真身那根线先让位，等克隆撤走再接上
+    line.style.opacity = "0";            // 真身那根线先让位
+    exp.classList.add("is-bg-shift");    // 03 的淡灰紫 → 02 的白，和圈圈同时渐变
+
+    // 03 的内容全部退场，只留下圈圈在转
+    const outs3 = [];
+    [exp.querySelector(".ab-head"), ...exp.querySelectorAll(".ab-exp")].forEach((n, i) => {
+      if (!n) return;
+      outs3.push(n.animate(
+        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(46px)" }],
+        { duration: 300, delay: Math.min(i, 3) * 40, easing: "ease", fill: "both" }
+      ));
+    });
 
     const { svg, grad, s0, s1, paths } = abRelaySvg(1, "abEeGrad");
     const path = paths[0];
@@ -1078,9 +1097,9 @@ function abInitEduExp() {
         s0.setAttribute("stop-color", mix(LINE0, BLUE, p));
         s1.setAttribute("stop-color", mix(LINE1, PURPLE, p));
         s1.setAttribute("stop-opacity", lerp(0.28, 1, p).toFixed(2));
-        grad.setAttribute("x1", lerp(src.x, cx0, p));
+        grad.setAttribute("x1", lerp(src.x, cx0 - R_MID, p));
         grad.setAttribute("y1", lerp(src.top, cy0 - R_MID, p));
-        grad.setAttribute("x2", lerp(src.x, cx0, p));
+        grad.setAttribute("x2", lerp(src.x, cx0 + R_MID, p));
         grad.setAttribute("y2", lerp(src.top + src.h, cy0 + R_MID, p));
         raf = requestAnimationFrame(frame);
         return;
@@ -1096,19 +1115,22 @@ function abInitEduExp() {
       path.setAttribute("stroke-width", gW.toFixed(1));
       s0.setAttribute("stop-color", mix(BLUE, BLUE, 0));
       s1.setAttribute("stop-color", mix(PURPLE, PURPLE, 0));
-      grad.setAttribute("x1", cx);
+      grad.setAttribute("x1", cx - rr);
       grad.setAttribute("y1", cy - rr);
-      grad.setAttribute("x2", cx);
+      grad.setAttribute("x2", cx + rr);
       grad.setAttribute("y2", cy + rr);
 
       if (q < 1) { raf = requestAnimationFrame(frame); return; }
 
-      // 落位：跳回 02，克隆撤走，GPA 回来
+      // 落位：跳回 02。GPA 立刻出现在克隆的位置上（不留空档、不闪），克隆随后淡出
       jumpTo(er.top + window.scrollY);
-      svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "both" })
-        .onfinish = () => { svg.remove(); gpa.style.opacity = ""; };
       delete gpa.dataset.peHidden;
+      gpa.style.opacity = "";
+      svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "both" })
+        .onfinish = () => svg.remove();
       line.style.opacity = "";
+      outs3.forEach((a) => a.cancel());
+      setTimeout(() => exp.classList.remove("is-bg-shift"), 700);
       setTimeout(() => { busy = false; }, 140);
     };
 
