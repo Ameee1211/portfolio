@@ -2213,6 +2213,7 @@ function abInitIntContact() {
       return {
         dx: (x + w / 2) - (r.left + r.width / 2),
         sx: w / r.width,
+        x0: r.left - g.left,
         bd: l + "px " + rr + "px " + rr + "px " + l + "px",
       };
     });
@@ -2305,39 +2306,58 @@ function abInitIntContact() {
     ));
 
     /* 3. 面板接上 + 变色 */
-    const P = newPanel(U);
-    place(P, U);
-    P.el.style.opacity = "0";
-    P.el.style.transition = "opacity .18s ease";
-    // 一上来就是深色：合缝完直接变深色，不再有「先白一下再变色」那一拍
-    P.paints.forEach((p) => { p.style.opacity = "1"; });
+    // 每张卡里垫一层深色（各自取整块渐变的一段）：合缝的同时颜色就在往深里走
+    const GRAD = "linear-gradient(135deg, #333d6d 0%, #2b3159 62%, #3a3663 100%)";
+    const veils = cards.map((n, i) => {
+      const v = document.createElement("span");
+      v.className = "ab-ic__veil";
+      v.style.transition = "none";     // 透明度逐帧给，不能被 .is-merge 的过渡拖住
+      v.style.backgroundImage = GRAD;
+      v.style.backgroundSize = g.width + "px " + g.height + "px";
+      v.style.backgroundPosition = (-cells[i].x0) + "px 0";
+      n.appendChild(v);
+      return v;
+    });
 
+    let P = null;                       // 面板到 T_IN 才建，先留个引用给逐帧逻辑
     const T_IN = 60 + T_MERGE - 40;     // 440：深色面板接上
+    const T_DARK = 540;                 // 深色从合缝开始慢慢上，600 到满
     const T_FLIP0 = T_IN + 160;         // 600：立刻开始翻
     const T_FLIP1 = T_FLIP0 + T_FLIP;
     const T_JUMP = T_FLIP0 + T_FLIP / 2;       // 正好转到 90°，卡片看不见的那一下跳
 
     setTimeout(() => {
-      P.el.style.opacity = "1";
+      P = newPanel(U);
+      place(P, U);
+      P.el.style.opacity = "0";
+      P.el.style.transition = "opacity .18s ease";
+      setTimeout(() => { P.el.style.opacity = "1"; }, 10);
       cards.forEach((n) => n.classList.add("is-gone"));
     }, T_IN);
 
-    // 面板已经盖住整块：三张卡立刻复位（就在它下面）
+    // 面板完全盖住整块以后，三张卡才复位（提前复位会在半透明的时候闪出缝）
     setTimeout(() => {
       merge.forEach((a) => a.cancel());
-      cards.forEach((n) => {
+      cards.forEach((n, i) => {
+        veils[i].remove();
         n.classList.remove("is-merge", "is-gone");
         n.style.transform = "";
         n.style.borderRadius = "";
         hide(n);
       });
       void grid.offsetHeight;
-    }, T_IN + 30);
+    }, T_IN + 220);
 
     let jumped = false;
     const t0 = performance.now();
     const tick = (now) => {
       const el = now - t0;
+
+      // 颜色：合缝一起变深，慢一点，600ms 到满（面板和卡片用同一个值，接得上）
+      const k = clamp01((el - 60) / T_DARK);
+      veils.forEach((v) => { v.style.opacity = k.toFixed(3); });
+      if (P) P.paints.forEach((pp) => { pp.style.opacity = k.toFixed(3); });
+
       if (el < T_FLIP0) { requestAnimationFrame(tick); return; }
 
       const p = easeInOut(clamp01((el - T_FLIP0) / T_FLIP));
@@ -2383,12 +2403,14 @@ function abInitIntContact() {
     const pr = real.getBoundingClientRect();
     const C = { cx: pr.left + pr.width / 2, cy: pr.top + pr.height / 2, w: pr.width, h: pr.height, a: 0 };
 
-    /* 1. 06 的内容退场（卡片本身留着） */
+    /* 1. 06 的内容退场（卡片本身留着）。
+       动画先挂着别 cancel：一 cancel 就会露出正常态（opacity 1），
+       偏偏这时候卡片还没被面板盖住 —— 用户看到的就是「字闪一下」。 */
+    const outAnims = [];
     [...real.children].forEach((n) => {
       if (n.classList.contains("ab-contact__glow")) return;
-      const a = n.animate([{ opacity: 1 }, { opacity: 0 }],
-        { duration: 320, easing: "ease", fill: "both" });
-      a.onfinish = () => a.cancel();
+      outAnims.push(n.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: 320, easing: "ease", fill: "both" }));
     });
 
     setTimeout(() => {
@@ -2410,6 +2432,7 @@ function abInitIntContact() {
       P.el.style.transition = "box-shadow .3s ease";
 
       hide(real);
+      outAnims.forEach((a) => a.cancel());   // 卡已经藏住了，这时候收才不会露馅
 
       const T_FLIP0 = 40;
       const T_FLIP1 = T_FLIP0 + T_FLIP;

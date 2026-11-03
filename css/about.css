@@ -417,6 +417,18 @@
 #interests .ab-int__card.is-merge > * { opacity: 0; transition-duration: 0.6s; }
 #interests .ab-int__card.is-merge.is-gone { opacity: 0; }
 
+/* 每张卡里垫的一层「深色」：合缝过程中卡片就在变深，不是等合完再变色。
+   三张各取整块渐变的一段（background-size/position 由 JS 按卡片位置给），
+   拼起来正好是同一个渐变，接到翻牌面板上时不会跳 */
+.ab-ic__veil {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background-repeat: no-repeat;
+}
+
 /* 翻牌用的面板：正面是空卡，背面是联系卡的内容（转到 90° 时在两面上切换） */
 .ab-ic__panel {
   position: fixed;
