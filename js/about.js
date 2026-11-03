@@ -128,7 +128,6 @@ function abRenderPhilosophy() {
         <span class="ab-head__label">${esc(p.label)}</span>
         <span class="ab-head__rule"></span>
       </div>
-      <span class="ab-philosophy__mark" aria-hidden="true"></span>
       <div class="ab-philosophy__body">
         <p class="ab-philosophy__statement" id="abPhilosophy">${body}</p>
         <div class="ab-principles" id="abPrinciples">
@@ -868,10 +867,12 @@ function abInitRelays() {
 
   // ② 01 -> 02：那条横线被"撑开"成一个圆，落成 GPA 环
   relays["philosophy>education"] = () => {
-    const mark = document.querySelector("#philosophy .ab-philosophy__mark");
+    const head = document.querySelector("#philosophy .ab-head");
     const gpa = document.querySelector("#education .ab-gpa");
-    if (!mark || !gpa) return;
-    const mr = R(mark);
+    if (!head || !gpa) return;
+    // 原来那条橙色短线已移除，接力起点按标题下方同样的位置算出来（54×4 横条）
+    const hr = R(head);
+    const mr = { left: hr.left, top: hr.bottom + 28, width: 54, height: 4 };
     const gr = R(gpa);
 
     // 一条粗横线：靠"边框"撑开成圆环（背景随尺寸淡掉，只剩描边）
@@ -906,7 +907,6 @@ function abInitRelays() {
       c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "both" }).onfinish = () => c.remove();
     };
 
-    hide(mark, 900);
 
     gpa.style.opacity = "0";
     setTimeout(() => {

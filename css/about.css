@@ -343,14 +343,6 @@
   transition: background-size 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) 0.4s;
 }
 .ab-philosophy__statement.is-in .hl { background-size: 100% 36%; }
-.ab-philosophy__mark {
-  display: block;
-  width: 54px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--orange);
-  margin-bottom: 28px;
-}
 
 /* ============================================================
    3. 教育背景
