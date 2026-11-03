@@ -101,7 +101,6 @@ function abRenderPhilosophy() {
             <span class="ab-principle__idx">${String(i + 1).padStart(2, "0")}</span>
             <h3 class="ab-principle__t">${esc(c.title)}</h3>
             <p class="ab-principle__b">${esc(c.body)}</p>
-            <span class="ab-principle__hint">Click for an example</span>
           </div>
           <div class="ab-principle__face ab-principle__face--back">
             <span class="ab-principle__idx">${String(i + 1).padStart(2, "0")}</span>
