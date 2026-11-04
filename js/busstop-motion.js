@@ -25,6 +25,7 @@
   const clampY = (v) => Math.max(0, Math.min(v, maxScroll()));
   const EASE = "cubic-bezier(0.16, 0.84, 0.28, 1)";
   const POP = "cubic-bezier(0.34, 1.24, 0.5, 1)";
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
   const IDS = ["top", "overview", "problem", "direction", "product", "elements", "poster", "issues"];
   const SEC = {};
@@ -174,25 +175,191 @@
      play(L, S, D)：S = 当前显示的段，D = 落位后的段。
      正向 S=左段/D=右段；反向 S=右段/D=左段，因此同一段代码自动镜像。
      ============================================================ */
+  let MORPH = null;      // 首屏→01 那条专属转场的复原上下文
+
   const SCENES = {
-    /* 1. 小巴开过留下一条黄线，黄线竖起来贴到左侧，变成线路 */
+    /* 1. 首屏 → 01：深色底像圆一样缩回去 → 只剩 Bus Stop + 3D 模型
+       → 模型边转边淡出 → 小车拖黄线从左往右带出 01 的文字
+       → 保留的 Bus Stop 落进标题里 bus stop 的位置，原句淡入（文案一字不改） */
     "top>overview": {
-      dur: 1500,
+      dur: 2200,
+      noBg: true,       // 换章由首屏自己的圆收缩完成，不要通用背景幕
+      plainUp: true,    // 01 上滑回首屏：交回分页器做普通上移，不播转场
       play(L) {
+        const hero = SEC.top;
+        const ov = SEC.overview;
         const W = window.innerWidth;
-        const y = window.innerHeight * 0.52;
-        const bar = prop(L, "bs-fly__bar", { left: W, top: y, width: W * 0.86, height: 3 });
-        bar.animate(
-          [{ transform: "translateX(0px)" }, { transform: `translateX(${-W * 1.02}px)` }],
-          { duration: 900, easing: EASE, fill: "both" }
-        );
-        setTimeout(() => {
-          bar.animate(
-            [{ transform: `translateX(${-W * 1.02}px) rotate(0deg)`, opacity: 1 },
-             { transform: `translateX(${-W * 0.94}px) rotate(90deg)`, opacity: 0 }],
-            { duration: 480, easing: EASE, fill: "both" }
-          );
-        }, 880);
+
+        /* ---- 量真实范围（Range，不用改 HTML 结构） ---- */
+        const h1 = $(".bs-hero__title", hero);
+        const tNode = [...h1.childNodes]
+          .filter((n) => n.nodeType === 3 && /Bus Stop/.test(n.textContent)).pop();
+        const rW = document.createRange(); rW.selectNodeContents(tNode);
+        const from = rW.getBoundingClientRect();                 // 首屏的 "Bus Stop"
+
+        const h2 = $(".bs-h2", ov);
+        const t2 = h2.firstChild;
+        const at = t2.textContent.indexOf("bus stop");
+        const r2 = document.createRange();
+        r2.setStart(t2, at); r2.setEnd(t2, at + 8);
+        const ovAbs = topOf(ov);
+        const rr = r2.getBoundingClientRect();
+        const to = { left: rr.left, top: rr.top + window.scrollY - ovAbs, height: rr.height };
+
+        const rows = [$(".bs-eyebrow", ov), $(".bs-p", ov), ...$$(".bs-law", ov)].filter(Boolean);
+        const rowRects = rows.map((n) => {
+          const r = R(n);
+          return { left: r.left, width: r.width };
+        });
+        const all = [h2, ...rows];
+
+        /* ---- 首屏：其他字淡掉；深色底剪成一个收缩的圆；模型暂时固定住继续转 ---- */
+        hero.classList.add("is-morph");
+        document.documentElement.classList.add("bs-hero-morph");
+        hero.style.setProperty("--bs-iris", "150%");
+        const art = $(".bs-hero__art", hero);
+        const artSaved = art.getAttribute("style") || "";
+        const ar = R(art);
+        Object.assign(art.style, {
+          position: "fixed", left: ar.left + "px", top: ar.top + "px",
+          width: ar.width + "px", height: ar.height + "px",
+          right: "auto", bottom: "auto", transform: "none", zIndex: "44",
+        });
+
+        /* 01 的内容先藏起来，由小车一行一行带出 */
+        ov.classList.add("is-morphing");
+
+        /* ---- 飞行的 "Bus Stop"：纯视觉克隆，原文案一个字都不动 ---- */
+        const word = document.createElement("div");
+        word.className = "bs-fly__el bs-fly__word";
+        word.textContent = "Bus Stop";
+        const cs = getComputedStyle(h1);
+        Object.assign(word.style, {
+          left: from.left + "px", top: from.top + "px",
+          width: from.width + "px", height: from.height + "px",
+          lineHeight: from.height + "px", fontSize: cs.fontSize,
+          fontWeight: cs.fontWeight, letterSpacing: cs.letterSpacing,
+          fontFamily: cs.fontFamily, color: "#fff", transformOrigin: "0 0",
+        });
+        L.appendChild(word);
+
+        /* ---- 小车 + 车尾黄线（复用左侧索引栏那辆小巴） ---- */
+        const busY = from.bottom - 2;   // 紧贴字的下沿，黄线正好落在正文上方
+        const busW = 40, busH = 24;
+        const travel = W - from.left - busW - 40;
+        const bus = document.createElement("div");
+        bus.className = "bs-fly__el bs-fly__bus";
+        bus.innerHTML = busSVG;
+        Object.assign(bus.style, {
+          left: from.left + "px", top: busY + "px",
+          width: busW + "px", height: busH + "px", opacity: "0",
+        });
+        L.appendChild(bus);
+        const line = document.createElement("div");
+        line.className = "bs-fly__el bs-fly__bar";
+        Object.assign(line.style, {
+          left: from.left + "px", top: (busY + busH / 2 - 1.5) + "px",
+          width: travel + "px", height: "3px", transformOrigin: "0 50%", opacity: "0",
+        });
+        L.appendChild(line);
+
+        const T = { iris: 700, jump: 700, fade0: 700, fade1: 1200,
+                    bus0: 700, bus1: 1450, word0: 1450, word1: 1960, end: 2200 };
+        const scale = to.height / from.height;
+        const dx = to.left - from.left, dy = to.top - from.top;
+        const c0 = [255, 255, 255], c1 = [36, 31, 61];
+
+        // 切页是这个转场的骨架，用定时器独立触发：逐帧循环万一被 3D 模型卡住，
+        // 也不能把「跳到 01」这一步漏掉（finish 里还有一次同位置的兜底）。
+        setTimeout(() => { jumpTo(ovAbs); }, T.jump);
+
+        // 圆心＝屏幕正中。字在左侧，圆边扫过它的时候正好把字从白翻成深墨，
+        // 否则深色底一退，白字就直接糊在浅底上了。
+        const H0 = window.innerHeight;
+        const ref = Math.sqrt(W * W + H0 * H0) / Math.SQRT2;
+        const nx = Math.max(from.left, Math.min(W / 2, from.left + from.width));
+        const ny = Math.max(from.top, Math.min(H0 / 2, from.top + from.height));
+        const dist = Math.hypot(W / 2 - nx, H0 / 2 - ny);
+        const t0 = performance.now();
+        const tick = (now) => {
+          if (!hero.classList.contains("is-morph")) return;    // 已被 cleanup，停
+          const el = now - t0;
+
+          /* ① 深色底像圆一样缩回去（圆心＝屏幕正中） */
+          const pi = clamp01(el / T.iris);
+          // 150% 覆盖全屏 → 0%：往屏幕正中收
+          const pct = 150 * Math.pow(1 - pi, 3);
+          hero.style.setProperty("--bs-iris", pct.toFixed(2) + "%");
+
+          /* ② 圆边扫过这个字的同时，字由白翻成深墨（浅底上始终看得清） */
+          const R = (pct / 100) * ref;
+          const cover = clamp01((R - dist) / 55 + 0.5);   // 1＝还在深色圆里
+          word.style.color = "rgb(" + c1.map((v, i) => Math.round(v + (c0[i] - v) * cover)).join(",") + ")";
+
+          /* ③ 3D 模型一直在转，只是透明度慢慢到 0 */
+          art.style.opacity = String(1 - clamp01((el - T.fade0) / (T.fade1 - T.fade0)));
+
+          /* ④ 小车从左往右开，车尾黄线跟着长；线扫到哪，那一行就显到哪 */
+          const pb = clamp01((el - T.bus0) / (T.bus1 - T.bus0));
+          const bx = from.left + travel * pb;
+          const bo = clamp01(pb * 14) * clamp01((1 - pb) * 14);
+          bus.style.transform = "translateX(" + (travel * pb).toFixed(1) + "px)";
+          bus.style.opacity = bo.toFixed(3);
+          line.style.transform = "scaleX(" + pb.toFixed(4) + ")";
+          line.style.opacity = bo.toFixed(3);
+          rows.forEach((n, i) => {
+            const q = rowRects[i];
+            const vis = clamp01((bx - q.left) / Math.max(1, q.width));
+            // 量化到 2% 一档：mask-image 每帧重写会拖累主线程（3D 模型同时在渲染）
+            const step = Math.round(vis * 50);
+            if (n.__vstep === step) return;
+            n.__vstep = step;
+            if (vis <= 0) { n.style.opacity = "0"; return; }
+            n.style.opacity = "1";
+            if (vis >= 1) {
+              n.style.maskImage = ""; n.style.webkitMaskImage = "";
+            } else {
+              const stop = (step * 2).toFixed(2);
+              const soft = Math.max(0, step * 2 - 5).toFixed(2);
+              const m = "linear-gradient(90deg,#000 0%,#000 " + soft + "%,rgba(0,0,0,0) " + stop + "%)";
+              n.style.maskImage = m; n.style.webkitMaskImage = m;
+            }
+          });
+
+          /* ⑤ 底色此刻已经一致（跳页由定时器在 700ms 完成，这里只管视觉） */
+
+          /* ⑥ 最后一拍：字落进标题里 bus stop 的位置，然后交叉淡入原句 */
+          const pw = clamp01((el - T.word0) / (T.word1 - T.word0));
+          const pe = 1 - Math.pow(1 - pw, 3);
+          word.style.transform = "translate(" + (dx * pe).toFixed(1) + "px," +
+            (dy * pe).toFixed(1) + "px) scale(" + (1 + (scale - 1) * pe).toFixed(4) + ")";
+          const pfOut = clamp01((el - T.word1) / 80);
+          const pfIn = clamp01((el - (T.word1 + 80)) / 160);
+          word.style.opacity = String(1 - pfOut);
+          h2.style.opacity = String(pfIn);
+
+          if (el < T.end) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+
+        MORPH = { hero, ov, art, artSaved, all, word };
+      },
+      cleanup() {
+        if (!MORPH) return;
+        const m = MORPH; MORPH = null;
+        m.hero.classList.remove("is-morph");
+        m.hero.style.removeProperty("--bs-iris");
+        document.documentElement.classList.remove("bs-hero-morph");
+        m.art.setAttribute("style", m.artSaved);
+        // 先摘 is-live：否则一摘 is-morphing，通用 bsRise 会立刻从头重播一次
+        m.ov.classList.remove("is-live");
+        m.all.forEach((n) => {
+          n.style.opacity = "1"; n.style.transform = "none"; n.style.clipPath = "none";
+          n.style.maskImage = ""; n.style.webkitMaskImage = "";
+          delete n.__vstep;
+          n.getAnimations().forEach((a) => a.cancel());
+        });
+        m.ov.classList.remove("is-morphing");
       },
     },
 
@@ -351,6 +518,7 @@
 
     const finish = () => {
       try {
+        if (scene && scene.cleanup) scene.cleanup();
         jumpTo(topOf(landSec));
         $$(".bs-fly").forEach((n) => n.remove());
         ORDER.forEach((s) => s.classList.remove("is-veiled", "is-dim"));
@@ -378,12 +546,14 @@
     // 换章靠背景色推进：一层和目标段同色的幕慢慢盖上来，
     // 上一段的内容是被这层幕"读淡"的，不是啪地整块隐藏。
     // 幕放在飞行层最底，道具始终在它上面。
-    const bg = document.createElement("div");
-    bg.className = "bs-fly__bg";
-    bg.style.background = getComputedStyle(landSec).backgroundColor || "#f7f5fc";
-    L.appendChild(bg);
-    bg.animate([{ opacity: 0 }, { opacity: 1 }],
-      { duration: Math.round(scene.dur * 0.74), easing: "ease", fill: "both" });
+    if (!scene.noBg) {
+      const bg = document.createElement("div");
+      bg.className = "bs-fly__bg";
+      bg.style.background = getComputedStyle(landSec).backgroundColor || "#f7f5fc";
+      L.appendChild(bg);
+      bg.animate([{ opacity: 0 }, { opacity: 1 }],
+        { duration: Math.round(scene.dur * 0.74), easing: "ease", fill: "both" });
+    }
 
     try {
       scene.play(L, S, D);
@@ -405,6 +575,8 @@
     },
     up(cur, prev) {
       if (busy || !cur || !prev) return false;
+      const sc = SCENES[prev.id + ">" + cur.id];
+      if (sc && sc.plainUp) return false;   // 01 → 首屏：直接上移，不播任何转场
       return run(cur, prev, -1);
     },
     route: ROUTE,

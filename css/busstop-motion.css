@@ -182,6 +182,45 @@
   html.bs-motion .bs-poster__fig:hover { transform: scale(1.015); }
   html.bs-motion .bs-issue:hover .bs-issue__n { color: var(--bs-purple); }
 
+  /* ---------- 首屏 → 01 专属：圆形收缩 + 飞行字 + 小车 ---------- */
+  /* 首屏自己的深色底剪成一个圆，往屏幕正中收；背景色透出来就是 01 的 #f7f5fc */
+  html.bs-motion .bs-hero.is-morph { background: transparent; }
+  html.bs-motion .bs-hero.is-morph::before,
+  html.bs-motion .bs-hero.is-morph::after,
+  html.bs-motion .bs-hero.is-morph .bs-hero__glow {
+    clip-path: circle(var(--bs-iris, 150%) at 50% 50%);
+  }
+  /* 只留 Bus Stop（另做一个视觉克隆）和右边的 3D 模型，其余字淡掉 */
+  html.bs-motion .bs-hero.is-morph .bs-hero__title,
+  html.bs-motion .bs-hero.is-morph .bs-hero__kicker,
+  html.bs-motion .bs-hero.is-morph .bs-hero__lede,
+  html.bs-motion .bs-hero.is-morph .bs-hero__spec,
+  html.bs-motion .bs-hero.is-morph .bs-meta,
+  html.bs-motion .bs-hero.is-morph .bs-hero__cue { opacity: 0; transition: opacity 0.4s ease; }
+
+  /* 01 的内容由小车逐行带出，暂时关掉通用的 bsRise 入场，免得两条动画打架 */
+  html.bs-motion .bs-sec.is-morphing .bs-eyebrow,
+  html.bs-motion .bs-sec.is-morphing .bs-h2,
+  html.bs-motion .bs-sec.is-morphing .bs-p,
+  html.bs-motion .bs-sec.is-morphing .bs-law {
+    animation: none !important;
+    opacity: 0;
+  }
+
+  .bs-fly__word { white-space: nowrap; transform-origin: 0 0; will-change: transform, color, opacity; }
+  .bs-fly__bus { will-change: transform, opacity; }
+  .bs-fly__bus svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .bs-fly__bus .bs-bus__wheel {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: bsWheel 1.6s linear infinite;
+  }
+
+  /* 深色底变浅的那 0.7 秒里，导航文字不能还是白的 */
+  html.bs-motion.bs-hero-morph .bs-page .nav:not(.is-solid):not(.is-open) .nav__link,
+  html.bs-motion.bs-hero-morph .bs-page .nav:not(.is-solid):not(.is-open) .nav__link:hover { color: var(--bs-ink); }
+  html.bs-motion.bs-hero-morph .bs-page .nav:not(.is-solid) .nav__burger span { background: var(--bs-ink); }
+
   /* 转场期间不再整块隐藏上一段；内容由同色背景幕自然淡出 */
 }
 
