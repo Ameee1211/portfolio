@@ -459,10 +459,21 @@
         const frame = dir > 0 ? r1 : R(pImg);
         const FW = Math.max(1, frame.width), FH = Math.max(1, frame.height);
 
-        /* 色幕：换成目标板块自己的底色，按方向刷过去（下滑左→右，上滑右→左） */
+        /* 色幕：换成目标板块的底色，按方向整块刷过去（下滑左→右，上滑右→左）
+           #poster 自己没有 background（底色来自 body），getComputedStyle 只会返回
+           rgba(0,0,0,0) —— 直接拿来当幕色就是一整层透明，什么也看不见。
+           所以要往上找第一个有实色的祖先。 */
+        const solidBg = (node) => {
+          let n = node, c = "rgba(0, 0, 0, 0)";
+          while (n && (c === "rgba(0, 0, 0, 0)" || c === "transparent")) {
+            c = getComputedStyle(n).backgroundColor;
+            n = n.parentElement;
+          }
+          return c && c !== "rgba(0, 0, 0, 0)" ? c : "#f7f5fc";
+        };
         const veil = document.createElement("div");
         veil.className = "bs-fly__veil";
-        veil.style.background = getComputedStyle(dir > 0 ? poSec : elSec).backgroundColor || "#f7f5fc";
+        veil.style.background = solidBg(dir > 0 ? poSec : elSec);
         veil.style.opacity = "1";
         veil.style.clipPath = dir > 0 ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)";
         L.appendChild(veil);
@@ -612,29 +623,8 @@
       },
     },
 
-    /* 7. 海报向上卷起，露出五张 issue 卡 */
-    "poster>issues": {
-      dur: 1250,
-      play(L, S, D) {
-        const fig = $(".bs-poster__fig", S) || $(".bs-poster", S);
-        const issues = $$(".bs-issue", D);
-        if (fig) {
-          const r = R(fig);
-          const cover = prop(L, "bs-fly__tile", { left: r.left, top: r.top, width: r.width, height: r.height },
-            { background: "#f7f5fc", transformOrigin: "50% 100%" });
-          cover.animate(
-            [{ transform: "scaleY(1)", opacity: 1 }, { transform: "scaleY(0.02)", opacity: 0 }],
-            { duration: 720, easing: EASE, fill: "both" }
-          );
-        }
-        issues.slice(0, 5).forEach((n, i) => {
-          n.animate(
-            [{ opacity: 0, transform: "translateY(18px)" }, { opacity: 1, transform: "none" }],
-            { duration: 420, delay: 380 + i * 90, easing: EASE, fill: "both" }
-          );
-        });
-      },
-    },
+    /* 7. 06 ↔ 07：和 04 ↔ 05 一样，正反两个方向都是最普通的页面 pin */
+    "poster>issues": { plain: true },
   };
 
   /* ============================================================
