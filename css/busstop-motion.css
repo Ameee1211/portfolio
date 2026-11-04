@@ -190,11 +190,17 @@
     background-color: #f7f5fc;
     transition: background-color 0.45s ease;
   }
+  /* 这几层必须「立刻」消失，不能淡出：
+     · ::after 第一层渐变左边是 rgba(13,8,30,.9)、右边只有 .1 —— 淡出过程中左边永远更暗
+     · .bs-hero__inner::before 是 rgba(11,7,26,.6) 的文字深晕，mask 中心在 34% 52%，
+       正好压在左侧，上一版漏了它，所以背景变浅后左边还留着一块阴影
+     全部瞬时隐藏后，整屏只剩 hero 自己的纯色在均匀过渡，左右完全一致。 */
   html.bs-motion .bs-hero.is-morph::before,
   html.bs-motion .bs-hero.is-morph::after,
-  html.bs-motion .bs-hero.is-morph .bs-hero__glow {
+  html.bs-motion .bs-hero.is-morph .bs-hero__glow,
+  html.bs-motion .bs-hero.is-morph .bs-hero__inner::before {
     opacity: 0;
-    transition: opacity 0.45s ease;
+    transition: none;
   }
   /* 首屏标题整体由飞行层里的克隆接管（会被小巴擦掉），其余字直接淡掉 */
   html.bs-motion .bs-hero.is-morph .bs-hero__title,

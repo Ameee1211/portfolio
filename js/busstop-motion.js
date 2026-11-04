@@ -205,6 +205,7 @@
         };
         const rects = rows.map(landing);
         const h2r = landing(h2);
+        const pRect = landing($(".bs-p", ov));
 
         /* ---- 首屏：整屏深色淡掉（不是圆，也不会有黑块），其他字消失，模型固定住继续转 ---- */
         hero.classList.add("is-morph");
@@ -233,10 +234,11 @@
         L.appendChild(oldTitle);
 
         /* ---- 大号小巴：高度 = 01 标题两行字（91px），宽按 SVG 36:22 比例 ---- */
-        const busH = h2r.height;                    // 91
+        const busH = h2r.height;                    // 91 = 01 标题两行字加起来
         const busW = Math.round(busH * 36 / 22);    // 149
-        const busTop = h1r.top + (h1r.height - busH) / 2;
-        const wheelY = busTop + busH * (20 / 22);   // 轮子底 = 黄线所在高度
+        const busTop = h2r.top;                     // 和 01 标题同一行，正好完全盖住那两行
+        // 黄线落在「标题底 → 正文顶」的空白中间，不再划到 your behalf. 这两个词
+        const gapY = (h2r.top + h2r.height + pRect.top) / 2;
         const travel = W;                           // 车尾从 0 开到屏幕最右
         const bus = document.createElement("div");
         bus.className = "bs-fly__el bs-fly__bus";
@@ -249,7 +251,7 @@
         const line = document.createElement("div");
         line.className = "bs-fly__el bs-fly__bar";
         Object.assign(line.style, {
-          left: "0px", top: (wheelY - 1.5) + "px", width: travel + "px", height: "3px",
+          left: "0px", top: (gapY - 1.5) + "px", width: travel + "px", height: "3px",
           transformOrigin: "0 50%", opacity: "0",
         });
         L.appendChild(line);
