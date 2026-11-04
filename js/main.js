@@ -1248,6 +1248,12 @@ window.initSectionPager = function (opts) {
     const delta = Math.abs(acc);
     const dir = acc > 0 ? 1 : -1;
     acc = 0;
+    // 可选：某页的「板块内分段动画」优先消费这一格（返回 true 就不翻页）。
+    // 放在 acc 阈值之后，触控板抖动不会误触发；不传 transition 的页面行为不变。
+    if (transition && transition.intercept && transition.intercept(dir, "wheel")) {
+      e.preventDefault();
+      return;
+    }
     if (step(dir, delta)) e.preventDefault();
   };
 
@@ -1276,6 +1282,10 @@ window.initSectionPager = function (opts) {
         return;
       }
       lockUntil = 0;
+    }
+    if (transition && transition.intercept && transition.intercept(dir, "key")) {
+      e.preventDefault();
+      return;
     }
     if (step(dir, window.innerHeight * 0.85)) e.preventDefault();
   };

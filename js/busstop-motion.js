@@ -345,28 +345,10 @@
        标 plain 后 down/up 会返回 false，交回共用分页器走它自己的 go() 平滑滚动。 */
     "overview>problem": { plain: true },
 
-    /* 3. 统计数字变成四支箭头，落到四条 insight 上 */
-    "problem>direction": {
-      dur: 1300,
-      play(L, S, D) {
-        const src = $$(".bs-stats > div", S);
-        const dst = $$(".bs-insights li", D);
-        for (let i = 0; i < 4; i++) {
-          if (!src[i] || !dst[i]) continue;
-          const r = R(src[i]);
-          const n = prop(L, "bs-fly__bar", { left: r.left, top: r.top + 12, width: r.width * 0.7, height: 3 });
-          const t = landingRect(dst[i], D);
-          const dx = t.left - r.left;
-          const dy = t.top + 14 - (r.top + 12);
-          n.animate(
-            [{ transform: "translate(0,0) rotate(0deg)", opacity: 1 },
-             { transform: `translate(${dx * 0.4}px, ${dy * 0.25}px) rotate(-32deg)`, opacity: 0.9, offset: 0.5 },
-             { transform: `translate(${dx}px, ${dy}px) rotate(0deg)`, opacity: 0.1 }],
-            { duration: 820, delay: i * 100, easing: EASE, fill: "both" }
-          );
-        }
-      },
-    },
+    /* 3. 02 ↔ 03：跟 01↔02 一样，正反两个方向都是最普通的页面 pin，
+       不播「四个统计数字变箭头飞到四条 insight」那条分镜。
+       落位到 03 顶之后，板块内的四次下滑由 STAGE 接管。 */
+    "problem>direction": { plain: true },
 
     /* 4. 保留下来的想法收拢成卡，飞到 3D 模型框 */
     "direction>product": {
@@ -529,18 +511,222 @@
     return true;
   }
 
+  /* ============================================================
+     03「Choosing a direction」：钉在一屏，四次下滑逐批收紧
+     ------------------------------------------------------------
+     参考 GSAP Effect 097「Tightening word lines」：每一行先被词距
+     拉得很开，再逐行收紧回自然宽度；文字始终清晰、不淡出。
+     用户指定的两点不同：
+       · 一次下滑 = 完整收紧一次并永久固定在原位（不做 scrub 来回变）
+       · 文字留在 03 板块原本的位置，不随页面滚走
+     内容一字不改：拆词只发生在运行时，最终布局与原来一致。
+     ============================================================ */
+  const STAGE = {
+    sec: SEC.direction,
+    active: false, hidden: false, step: 0,
+    lockUntil: 0, suppressUntil: 0,
+    words: [], solids: [],
+  };
+  const TW_EASE = "transform .82s cubic-bezier(0.16,0.84,0.28,1), opacity .5s ease";
+
+  function splitWords(host) {
+    const tw = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+    });
+    const texts = [];
+    while (tw.nextNode()) texts.push(tw.currentNode);
+    const out = [];
+    texts.forEach((t) => {
+      const frag = document.createDocumentFragment();
+      t.nodeValue.split(/(\s+)/).forEach((part) => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+        const s = document.createElement("span");
+        s.className = "bs-tw";
+        s.textContent = part;
+        frag.appendChild(s);
+        out.push(s);
+      });
+      t.parentNode.replaceChild(frag, t);
+    });
+    return out;
+  }
+
+  function stageBuild() {
+    const ch = [...STAGE.sec.querySelector(".bs-wrap").children];
+    // ch = [eyebrow, h2, p1, ol, p2, kill, p3]
+    const groups = [
+      { b: 1, nodes: [ch[1], ch[2]] },                 // 大标题 + 导语
+      { b: 2, nodes: $$("li > span", ch[3]) },         // 01/02/03/04 四条
+      { b: 3, nodes: [ch[4]] },                        // Crazy 8s 那段
+      { b: 4, nodes: [ch[6]] },                        // 最后一段
+    ];
+    groups.forEach((g) => g.nodes.forEach((host) => {
+      // 两条两列的 insight 是窄列，摊开幅度要收小，否则左列末尾会撞到右列的编号
+      splitWords(host).forEach((el) => STAGE.words.push({ el, host, b: g.b, tight: g.b === 2, line: 0, dx: 0 }));
+    }));
+    $$("li > b", ch[3]).forEach((el) => STAGE.solids.push({ el, b: 2, idx: 0, kind: "num" }));
+    $$(".bs-kill__item", ch[5]).forEach((el) => STAGE.solids.push({ el, b: 4, idx: 0, kind: "tag" }));
+  }
+
+  // 量出每个词「自然位置」与「等间距摊开位置」的差，按行分组、逐行编号
+  function stageMeasure() {
+    STAGE.words.forEach((w) => {
+      w.el.style.transition = "none";
+      w.el.style.transform = "none";
+      w.el.style.opacity = "";
+    });
+    STAGE.solids.forEach((s) => {
+      s.el.style.transition = "none";
+      s.el.style.transform = "none";
+      s.el.style.opacity = "";
+    });
+    void STAGE.sec.offsetWidth;
+    for (let b = 1; b <= 4; b++) {
+      const lines = new Map();
+      STAGE.words.filter((w) => w.b === b).forEach((w) => {
+        const key = Math.round(w.el.getBoundingClientRect().top / 6);  // 6px 容差，同行词归一组
+        if (!lines.has(key)) lines.set(key, []);
+        lines.get(key).push(w);
+      });
+      [...lines.entries()].sort((a, c) => a[0] - c[0]).forEach(([, row], li) => {
+        const hr = row[0].host.getBoundingClientRect();
+        const first = row[0].el.getBoundingClientRect();
+        const last = row[row.length - 1].el.getBoundingClientRect();
+        const naturalW = Math.max(1, last.right - first.left);
+        // 左端第一个词不动，后面的词按序逐个往右推：词距均匀拉大、
+        // dx 严格递增（不会越位挤成一团），也不会往左撞到 01/02/03/04 编号。
+        // 展开量按「这一行还空多少」算，给个下限保证短行也看得出词距被拉开。
+        const gap0 = Math.max(14, ((hr.width - naturalW) / Math.max(1, row.length - 1)) * 1.25);
+        const gap = row[0].tight ? Math.min(gap0, 8) : gap0;
+        row.forEach((w, i) => {
+          w.dx = Math.round(i * gap);
+          w.line = li;
+        });
+      });
+      STAGE.solids.filter((s) => s.b === b).forEach((s, i) => { s.idx = i; });
+    }
+  }
+
+  // 回到「只有 03 — Choosing a direction」：内容全部占位但隐藏，词处于拉宽态
+  function stageReset() {
+    stageMeasure();
+    STAGE.sec.classList.add("is-staged");
+    STAGE.words.forEach((w) => {
+      w.el.style.transition = "none";
+      w.el.style.transform = "translateX(" + w.dx + "px)";
+      w.el.style.opacity = "0";
+    });
+    STAGE.solids.forEach((s) => {
+      s.el.style.transition = "none";
+      // 编号只微微错开（不撞正文首个词）；标签原地轻微变宽，不横向挤到邻居
+      s.el.style.transform = s.kind === "num" ? "translateX(-8px)" : "scaleX(1.08)";
+      s.el.style.opacity = "0";
+    });
+    void STAGE.sec.offsetWidth;
+    STAGE.step = 0;
+    STAGE.hidden = true;
+    STAGE.active = false;
+  }
+
+  // 第 k 批：逐行（列表/标签逐项）收紧到自然排版，然后永久固定
+  function stageReveal(k) {
+    const ws = STAGE.words.filter((w) => w.b === k);
+    const ss = STAGE.solids.filter((s) => s.b === k);
+    ws.forEach((w) => {
+      w.el.style.transition = TW_EASE;
+      w.el.style.transitionDelay = (w.line * 0.085).toFixed(3) + "s";
+    });
+    ss.forEach((s) => {
+      s.el.style.transition = TW_EASE;
+      s.el.style.transitionDelay = (s.idx * 0.055).toFixed(3) + "s";
+    });
+    void STAGE.sec.offsetWidth;    // 让浏览器先记住「拉宽+透明」这一帧
+    ws.forEach((w) => { w.el.style.transform = "none"; w.el.style.opacity = "1"; });
+    ss.forEach((s) => { s.el.style.transform = "none"; s.el.style.opacity = "1"; });
+    STAGE.step = k;
+  }
+
+  function stageLeave() {
+    STAGE.active = false;
+    STAGE.hidden = false;
+    STAGE.suppressUntil = performance.now() + 900;
+    STAGE.sec.classList.remove("is-staged");
+  }
+
+  function stageCheck() {
+    const now = performance.now();
+    if (now < STAGE.suppressUntil) return;
+    const dt = topOf(STAGE.sec);
+    const y = window.scrollY;
+    const vh = window.innerHeight;
+    if (STAGE.active) {
+      if (Math.abs(y - dt) > vh * 0.55) stageLeave();   // 被索引点击/拖动带走，别锁死
+      return;
+    }
+    // 03 已基本滚出视口时静默重置：用户看不到内容消失，下次进来又是只有 eyebrow
+    if (!STAGE.hidden && (y < dt - vh * 0.6 || y > dt + vh * 0.6)) stageReset();
+    if (Math.abs(y - dt) <= 6 && now > STAGE.suppressUntil) {
+      if (!STAGE.hidden) stageReset();
+      STAGE.active = true;
+    }
+  }
+
+  // 返回 true = 这一格被 03 分段动画消费，分页器不翻页
+  function stageIntercept(dir) {
+    const now = performance.now();
+    if (!STAGE.active) {
+      // 02 → 03：跟 01→02 一样「一滚直接到下一板块」。
+      // 02 比视口高一点（1440×900 下多 12px、1366×768 下多 144px），
+      // 通用 pin 会先滚到段底、再滚一次才翻页 —— 用户会觉得第一下滑没反应。
+      // 这里直接平移到 03 顶，把这一格消费掉（不改变其它任何板块的 pin 规则）。
+      if (dir > 0) {
+        const y = window.scrollY;
+        const dt = topOf(SEC.direction);
+        const pt = topOf(SEC.problem);
+        if (y >= pt - 4 && y < dt - 4) {
+          stageReset();
+          STAGE.suppressUntil = 0;      // 别让上一次离开时的抑制挡住落位激活
+          window.scrollTo({ top: dt, behavior: "smooth" });
+          return true;
+        }
+      }
+      return false;
+    }
+    if (dir > 0) {
+      if (now < STAGE.lockUntil) return true;         // 一次手势只推一批
+      if (STAGE.step < 4) {
+        stageReveal(STAGE.step + 1);
+        STAGE.lockUntil = now + 200;
+        return true;
+      }
+      // 四批出齐：解除钉住，第五次下滑按原来的方式翻到 04
+      stageLeave();
+      run(SEC.direction, SEC.product, 1);
+      return true;
+    }
+    // 上滑：已出现的内容全部保留，一次直接退回 02（普通 pin 交回分页器）
+    stageLeave();
+    return false;
+  }
+
   window.BS_MOTION = {
     busy: () => busy,
+    intercept: stageIntercept,
     down(cur, next) {
       if (busy || !cur || !next) return false;
+      // 进 03 之前先把四批收起来：平移途中看到的就是「只有 eyebrow」，
+      // 不会等落位才「啪」一下把内容全藏掉
+      if (next.id === "direction") { stageReset(); STAGE.suppressUntil = 0; }
       const sc = SCENES[cur.id + ">" + next.id];
-      if (sc && sc.plain) return false;    // 01 → 02：最普通的页面 pin，不播转场
+      if (sc && sc.plain) return false;    // 普通页面 pin，不播转场
       return run(cur, next, 1);
     },
     up(cur, prev) {
       if (busy || !cur || !prev) return false;
+      if (prev.id === "direction") { stageReset(); STAGE.suppressUntil = 0; }
       const sc = SCENES[prev.id + ">" + cur.id];
-      // plain = 双向都普通（01 ↔ 02）；plainUp = 只有回程普通（01 → 首屏）
+      // plain = 双向都普通（01↔02、02↔03）；plainUp = 只有回程普通（01 → 首屏）
       if (sc && (sc.plain || sc.plainUp)) return false;
       return run(cur, prev, -1);
     },
@@ -552,6 +738,9 @@
   function boot() {
     initRoute();
     initAmbient();
+    stageBuild();
+    stageReset();
+    window.addEventListener("scroll", stageCheck, { passive: true });
     const rail = $("#bsIndex");
     if (rail && window.MutationObserver) {
       new MutationObserver(() => {

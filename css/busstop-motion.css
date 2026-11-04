@@ -120,6 +120,15 @@
   .bs-index__bus.is-lit .bs-bus__lamp { opacity: 1; }
   .bs-index__bus:hover .bs-bus__lamp { opacity: 1; }
 
+  /* ---------- 03：四次下滑逐批收紧（参考 GSAP Effect 097） ----------
+     文字在运行时被拆成一个个 .bs-tw 词 span；inline-block 才能做 translateX。
+     排版不变：词之间仍是普通空白文本节点，收紧完 transform 归零、位置与原来一致。
+     03 的内容改由这套动画接管，所以关掉 is-live 那套 bsRise / bsStrike，
+     免得两条动画抢同一个 transform（链接效果里文字始终是清晰的）。 */
+  html.bs-motion .bs-tw { display: inline-block; }
+  html.bs-motion #direction.is-live .bs-insights li,
+  html.bs-motion #direction.is-live .bs-kill__item--out::after { animation: none !important; }
+
   /* ---------- 段内：入场（只在 .bs-motion 打开时） ---------- */
   html.bs-motion .bs-sec.is-live .bs-law,
   html.bs-motion .bs-sec.is-live .bs-stats > div,
