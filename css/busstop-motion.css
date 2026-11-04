@@ -51,7 +51,15 @@
   }
 
   /* ---------- 左侧索引栏 → 线路（文字一字不动） ---------- */
-  .bs-index { position: fixed; }
+  .bs-index {
+    position: fixed;
+    /* 笔记本宽度（约 1181–1570px）：基础样式 max(14px, …) 会把索引栏顶到 x=14，
+       而小车挂在 left:-30px，于是被推到 x=-16 —— 半个车出屏、完全贴在屏幕最左边。
+       把最小值提到 56px：小车左边缘 = 56-30 = 26px，留白正常，文字标签一个不藏。
+       公式值大于 56 的宽屏（约 ≥1572px，含 27 寸）取值完全不变；
+       ≤1180px 索引栏 display:none，手机端零影响。 */
+    left: max(56px, calc((100vw - 1240px) / 2 - 112px));
+  }
   .bs-index::before {
     content: "";
     position: absolute;
