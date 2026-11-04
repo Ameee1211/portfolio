@@ -372,8 +372,9 @@
        · 02 的内容原地淡出，不做任何位移
        · 02 的底色淡成 03 的底色（两个板块各是一块实色，直接插值背景色）
        · 两边都只剩一块同色空屏的那一帧才跳页 —— 看不见
-       · 跳完 03 的 eyebrow 淡入，还是「只有 03 — Choosing a direction」的状态，
-         之后每下滑一次出一批内容，仍由 STAGE 接管
+       · 跳完 03 的 eyebrow 淡入，同时把第 1、2 批（大标题 / 导语 / 01–04 四条）
+         一并收紧出来 —— 用户下滑这一下就直接看到这两批，不用再滑一次；
+         剩下 Crazy 8s 那段、11 个标签那段仍各要一次下滑
        · 回程 03 → 02 保持不变：plainUp 让 up() 直接返回 false，交回分页器普通上移 */
     "problem>direction": {
       dur: 1300,
@@ -397,8 +398,9 @@
         const savedSB = root.style.scrollBehavior;
         root.style.scrollBehavior = "auto";
 
-        let jumped = false;
-        // 时间轴（总 1300ms）：内容淡出 0–40% / 底色 0–55% / 55% 跳页 / eyebrow 60–90%
+        let jumped = false, seeded = false;
+        // 时间轴（总 1300ms）：内容淡出 0–40% / 底色 0–55% / 55% 跳页
+        //                          / 58% 第 1+2 批收紧 / eyebrow 60–90%
         const setP = (lin) => {
           // 02 的内容：原地淡出，不位移、不缩放
           if (wrap) wrap.style.opacity = (1 - clamp01(lin / 0.40)).toFixed(3);
@@ -408,8 +410,14 @@
           if (!jumped && lin >= 0.55) {
             jumped = true;
             window.scrollTo(0, topOf(to));
-            // 跳完就等于「03 已钉住」，下一次下滑直接出第一批，不用再等 scroll 事件
+            // 跳完就等于「03 已钉住」，下一次下滑直接出第三批，不用再等 scroll 事件
             STAGE.active = true;
+          }
+          // 落位这一下就把 03 的大标题、导语和 01–04 四条一起放出来
+          // （用户 2026-11-04 指定：原来第一下只出 eyebrow、第二下才出这批，合并成一下）
+          if (jumped && !seeded && lin >= 0.58) {
+            seeded = true;
+            stageRevealSet([1, 2], 0.05);
           }
           if (eb) eb.style.opacity = clamp01((lin - 0.60) / 0.30).toFixed(3);
         };
@@ -788,8 +796,9 @@
   const STAGE = {
     sec: SEC.direction,
     active: false, hidden: false, step: 0,
-    // full = 03 是从 04 卡片切回来的：四批内容一次性全在，不再分四次拉出来，
-    // 再下滑就直接卡片切回 04。从 02 正常下来时 full=false，仍走四次分段。
+    // full = 03 是从 04 卡片切回来的：四批内容一次性全在，不再分批拉出来，
+    // 再下滑就直接卡片切回 04。从 02 正常下来时 full=false：
+    // 落位那一下已带出第 1、2 批，之后每下滑一次再加一批（第 3、第 4 批）。
     full: false,
     lockUntil: 0, suppressUntil: 0,
     words: [], solids: [],
@@ -917,23 +926,36 @@
     STAGE.suppressUntil = 0;
   }
 
-  // 第 k 批：逐行（列表/标签逐项）收紧到自然排版，然后永久固定
-  function stageReveal(k) {
-    const ws = STAGE.words.filter((w) => w.b === k);
-    const ss = STAGE.solids.filter((s) => s.b === k);
-    ws.forEach((w) => {
-      w.el.style.transition = TW_EASE;
-      w.el.style.transitionDelay = (w.line * 0.085).toFixed(3) + "s";
-    });
-    ss.forEach((s) => {
-      s.el.style.transition = TW_EASE;
-      s.el.style.transitionDelay = (s.idx * 0.055).toFixed(3) + "s";
+  // 一批或多批：逐行（列表/标签逐项）收紧到自然排版，然后永久固定。
+  // 多批时按传入顺序错开 0.12s，避免标题与列表在同一帧「糊」地一起涌上来。
+  function stageRevealSet(ks, base) {
+    const list = [].concat(ks);
+    const d0 = base || 0;
+    list.forEach((k, gi) => {
+      const off = d0 + gi * 0.12;
+      STAGE.words.filter((w) => w.b === k).forEach((w) => {
+        w.el.style.transition = TW_EASE;
+        w.el.style.transitionDelay = (off + w.line * 0.085).toFixed(3) + "s";
+      });
+      STAGE.solids.filter((s) => s.b === k).forEach((s) => {
+        s.el.style.transition = TW_EASE;
+        s.el.style.transitionDelay = (off + s.idx * 0.055).toFixed(3) + "s";
+      });
     });
     void STAGE.sec.offsetWidth;    // 让浏览器先记住「拉宽+透明」这一帧
-    ws.forEach((w) => { w.el.style.transform = "none"; w.el.style.opacity = "1"; });
-    ss.forEach((s) => { s.el.style.transform = "none"; s.el.style.opacity = "1"; });
-    STAGE.step = k;
+    list.forEach((k) => {
+      STAGE.words.filter((w) => w.b === k).forEach((w) => {
+        w.el.style.transform = "none"; w.el.style.opacity = "1";
+      });
+      STAGE.solids.filter((s) => s.b === k).forEach((s) => {
+        s.el.style.transform = "none"; s.el.style.opacity = "1";
+      });
+    });
+    STAGE.step = Math.max.apply(null, list);
   }
+
+  // 第 k 批
+  function stageReveal(k) { stageRevealSet([k], 0); }
 
   function stageLeave() {
     STAGE.active = false;
