@@ -240,6 +240,10 @@
         // 黄线落在「标题底 → 正文顶」的空白中间，不再划到 your behalf. 这两个词
         const gapY = (h2r.top + h2r.height + pRect.top) / 2;
         const travel = W;                           // 车尾从 0 开到屏幕最右
+        // 黄线不从屏幕最左画起：左边缘那条是索引栏，线划过去会压在导航文字上。
+        // 起点改成第一板块内容的左边缘（188），线只在车尾越过它之后才出现。
+        const lineLeft = h2r.left;
+        const lineSpan = W - lineLeft;
         const bus = document.createElement("div");
         bus.className = "bs-fly__el bs-fly__bus";
         bus.innerHTML = busSVG;
@@ -251,7 +255,7 @@
         const line = document.createElement("div");
         line.className = "bs-fly__el bs-fly__bar";
         Object.assign(line.style, {
-          left: "0px", top: (gapY - 1.5) + "px", width: travel + "px", height: "3px",
+          left: lineLeft + "px", top: (gapY - 1.5) + "px", width: lineSpan + "px", height: "3px",
           transformOrigin: "0 50%", opacity: "0",
         });
         L.appendChild(line);
@@ -283,8 +287,10 @@
           bus.style.transform = "translateX(" + edge.toFixed(1) + "px)";
           bus.style.opacity = pb >= 1 ? "0" : Math.min(1, pb * 30).toFixed(3);
           const lineFade = 1 - clamp01((el - T.lineOut0) / (T.lineOut1 - T.lineOut0));
-          line.style.transform = "scaleX(" + pb.toFixed(4) + ")";
-          line.style.opacity = (Math.min(1, pb * 20) * lineFade).toFixed(3);
+          // 车尾还在内容左边缘以左时，线长为 0（左侧索引栏那段完全没有线）
+          const lineVis = clamp01((edge - lineLeft) / lineSpan);
+          line.style.transform = "scaleX(" + lineVis.toFixed(4) + ")";
+          line.style.opacity = (Math.min(1, lineVis * 20) * lineFade).toFixed(3);
 
           /* ④ 车尾擦掉首屏标题：车尾右侧还是旧标题 */
           const cut = Math.max(0, Math.min(h1r.width, edge - h1r.left));
