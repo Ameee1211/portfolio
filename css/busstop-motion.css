@@ -182,21 +182,29 @@
   html.bs-motion .bs-poster__fig:hover { transform: scale(1.015); }
   html.bs-motion .bs-issue:hover .bs-issue__n { color: var(--bs-purple); }
 
-  /* ---------- 首屏 → 01 专属：圆形收缩 + 飞行字 + 小车 ---------- */
-  /* 首屏自己的深色底剪成一个圆，往屏幕正中收；背景色透出来就是 01 的 #f7f5fc */
-  html.bs-motion .bs-hero.is-morph { background: transparent; }
+  /* ---------- 首屏 → 01 专属：整屏淡色 + 大号小巴擦标题 ---------- */
+  /* 不要圆形：整块深色直接淡成 01 的底色 #f7f5fc。
+     圆形收缩时左边那块黑，来自模糊街景照片 + 左侧重压暗渐变在圆边留下的硬暗边；
+     整屏均匀淡出就彻底没有这个东西。 */
+  html.bs-motion .bs-hero.is-morph {
+    background-color: #f7f5fc;
+    transition: background-color 0.45s ease;
+  }
   html.bs-motion .bs-hero.is-morph::before,
   html.bs-motion .bs-hero.is-morph::after,
   html.bs-motion .bs-hero.is-morph .bs-hero__glow {
-    clip-path: circle(var(--bs-iris, 150%) at 50% 50%);
+    opacity: 0;
+    transition: opacity 0.45s ease;
   }
-  /* 只留 Bus Stop（另做一个视觉克隆）和右边的 3D 模型，其余字淡掉 */
+  /* 首屏标题整体由飞行层里的克隆接管（会被小巴擦掉），其余字直接淡掉 */
   html.bs-motion .bs-hero.is-morph .bs-hero__title,
   html.bs-motion .bs-hero.is-morph .bs-hero__kicker,
   html.bs-motion .bs-hero.is-morph .bs-hero__lede,
   html.bs-motion .bs-hero.is-morph .bs-hero__spec,
   html.bs-motion .bs-hero.is-morph .bs-meta,
   html.bs-motion .bs-hero.is-morph .bs-hero__cue { opacity: 0; transition: opacity 0.4s ease; }
+  /* 真标题必须立刻让位给飞行层的克隆（两者完全重合，但克隆要翻色，留着会叠出两层颜色） */
+  html.bs-motion .bs-hero.is-morph .bs-hero__title { transition: none; }
 
   /* 01 的内容由小车逐行带出，暂时关掉通用的 bsRise 入场，免得两条动画打架 */
   html.bs-motion .bs-sec.is-morphing .bs-eyebrow,
@@ -207,7 +215,7 @@
     opacity: 0;
   }
 
-  .bs-fly__word { white-space: nowrap; transform-origin: 0 0; will-change: transform, color, opacity; }
+  .bs-fly__h1 { will-change: clip-path, color; }
   .bs-fly__bus { will-change: transform, opacity; }
   .bs-fly__bus svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .bs-fly__bus .bs-bus__wheel {
@@ -216,9 +224,12 @@
     animation: bsWheel 1.6s linear infinite;
   }
 
-  /* 深色底变浅的那 0.7 秒里，导航文字不能还是白的 */
+  /* 深色底变浅的那 0.45 秒里，导航文字同步由白转深（否则白字糊在浅底上） */
   html.bs-motion.bs-hero-morph .bs-page .nav:not(.is-solid):not(.is-open) .nav__link,
-  html.bs-motion.bs-hero-morph .bs-page .nav:not(.is-solid):not(.is-open) .nav__link:hover { color: var(--bs-ink); }
+  html.bs-motion.bs-hero-morph .bs-page .nav:not(.is-solid):not(.is-open) .nav__link:hover {
+    color: var(--bs-ink);
+    transition: color 0.45s ease;
+  }
   html.bs-motion.bs-hero-morph .bs-page .nav:not(.is-solid) .nav__burger span { background: var(--bs-ink); }
 
   /* 转场期间不再整块隐藏上一段；内容由同色背景幕自然淡出 */

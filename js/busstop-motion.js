@@ -178,45 +178,37 @@
   let MORPH = null;      // 首屏→01 那条专属转场的复原上下文
 
   const SCENES = {
-    /* 1. 首屏 → 01：深色底像圆一样缩回去 → 只剩 Bus Stop + 3D 模型
-       → 模型边转边淡出 → 小车拖黄线从左往右带出 01 的文字
-       → 保留的 Bus Stop 落进标题里 bus stop 的位置，原句淡入（文案一字不改） */
+    /* 1. 首屏 → 01：深色底整屏淡成浅色 → 大号小巴从屏幕最左开出
+       → 车尾擦掉首屏标题、长出 01 标题 → 车轮下的黄线带出标题下方所有内容
+       → 3D 模型在小车开过标题时开始淡出 */
     "top>overview": {
-      dur: 2200,
-      noBg: true,       // 换章由首屏自己的圆收缩完成，不要通用背景幕
+      dur: 2600,
+      noBg: true,       // 换章由首屏自己整屏淡色完成，不要通用背景幕
       plainUp: true,    // 01 上滑回首屏：交回分页器做普通上移，不播转场
       play(L) {
         const hero = SEC.top;
         const ov = SEC.overview;
         const W = window.innerWidth;
-
-        /* ---- 量真实范围（Range，不用改 HTML 结构） ---- */
-        const h1 = $(".bs-hero__title", hero);
-        const tNode = [...h1.childNodes]
-          .filter((n) => n.nodeType === 3 && /Bus Stop/.test(n.textContent)).pop();
-        const rW = document.createRange(); rW.selectNodeContents(tNode);
-        const from = rW.getBoundingClientRect();                 // 首屏的 "Bus Stop"
-
-        const h2 = $(".bs-h2", ov);
-        const t2 = h2.firstChild;
-        const at = t2.textContent.indexOf("bus stop");
-        const r2 = document.createRange();
-        r2.setStart(t2, at); r2.setEnd(t2, at + 8);
         const ovAbs = topOf(ov);
-        const rr = r2.getBoundingClientRect();
-        const to = { left: rr.left, top: rr.top + window.scrollY - ovAbs, height: rr.height };
 
-        const rows = [$(".bs-eyebrow", ov), $(".bs-p", ov), ...$$(".bs-law", ov)].filter(Boolean);
-        const rowRects = rows.map((n) => {
+        /* ---- 量：首屏标题 / 01 标题与它下面的每一行 ---- */
+        const h1 = $(".bs-hero__title", hero);
+        const h1r = R(h1);
+        const h1cs = getComputedStyle(h1);
+        const h2 = $(".bs-h2", ov);
+        const eyebrow = $(".bs-eyebrow", ov);
+        const rows = [eyebrow, h2, $(".bs-p", ov), ...$$(".bs-law", ov)].filter(Boolean);
+        // 此刻还没跳页，把 scrollY 的差补上 = 落位后的视口坐标
+        const landing = (n) => {
           const r = R(n);
-          return { left: r.left, width: r.width };
-        });
-        const all = [h2, ...rows];
+          return { left: r.left, top: r.top + window.scrollY - ovAbs, width: r.width, height: r.height };
+        };
+        const rects = rows.map(landing);
+        const h2r = landing(h2);
 
-        /* ---- 首屏：其他字淡掉；深色底剪成一个收缩的圆；模型暂时固定住继续转 ---- */
+        /* ---- 首屏：整屏深色淡掉（不是圆，也不会有黑块），其他字消失，模型固定住继续转 ---- */
         hero.classList.add("is-morph");
         document.documentElement.classList.add("bs-hero-morph");
-        hero.style.setProperty("--bs-iris", "150%");
         const art = $(".bs-hero__art", hero);
         const artSaved = art.getAttribute("style") || "";
         const ar = R(art);
@@ -225,93 +217,82 @@
           width: ar.width + "px", height: ar.height + "px",
           right: "auto", bottom: "auto", transform: "none", zIndex: "44",
         });
+        ov.classList.add("is-morphing");   // 01 的内容先藏起来，等小巴带出来
 
-        /* 01 的内容先藏起来，由小车一行一行带出 */
-        ov.classList.add("is-morphing");
-
-        /* ---- 飞行的 "Bus Stop"：纯视觉克隆，原文案一个字都不动 ---- */
-        const word = document.createElement("div");
-        word.className = "bs-fly__el bs-fly__word";
-        word.textContent = "Bus Stop";
-        const cs = getComputedStyle(h1);
-        Object.assign(word.style, {
-          left: from.left + "px", top: from.top + "px",
-          width: from.width + "px", height: from.height + "px",
-          lineHeight: from.height + "px", fontSize: cs.fontSize,
-          fontWeight: cs.fontWeight, letterSpacing: cs.letterSpacing,
-          fontFamily: cs.fontFamily, color: "#fff", transformOrigin: "0 0",
+        /* ---- 首屏标题的视觉克隆（真实 h1 已被 is-morph 隐掉；innerHTML 原样复制） ---- */
+        const oldTitle = document.createElement("div");
+        oldTitle.className = "bs-fly__el bs-fly__h1";
+        oldTitle.innerHTML = h1.innerHTML;
+        Object.assign(oldTitle.style, {
+          left: h1r.left + "px", top: h1r.top + "px",
+          width: h1r.width + "px", height: h1r.height + "px",
+          fontSize: h1cs.fontSize, fontWeight: h1cs.fontWeight,
+          letterSpacing: h1cs.letterSpacing, lineHeight: h1cs.lineHeight,
+          fontFamily: h1cs.fontFamily, color: "#fff",
         });
-        L.appendChild(word);
+        L.appendChild(oldTitle);
 
-        /* ---- 小车 + 车尾黄线（复用左侧索引栏那辆小巴） ---- */
-        const busY = from.bottom - 2;   // 紧贴字的下沿，黄线正好落在正文上方
-        const busW = 40, busH = 24;
-        const travel = W - from.left - busW - 40;
+        /* ---- 大号小巴：高度 = 01 标题两行字（91px），宽按 SVG 36:22 比例 ---- */
+        const busH = h2r.height;                    // 91
+        const busW = Math.round(busH * 36 / 22);    // 149
+        const busTop = h1r.top + (h1r.height - busH) / 2;
+        const wheelY = busTop + busH * (20 / 22);   // 轮子底 = 黄线所在高度
+        const travel = W;                           // 车尾从 0 开到屏幕最右
         const bus = document.createElement("div");
         bus.className = "bs-fly__el bs-fly__bus";
         bus.innerHTML = busSVG;
         Object.assign(bus.style, {
-          left: from.left + "px", top: busY + "px",
-          width: busW + "px", height: busH + "px", opacity: "0",
+          left: "0px", top: busTop + "px", width: busW + "px", height: busH + "px",
+          opacity: "0",
         });
         L.appendChild(bus);
         const line = document.createElement("div");
         line.className = "bs-fly__el bs-fly__bar";
         Object.assign(line.style, {
-          left: from.left + "px", top: (busY + busH / 2 - 1.5) + "px",
-          width: travel + "px", height: "3px", transformOrigin: "0 50%", opacity: "0",
+          left: "0px", top: (wheelY - 1.5) + "px", width: travel + "px", height: "3px",
+          transformOrigin: "0 50%", opacity: "0",
         });
         L.appendChild(line);
 
-        const T = { iris: 700, jump: 700, fade0: 700, fade1: 1200,
-                    bus0: 700, bus1: 1450, word0: 1450, word1: 1960, end: 2200 };
-        const scale = to.height / from.height;
-        const dx = to.left - from.left, dy = to.top - from.top;
+        const T = { bg: 450, jump: 460, bus0: 460, bus1: 2260,
+                    fade0: 620, fade1: 1320, lineOut0: 2260, lineOut1: 2520, end: 2600 };
         const c0 = [255, 255, 255], c1 = [36, 31, 61];
 
-        // 切页是这个转场的骨架，用定时器独立触发：逐帧循环万一被 3D 模型卡住，
-        // 也不能把「跳到 01」这一步漏掉（finish 里还有一次同位置的兜底）。
+        // 切页独立定时触发：逐帧循环万一被 3D 模型卡住，也不能漏掉（finish 里还有同位置兜底）
         setTimeout(() => { jumpTo(ovAbs); }, T.jump);
 
-        // 圆心＝屏幕正中。字在左侧，圆边扫过它的时候正好把字从白翻成深墨，
-        // 否则深色底一退，白字就直接糊在浅底上了。
-        const H0 = window.innerHeight;
-        const ref = Math.sqrt(W * W + H0 * H0) / Math.SQRT2;
-        const nx = Math.max(from.left, Math.min(W / 2, from.left + from.width));
-        const ny = Math.max(from.top, Math.min(H0 / 2, from.top + from.height));
-        const dist = Math.hypot(W / 2 - nx, H0 / 2 - ny);
         const t0 = performance.now();
         const tick = (now) => {
           if (!hero.classList.contains("is-morph")) return;    // 已被 cleanup，停
           const el = now - t0;
 
-          /* ① 深色底像圆一样缩回去（圆心＝屏幕正中） */
-          const pi = clamp01(el / T.iris);
-          // 150% 覆盖全屏 → 0%：往屏幕正中收
-          const pct = 150 * Math.pow(1 - pi, 3);
-          hero.style.setProperty("--bs-iris", pct.toFixed(2) + "%");
+          /* ① 旧标题随着背景变浅，由白翻成深墨（浅底上才看得见、才谈得上被擦掉） */
+          // 前半段还是深底就保持白字，等底色差不多浅了再快速翻深墨：
+          // 线性翻色会有一段灰字压在灰底上，整整 0.2s 看不清
+          const pc = clamp01((el - 140) / 200);
+          oldTitle.style.color = "rgb(" + c0.map((v, i) => Math.round(v + (c1[i] - v) * pc)).join(",") + ")";
 
-          /* ② 圆边扫过这个字的同时，字由白翻成深墨（浅底上始终看得清） */
-          const R = (pct / 100) * ref;
-          const cover = clamp01((R - dist) / 55 + 0.5);   // 1＝还在深色圆里
-          word.style.color = "rgb(" + c1.map((v, i) => Math.round(v + (c0[i] - v) * cover)).join(",") + ")";
-
-          /* ③ 3D 模型一直在转，只是透明度慢慢到 0 */
+          /* ② 3D 模型一直在转，小车开过标题时开始淡到 0 */
           art.style.opacity = String(1 - clamp01((el - T.fade0) / (T.fade1 - T.fade0)));
 
-          /* ④ 小车从左往右开，车尾黄线跟着长；线扫到哪，那一行就显到哪 */
+          /* ③ 小巴从屏幕最左往右开；车尾拖一条黄线，最后淡掉 */
           const pb = clamp01((el - T.bus0) / (T.bus1 - T.bus0));
-          const bx = from.left + travel * pb;
-          const bo = clamp01(pb * 14) * clamp01((1 - pb) * 14);
-          bus.style.transform = "translateX(" + (travel * pb).toFixed(1) + "px)";
-          bus.style.opacity = bo.toFixed(3);
+          const edge = travel * pb;                       // 车尾 x
+          bus.style.transform = "translateX(" + edge.toFixed(1) + "px)";
+          bus.style.opacity = pb >= 1 ? "0" : Math.min(1, pb * 30).toFixed(3);
+          const lineFade = 1 - clamp01((el - T.lineOut0) / (T.lineOut1 - T.lineOut0));
           line.style.transform = "scaleX(" + pb.toFixed(4) + ")";
-          line.style.opacity = bo.toFixed(3);
+          line.style.opacity = (Math.min(1, pb * 20) * lineFade).toFixed(3);
+
+          /* ④ 车尾擦掉首屏标题：车尾右侧还是旧标题 */
+          const cut = Math.max(0, Math.min(h1r.width, edge - h1r.left));
+          oldTitle.style.clipPath = "inset(0 0 0 " + cut.toFixed(1) + "px)";
+
+          /* ⑤ 车尾左侧长出 01 的标题和标题下面的所有内容（线扫到哪显到哪） */
           rows.forEach((n, i) => {
-            const q = rowRects[i];
-            const vis = clamp01((bx - q.left) / Math.max(1, q.width));
-            // 量化到 2% 一档：mask-image 每帧重写会拖累主线程（3D 模型同时在渲染）
-            const step = Math.round(vis * 50);
+            const q = rects[i];
+            const vis = clamp01((edge - q.left) / Math.max(1, q.width));
+            const step = Math.round(vis * 50);   // 量化到 2%，别每帧重写 mask
             if (n.__vstep === step) return;
             n.__vstep = step;
             if (vis <= 0) { n.style.opacity = "0"; return; }
@@ -319,41 +300,27 @@
             if (vis >= 1) {
               n.style.maskImage = ""; n.style.webkitMaskImage = "";
             } else {
-              const stop = (step * 2).toFixed(2);
-              const soft = Math.max(0, step * 2 - 5).toFixed(2);
+              const stop = (step * 2).toFixed(2), soft = Math.max(0, step * 2 - 5).toFixed(2);
               const m = "linear-gradient(90deg,#000 0%,#000 " + soft + "%,rgba(0,0,0,0) " + stop + "%)";
               n.style.maskImage = m; n.style.webkitMaskImage = m;
             }
           });
 
-          /* ⑤ 底色此刻已经一致（跳页由定时器在 700ms 完成，这里只管视觉） */
-
-          /* ⑥ 最后一拍：字落进标题里 bus stop 的位置，然后交叉淡入原句 */
-          const pw = clamp01((el - T.word0) / (T.word1 - T.word0));
-          const pe = 1 - Math.pow(1 - pw, 3);
-          word.style.transform = "translate(" + (dx * pe).toFixed(1) + "px," +
-            (dy * pe).toFixed(1) + "px) scale(" + (1 + (scale - 1) * pe).toFixed(4) + ")";
-          const pfOut = clamp01((el - T.word1) / 80);
-          const pfIn = clamp01((el - (T.word1 + 80)) / 160);
-          word.style.opacity = String(1 - pfOut);
-          h2.style.opacity = String(pfIn);
-
           if (el < T.end) requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
 
-        MORPH = { hero, ov, art, artSaved, all, word };
+        MORPH = { hero, ov, art, artSaved, rows };
       },
       cleanup() {
         if (!MORPH) return;
         const m = MORPH; MORPH = null;
         m.hero.classList.remove("is-morph");
-        m.hero.style.removeProperty("--bs-iris");
         document.documentElement.classList.remove("bs-hero-morph");
         m.art.setAttribute("style", m.artSaved);
         // 先摘 is-live：否则一摘 is-morphing，通用 bsRise 会立刻从头重播一次
         m.ov.classList.remove("is-live");
-        m.all.forEach((n) => {
+        m.rows.forEach((n) => {
           n.style.opacity = "1"; n.style.transform = "none"; n.style.clipPath = "none";
           n.style.maskImage = ""; n.style.webkitMaskImage = "";
           delete n.__vstep;
