@@ -1,0 +1,220 @@
+/* ============================================================
+   Auto-Signaled Bus Stop — 动效层（仅电脑端）
+   ------------------------------------------------------------
+   本文件只负责：左侧线路/小车、板块转场的飞行层、段内入场动画。
+   不改动任何既有形状语言（圆角、线宽、编号、色块配色）与内容。
+   手机端（<=1023px）整块不生效。
+   ============================================================ */
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+
+  /* ---------- 转场用的全屏飞行层 ---------- */
+  .bs-fly {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bs-fly__el {
+    position: fixed;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
+  }
+  .bs-fly__bar {
+    background: var(--bs-yellow);
+    border-radius: 999px;
+  }
+  .bs-fly__dot {
+    background: var(--bs-purple);
+    border-radius: 50%;
+  }
+  .bs-fly__tile {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(36, 31, 61, 0.16);
+  }
+  .bs-fly__bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+  .bs-fly__line {
+    position: fixed;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  /* ---------- 左侧索引栏 → 线路（文字一字不动） ---------- */
+  .bs-index { position: fixed; }
+  .bs-index::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 9px;
+    bottom: 9px;
+    border-left: 2px dashed rgba(116, 105, 182, 0.55);
+    pointer-events: none;
+  }
+  .bs-index__item { position: relative; z-index: 1; }
+  .bs-index__item i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid rgba(116, 105, 182, 0.65);
+    opacity: 1;
+    transition: width 0.3s ease, height 0.3s ease, background 0.3s ease,
+      border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .bs-index__item.is-active i {
+    width: 14px;
+    height: 14px;
+    background: var(--bs-yellow);
+    border-color: var(--bs-yellow);
+    box-shadow: 0 0 0 4px rgba(255, 201, 60, 0.2);
+  }
+  .bs-index__item.is-past i {
+    background: var(--bs-yellow);
+    border-color: var(--bs-yellow);
+  }
+  .bs-index__item.is-past.is-active i { box-shadow: 0 0 0 4px rgba(255, 201, 60, 0.25); }
+  .bs-index.is-light::before { border-left-color: rgba(255, 255, 255, 0.45); }
+  .bs-index.is-light .bs-index__item i { background: rgba(23, 15, 51, 0.85); border-color: rgba(255, 255, 255, 0.7); }
+  .bs-index.is-light .bs-index__item.is-active i,
+  .bs-index.is-light .bs-index__item.is-past i {
+    background: var(--bs-yellow);
+    border-color: var(--bs-yellow);
+  }
+
+  /* 线路上的小车：停在虚线左侧，不压索引文字 */
+  .bs-index__bus {
+    position: absolute;
+    left: -30px;
+    top: 0;
+    width: 30px;
+    height: 19px;
+    z-index: 3;
+    pointer-events: auto;
+    transition: transform 0.46s cubic-bezier(0.34, 1.24, 0.5, 1);
+  }
+  .bs-index__bus svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .bs-index__bus .bs-bus__wheel {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: bsWheel 1.6s linear infinite;
+  }
+  .bs-index__bus.is-lit .bs-bus__lamp { opacity: 1; }
+  .bs-index__bus:hover .bs-bus__lamp { opacity: 1; }
+
+  /* ---------- 段内：入场（只在 .bs-motion 打开时） ---------- */
+  html.bs-motion .bs-sec.is-live .bs-law,
+  html.bs-motion .bs-sec.is-live .bs-stats > div,
+  html.bs-motion .bs-sec.is-live .bs-insights li,
+  html.bs-motion .bs-sec.is-live .bs-issue,
+  html.bs-motion .bs-sec.is-live .bs-poster__fig {
+    animation: bsRise 0.62s cubic-bezier(0.16, 0.84, 0.28, 1) both;
+  }
+  html.bs-motion .bs-sec.is-live .bs-law:nth-child(1),
+  html.bs-motion .bs-sec.is-live .bs-stats > div:nth-child(1),
+  html.bs-motion .bs-sec.is-live .bs-insights li:nth-child(1),
+  html.bs-motion .bs-sec.is-live .bs-issue:nth-child(1) { animation-delay: 0.04s; }
+  html.bs-motion .bs-sec.is-live .bs-law:nth-child(2),
+  html.bs-motion .bs-sec.is-live .bs-stats > div:nth-child(2),
+  html.bs-motion .bs-sec.is-live .bs-insights li:nth-child(2),
+  html.bs-motion .bs-sec.is-live .bs-issue:nth-child(2) { animation-delay: 0.12s; }
+  html.bs-motion .bs-sec.is-live .bs-law:nth-child(3),
+  html.bs-motion .bs-sec.is-live .bs-stats > div:nth-child(3),
+  html.bs-motion .bs-sec.is-live .bs-insights li:nth-child(3),
+  html.bs-motion .bs-sec.is-live .bs-issue:nth-child(3) { animation-delay: 0.2s; }
+  html.bs-motion .bs-sec.is-live .bs-law:nth-child(4),
+  html.bs-motion .bs-sec.is-live .bs-stats > div:nth-child(4),
+  html.bs-motion .bs-sec.is-live .bs-insights li:nth-child(4),
+  html.bs-motion .bs-sec.is-live .bs-issue:nth-child(4) { animation-delay: 0.28s; }
+  html.bs-motion .bs-sec.is-live .bs-issue:nth-child(5) { animation-delay: 0.36s; }
+  html.bs-motion .bs-sec.is-live #product .bs-model3d,
+  html.bs-motion .bs-sec.is-live #product .bs-prod__side > * {
+    animation: bsRise 0.7s cubic-bezier(0.16, 0.84, 0.28, 1) both;
+  }
+  html.bs-motion .bs-sec.is-live #product .bs-prod__side > *:nth-child(2) { animation-delay: 0.14s; }
+
+  /* 每段的自走（用户不动手时页面也在呼吸） */
+  html.bs-motion .bs-sec.is-live .bs-hero__glow { animation: bsBreathe 7s ease-in-out infinite; }
+  html.bs-motion .bs-sec.is-live .bs-stats b { animation: bsBreathNum 4.5s ease-in-out infinite; }
+  html.bs-motion .bs-sec.is-live .bs-el__tab { animation: bsFloat 5s ease-in-out infinite; }
+  html.bs-motion .bs-sec.is-live .bs-el__tab:nth-child(2) { animation-delay: 0.5s; }
+  html.bs-motion .bs-sec.is-live .bs-el__tab:nth-child(3) { animation-delay: 1s; }
+  html.bs-motion .bs-sec.is-live .bs-el__tab:nth-child(4) { animation-delay: 1.5s; }
+  html.bs-motion .bs-sec.is-live .bs-el__tab:nth-child(5) { animation-delay: 2s; }
+
+  /* 方向段：被淘汰的想法自动划掉（纯装饰伪元素，不改文字） */
+  html.bs-motion .bs-sec.is-live .bs-kill__item--out { position: relative; }
+  html.bs-motion .bs-sec.is-live .bs-kill__item--out::after {
+    content: "";
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 50%;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.55;
+    transform-origin: left center;
+    animation: bsStrike 0.5s ease 0.55s both;
+  }
+
+  /* tab 切换时面板从右侧轻轻滑入（只加在已有 .is-active 上） */
+  html.bs-motion .bs-el__panel.is-active { animation: bsPanelIn 0.42s cubic-bezier(0.16, 0.84, 0.28, 1) both; }
+
+  /* 交互：hover 反馈 */
+  html.bs-motion .bs-law,
+  html.bs-motion .bs-issue,
+  html.bs-motion .bs-el__tab,
+  html.bs-motion .bs-kill__item,
+  html.bs-motion .bs-poster__fig { transition: transform 0.25s ease, opacity 0.25s ease; }
+  html.bs-motion .bs-law:hover,
+  html.bs-motion .bs-issue:hover { transform: translateY(-4px); }
+  html.bs-motion .bs-kill__item:hover { transform: translateY(-3px) rotate(-2deg); }
+  html.bs-motion .bs-poster__fig:hover { transform: scale(1.015); }
+  html.bs-motion .bs-issue:hover .bs-issue__n { color: var(--bs-purple); }
+
+  /* 转场期间不再整块隐藏上一段；内容由同色背景幕自然淡出 */
+}
+
+@keyframes bsRise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bsPanelIn {
+  from { opacity: 0; transform: translateX(26px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bsFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes bsBreathe {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+@keyframes bsBreathNum {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+@keyframes bsStrike {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes bsWheel {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.bs-motion .bs-sec.is-live *,
+  html.bs-motion .bs-index__bus .bs-bus__wheel { animation: none !important; }
+}

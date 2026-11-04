@@ -64,7 +64,12 @@
       it.addEventListener("click", (e) => {
         e.preventDefault();
         const el = document.getElementById(it.dataset.id);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (!el) return;
+        // 用精确坐标滚：scrollIntoView 会被全站的 scroll-margin-top(92px) 顶住，
+        // 在吸附模式下会露出上一段 92px。这里直接对齐到板块顶。
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const target = Math.max(0, Math.min(el.getBoundingClientRect().top + window.scrollY, max));
+        window.scrollTo({ top: target, behavior: "smooth" });
       });
     });
   }
@@ -74,7 +79,13 @@
     const main = $("#bsMain");
     if (!main) return;
     const sections = BS_SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean);
-    window.initSectionPager({ main, sections, hero: main.querySelector(".bs-hero") });
+    // 专属板块转场（busstop-motion.js 提供）；不提供时分页器行为不变
+    window.initSectionPager({
+      main,
+      sections,
+      hero: main.querySelector(".bs-hero"),
+      transition: window.BS_MOTION || null,
+    });
   }
 
   /* ---------- 首屏提示 ---------- */

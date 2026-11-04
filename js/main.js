@@ -1094,7 +1094,9 @@ SCENE_MQ.addEventListener("change", () => {
    由各项目页调用 initSectionPager({ main, sections, hero })
    ============================================================ */
 window.initSectionPager = function (opts) {
-  const { main, sections, hero } = opts || {};
+  // transition（可选）：某页要播专属板块转场时传入 { down, up, busy }；
+  // 不传的页面行为完全不变（四个项目页共用这一个分页器）。
+  const { main, sections, hero, transition } = opts || {};
   if (!main || !sections || sections.length < 2) return;
   if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
   if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -1164,6 +1166,8 @@ window.initSectionPager = function (opts) {
       }
       const next = sections[idx + 1];
       if (!next) return false;   // 最后一段：交回浏览器，页脚自然滑上来
+      // 专属转场接管：它自己负责落位（instant），不再走 go() 的平滑滚动
+      if (transition && transition.down && transition.down(cur, next)) return true;
       const target = topOf(next);
       if (Math.abs(target - y) < 4) return false;
       go(target, 1);
@@ -1182,6 +1186,7 @@ window.initSectionPager = function (opts) {
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
     if (!prev) return false;
+    if (transition && transition.up && transition.up(cur, prev)) return true;
     const prevTop = topOf(prev);
     const prevEnd = endOf(prev);
     const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -1203,6 +1208,14 @@ window.initSectionPager = function (opts) {
   const onWheel = (e) => {
     if (e.ctrlKey) return;
     if (e.target instanceof Element && inScroller(e.target)) return;
+    // 专属转场播放期间吞掉滚轮；同时把累积的量清零，
+    // 否则转场结束后这一格会立刻补滚一次，段落会偏出几十像素
+    if (transition && transition.busy && transition.busy()) {
+      acc = 0;
+      clearTimeout(accTimer);
+      e.preventDefault();
+      return;
+    }
 
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
@@ -1242,6 +1255,7 @@ window.initSectionPager = function (opts) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = (e.target && e.target.tagName) || "";
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+    if (transition && transition.busy && transition.busy()) { e.preventDefault(); return; }
 
     let dir = 0;
     if (e.key === "PageDown" || e.key === " " || e.key === "ArrowDown") dir = 1;
