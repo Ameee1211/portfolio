@@ -129,6 +129,18 @@
   html.bs-motion #direction.is-live .bs-insights li,
   html.bs-motion #direction.is-live .bs-kill__item--out::after { animation: none !important; }
 
+  /* ---------- 03 ↔ 04：整屏卡片 3D 切换（参考 GSAP Effect 031） ----------
+     两张卡片就是真实的 section，转场时临时给 #bsMain 铺一层深色底：
+     旧卡片被压扁 / 新卡片推进时露出的就是它（链接里的黑底）。
+     clip-path 只裁掉极窄一圈做出卡片边缘的缝，不改任何排版。 */
+  html.bs-motion #bsMain.bs-cardmode { background: #120b26; }
+  /* 03 板块平时是透明的（靠 .bs-page 的浅底），深色底一铺就会把 03 整块染深、
+     深色字糊在深底上。卡片模式里给两张卡各自显式补上自己的底色。 */
+  html.bs-motion #bsMain.bs-cardmode > #direction { background: var(--bs-bg); }
+  html.bs-motion #bsMain.bs-cardmode > #product { background: var(--bs-purple-dark); }
+  html.bs-motion #bsMain.bs-cardmode > #direction,
+  html.bs-motion #bsMain.bs-cardmode > #product { clip-path: inset(6px 8px); }
+
   /* ---------- 段内：入场（只在 .bs-motion 打开时） ---------- */
   html.bs-motion .bs-sec.is-live .bs-law,
   html.bs-motion .bs-sec.is-live .bs-stats > div,

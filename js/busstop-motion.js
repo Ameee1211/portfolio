@@ -177,6 +177,7 @@
      正向 S=左段/D=右段；反向 S=右段/D=左段，因此同一段代码自动镜像。
      ============================================================ */
   let MORPH = null;      // 首屏→01 那条专属转场的复原上下文
+  let CARD = null;       // 03↔04 整屏卡片切换的复原上下文
 
   const SCENES = {
     /* 1. 首屏 → 01：深色底整屏淡成浅色 → 大号小巴从屏幕最左开出
@@ -350,24 +351,65 @@
        落位到 03 顶之后，板块内的四次下滑由 STAGE 接管。 */
     "problem>direction": { plain: true },
 
-    /* 4. 保留下来的想法收拢成卡，飞到 3D 模型框 */
+    /* 4. 03 ↔ 04：整屏卡片 3D 切换（参考 GSAP Effect 031「Scrolling sections」）
+       · 03 卡片钉在顶部，绕 X 轴向后倒退，压成一条带透视的窄梯形
+       · 04 卡片从下方平推上来铺满（它是平的，不变形）
+       · 回程整段倒放。两张卡片就是真实的 section，不克隆、不搬 DOM，
+         3D 模型 / 影片 / 滑杆 / 原型按钮全都照常可用
+       · 一次下滑完整播一遍（不做 scrub），结束后由 finish() 落位 */
     "direction>product": {
-      dur: 1400,
-      play(L, S, D) {
-        const kept = $$(".bs-kill__item:not(.bs-kill__item--out)", S);
-        const dstEl = $(".bs-model3d", D) || $(".bs-prod", D);
-        if (!kept.length || !dstEl) return;
-        const t = landingRect(dstEl, D);
-        kept.slice(0, 7).forEach((el, i) => {
-          const r = R(el);
-          const n = prop(L, "bs-fly__tile", { left: r.left, top: r.top, width: r.width, height: r.height },
-            { background: "rgba(255,255,255,.94)" });
-          n.animate(
-            [{ transform: "translate(0,0) scale(1)", opacity: 1 },
-             { transform: `translate(${t.left + t.width / 2 - (r.left + r.width / 2)}px, ${t.top + t.height / 2 - (r.top + r.height / 2)}px) scale(0.06)`, opacity: 0 }],
-            { duration: 800, delay: i * 65, easing: POP, fill: "both" }
-          );
-        });
+      dur: 1150,
+      noBg: true,          // 卡片自带背景，不要通用背景幕
+      play(L, S, D, dir) {
+        const A = SEC.direction;    // 03 卡片（浅色）
+        const B = SEC.product;      // 04 卡片（深紫）
+        const main = $("#bsMain");
+        const H = A.offsetHeight;   // 04 在文档流里距 03 顶的距离
+        const savedA = A.getAttribute("style") || "";
+        const savedB = B.getAttribute("style") || "";
+        // 索引栏是常驻 UI，别被 3D 卡片的斜边切成两半
+        const rail = $("#bsIndex");
+        const savedRail = rail ? rail.style.zIndex : null;
+        if (rail) rail.style.zIndex = "50";
+        // 卡片退场 / 推进时露出的深色底，就是链接里那圈黑底
+        main.classList.add("bs-cardmode");
+        A.style.transformOrigin = "50% 0%";
+        A.style.willChange = "transform";
+        B.style.willChange = "transform";
+
+        const setP = (p) => {
+          A.style.transform = "perspective(1400px) rotateX(" + (-88 * p).toFixed(2) + "deg)";
+          B.style.transform = "translateY(" + (-H * p).toFixed(1) + "px)";
+        };
+        setP(dir > 0 ? 0 : 1);
+        if (dir < 0) {
+          // 回程：先把视觉摆成「正向末帧」（04 铺满、03 压扁），再瞬时把滚动位置
+          // 换回 03 顶。B 有 translateY(-H) 补偿，这一下用户完全看不见。
+          jumpTo(topOf(A));
+        }
+        void A.offsetWidth;
+
+        const t0 = performance.now();
+        const tick = (now) => {
+          if (!main.classList.contains("bs-cardmode")) return;   // cleanup 已跑，停
+          const q = clamp01((now - t0) / 1150);
+          const e = q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2;
+          setP(dir > 0 ? e : 1 - e);
+          if (q < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        CARD = { A, B, main, savedA, savedB, rail, savedRail };
+      },
+      cleanup() {
+        if (!CARD) return;
+        const c = CARD; CARD = null;
+        c.main.classList.remove("bs-cardmode");
+        c.A.setAttribute("style", c.savedA);
+        c.B.setAttribute("style", c.savedB);
+        if (c.rail) c.rail.style.zIndex = c.savedRail || "";
+        // 回程落位与 play 开头的补偿是同一个滚动位置，浏览器不会再派发 scroll，
+        // 索引栏会一直留在 04 深色板块的反白态（白字糊在 03 浅底上）。补一次同步。
+        window.dispatchEvent(new Event("scroll"));
       },
     },
 
@@ -500,7 +542,7 @@
     }
 
     try {
-      scene.play(L, S, D);
+      scene.play(L, S, D, dir);   // 第 4 个参数给 03↔04 卡片分镜判断正/反向
     } catch (e) {
       console.warn("[bs-motion] scene failed:", key, e);
     }
@@ -524,6 +566,9 @@
   const STAGE = {
     sec: SEC.direction,
     active: false, hidden: false, step: 0,
+    // full = 03 是从 04 卡片切回来的：四批内容一次性全在，不再分四次拉出来，
+    // 再下滑就直接卡片切回 04。从 02 正常下来时 full=false，仍走四次分段。
+    full: false,
     lockUntil: 0, suppressUntil: 0,
     words: [], solids: [],
   };
@@ -627,6 +672,27 @@
     STAGE.step = 0;
     STAGE.hidden = true;
     STAGE.active = false;
+    STAGE.full = false;
+  }
+
+  // 04 → 03 回程：03 直接显示完整信息，不播收紧、不需要再下滑四次
+  function stageShowAll() {
+    STAGE.words.forEach((w) => {
+      w.el.style.transition = "none";
+      w.el.style.transform = "none";
+      w.el.style.opacity = "1";
+    });
+    STAGE.solids.forEach((s) => {
+      s.el.style.transition = "none";
+      s.el.style.transform = "none";
+      s.el.style.opacity = "1";
+    });
+    void STAGE.sec.offsetWidth;
+    STAGE.step = 4;
+    STAGE.full = true;
+    STAGE.hidden = false;
+    STAGE.active = true;
+    STAGE.suppressUntil = 0;
   }
 
   // 第 k 批：逐行（列表/标签逐项）收紧到自然排版，然后永久固定
@@ -655,11 +721,16 @@
   }
 
   function stageCheck() {
+    if (busy) return;               // 卡片切换播放中不做任何激活 / 重置
     const now = performance.now();
     if (now < STAGE.suppressUntil) return;
     const dt = topOf(STAGE.sec);
     const y = window.scrollY;
     const vh = window.innerHeight;
+    if (STAGE.full) {
+      STAGE.active = Math.abs(y - dt) <= 6;   // 完整态：只管钉不钉住，绝不再 reset 隐藏
+      return;
+    }
     if (STAGE.active) {
       if (Math.abs(y - dt) > vh * 0.55) stageLeave();   // 被索引点击/拖动带走，别锁死
       return;
@@ -695,14 +766,14 @@
     }
     if (dir > 0) {
       if (now < STAGE.lockUntil) return true;         // 一次手势只推一批
-      if (STAGE.step < 4) {
-        stageReveal(STAGE.step + 1);
-        STAGE.lockUntil = now + 200;
+      if (STAGE.full || STAGE.step >= 4) {
+        // 完整态（从 04 回来）/ 四批出齐：直接整屏卡片切到 04
+        stageLeave();
+        run(SEC.direction, SEC.product, 1);
         return true;
       }
-      // 四批出齐：解除钉住，第五次下滑按原来的方式翻到 04
-      stageLeave();
-      run(SEC.direction, SEC.product, 1);
+      stageReveal(STAGE.step + 1);
+      STAGE.lockUntil = now + 200;
       return true;
     }
     // 上滑：已出现的内容全部保留，一次直接退回 02（普通 pin 交回分页器）
@@ -724,7 +795,8 @@
     },
     up(cur, prev) {
       if (busy || !cur || !prev) return false;
-      if (prev.id === "direction") { stageReset(); STAGE.suppressUntil = 0; }
+      // 从 04 卡片切回 03：03 一次性显示完整信息，不再分四次下滑拉出来
+      if (prev.id === "direction") stageShowAll();
       const sc = SCENES[prev.id + ">" + cur.id];
       // plain = 双向都普通（01↔02、02↔03）；plainUp = 只有回程普通（01 → 首屏）
       if (sc && (sc.plain || sc.plainUp)) return false;
