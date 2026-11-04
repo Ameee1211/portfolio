@@ -1090,11 +1090,10 @@
   max-width: 100%;
   object-fit: contain;
   border-radius: 12px;
-  box-shadow: 0 30px 70px rgba(36, 31, 61, 0.22);
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  transition: transform 0.35s ease;
 }
 .bs-poster__fig a { display: block; height: 100%; }
-.bs-poster__fig a:hover img { transform: translateY(-4px); box-shadow: 0 38px 80px rgba(36, 31, 61, 0.28); }
+.bs-poster__fig a:hover img { transform: translateY(-4px); }
 .bs-poster__facts {
   list-style: none;
   margin: 26px 0 0;

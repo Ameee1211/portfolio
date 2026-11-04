@@ -429,7 +429,8 @@
        · 下滑：标题 / 导语 / 01–05 标签列淡出并轻微上移，卡片里的图与文字被白色洗掉
        · 白卡从卡片自己的位置与尺寸，直接插值到海报图片的位置与尺寸
        · 海报在框里淡入（略小 → 归位），同时左侧 06 文案淡入上移复位
-       · 回程整段倒放（上滑时海报淡出、白卡缩回卡片、第五板块内容回来）
+       · 回程：海报**不缩**，在原位直接把透明度降下去消失；白框再缩回卡片，
+         底色从右往左刷回第五板块（整段与正放对称，只有海报那一路改成纯淡出）
        · 一次下滑播完整段，播放期间由 transition.busy() 吞掉滚轮
        · 页面滚动与卡片位移同步：卡片是 fixed 的，背景由色幕接管，看不到接缝 */
     "elements>poster": {
@@ -452,11 +453,18 @@
         const y1 = topOf(dir > 0 ? poSec : elSec);
         const r0 = dir > 0 ? R(panel) : R(pImg);
         const r1 = dir > 0 ? landingRect(pImg, poSec) : landingRect(panel, elSec);
-        const W1 = Math.max(1, r1.width), H1 = Math.max(1, r1.height);
+        // 基准画框永远是海报自己的尺寸（正反都一样）：框里的 pic 是按这个尺寸排版的，
+        // 换乘用 object-fit: contain，若拿「卡片」那个扁框当基准，回程时海报会被 contain
+        // 成一个小图缩在白框中间 —— 正是要修的那个「海报在白框里缩没了」。
+        const frame = dir > 0 ? r1 : R(pImg);
+        const FW = Math.max(1, frame.width), FH = Math.max(1, frame.height);
 
-        /* 色幕：从第五板块的浅紫过渡到第六板块的底色，落位瞬间不闪 */
+        /* 色幕：换成目标板块自己的底色，按方向刷过去（下滑左→右，上滑右→左） */
         const veil = document.createElement("div");
         veil.className = "bs-fly__veil";
+        veil.style.background = getComputedStyle(dir > 0 ? poSec : elSec).backgroundColor || "#f7f5fc";
+        veil.style.opacity = "1";
+        veil.style.clipPath = dir > 0 ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)";
         L.appendChild(veil);
 
         /* 06 的文案：正向此刻还在下一屏外，只能用飞行层里的副本；
@@ -479,8 +487,8 @@
            里面的海报做等量逆变换 —— 框在变形的全程里，海报本身绝不被拉扁 */
         const card = document.createElement("div");
         card.className = "bs-fly__el bs-fly__card";
-        card.style.width = W1 + "px";
-        card.style.height = H1 + "px";
+        card.style.width = FW + "px";
+        card.style.height = FH + "px";
         const box = document.createElement("div");
         box.className = "bs-fly__cardbox";
         const pic = document.createElement("img");
@@ -514,18 +522,20 @@
         /* lin：0 = 完全是第五板块，1 = 完全是第六板块，走线性时间。
            正反向共用一套时间轴，反向只把「位移」那一路反过来 —— 这样倒放
            的每一拍都与正放严格对称，不会出现某种顺序对不上的情况。
-           时间窗（总 1700ms）：洗白 0–0.12 / 变形 0.08–0.64 / 色幕 0.12–0.42
-                               / 文案 0.52–0.86 / 海报 0.56–0.90 */
+           时间窗（总 1700ms）：洗白 0–0.12 / 变形 0.08–0.64 / 刷底色 0.14–0.50
+                               / 文案 0.52–0.86 / 海报 0.56–0.90
+           回程把这条轴倒过来读：刷底色变成 0.62–0.26（右→左），
+           海报改成 1.00–0.76 纯淡出（不参与变形） */
         const setP = (lin) => {
           const mp = easeIO(clamp01((lin - 0.08) / 0.56));
           // m = 0 在起点矩形（r0），m = 1 在终点矩形（r1）
           const m = dir > 0 ? mp : 1 - mp;
-          const w = r0.width + (W1 - r0.width) * m;
-          const h = r0.height + (H1 - r0.height) * m;
+          const w = r0.width + (r1.width - r0.width) * m;
+          const h = r0.height + (r1.height - r0.height) * m;
           const x = r0.left + (r1.left - r0.left) * m;
           const y = r0.top + (r1.top - r0.top) * m;
-          const sx = Math.max(0.02, w / W1);
-          const sy = Math.max(0.02, h / H1);
+          const sx = Math.max(0.02, w / FW);
+          const sy = Math.max(0.02, h / FH);
           card.style.transform =
             "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0) scale(" +
             sx.toFixed(4) + "," + sy.toFixed(4) + ")";
@@ -537,14 +547,22 @@
           const white = clamp01(lin / 0.12);
           box.style.background = "rgba(255,255,255," + white.toFixed(3) + ")";
           box.style.borderRadius = (18 - 6 * m).toFixed(2) + "px";
+          // 海报页不要阴影了：起点还是卡片自己的那层浅影，越长大越淡，落位时正好为 0
           box.style.boxShadow = "0 " + (10 + 20 * m).toFixed(1) + "px " +
-            (26 + 44 * m).toFixed(1) + "px rgba(36,31,61," + (0.07 + 0.15 * m).toFixed(3) + ")";
+            (26 + 44 * m).toFixed(1) + "px rgba(36,31,61," + (0.07 * (1 - m)).toFixed(4) + ")";
 
-          // 海报在框里淡入：k 从 0.982 归位到 1，再乘上逆变换抵消外层非等比缩放
-          const pi = clamp01((lin - 0.56) / 0.34);
-          const k = 0.982 + 0.018 * pi;
-          pic.style.transform = "scale(" + (k / sx).toFixed(4) + "," + (k / sy).toFixed(4) + ")";
-          pic.style.opacity = pi.toFixed(3);
+          if (dir > 0) {
+            // 下滑：海报在框里淡入，k 从 0.982 归位到 1，再乘上逆变换抵消外层非等比缩放
+            const pi = clamp01((lin - 0.56) / 0.34);
+            const k = 0.982 + 0.018 * pi;
+            pic.style.transform = "scale(" + (k / sx).toFixed(4) + "," + (k / sy).toFixed(4) + ")";
+            pic.style.opacity = pi.toFixed(3);
+          } else {
+            // 上滑：海报不缩、不平移，就在原位把透明度降下去直接消失，
+            // 之后再让白框自己缩回卡片（缩的是白框，不是海报）
+            pic.style.transform = "scale(" + (1 / sx).toFixed(4) + "," + (1 / sy).toFixed(4) + ")";
+            pic.style.opacity = clamp01((lin - 0.66) / 0.34).toFixed(3);
+          }
 
           // 06 的文案：和海报同时出现（正向副本 / 反向真实元素）
           const ci = clamp01((lin - 0.52) / 0.34);
@@ -556,9 +574,18 @@
           }
 
           // 回到第五板块时，卡片快到位了才把内容放回来
-          if (dir < 0 && lin < 0.14) elSec.classList.remove("is-clearing");
+          if (dir < 0 && lin < 0.10) elSec.classList.remove("is-clearing");
 
-          veil.style.opacity = clamp01((lin - 0.12) / 0.3).toFixed(3);
+          // 底色：换成目标板块的颜色，用一条会走的硬边刷过去
+          // 下滑 0.14→0.50 左→右；上滑 0.62→0.26 右→左（时间轴倒过来，正好反过来刷）
+          const vp = dir > 0 ? clamp01((lin - 0.14) / 0.36) : clamp01((0.62 - lin) / 0.36);
+          const cut = ((1 - vp) * 100).toFixed(2);
+          veil.style.clipPath = dir > 0
+            ? "inset(0 " + cut + "% 0 0)"
+            : "inset(0 0 0 " + cut + "%)";
+          // 上滑最后把幕化掉：这时它和第五板块的底色是同一个颜色，看不出变化，
+          // 但第五板块的内容回来时不会被它压着
+          veil.style.opacity = dir > 0 ? "1" : clamp01((lin - 0.08) / 0.18).toFixed(3);
           window.scrollTo(0, y0 + (y1 - y0) * m);
         };
         setP(dir > 0 ? 0 : 1);
