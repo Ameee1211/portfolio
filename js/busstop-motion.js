@@ -421,32 +421,8 @@
       },
     },
 
-    /* 5. 从模型中心炸出五个零件，飞进五个 tab（小车在这里卸货） */
-    "product>elements": {
-      dur: 1650,
-      play(L, S, D) {
-        const srcEl = $(".bs-model3d", S) || $(".bs-prod", S) || $(".bs-wrap", S);
-        const tabs = $$(".bs-el__tab", D);
-        if (!srcEl || !tabs.length) return;
-        const r = R(srcEl);
-        if (ROUTE.bus) ROUTE.bus.classList.add("is-lit");
-        tabs.forEach((tab, i) => {
-          const t = landingRect(tab, D);
-          const n = prop(L, "bs-fly__tile", {
-            left: r.left + r.width / 2 - 16,
-            top: r.top + r.height / 2 - 16,
-            width: 32, height: 32,
-          }, { background: "#ffc93c", borderRadius: "8px" });
-          n.animate(
-            [{ transform: "translate(0,0) scale(0.6) rotate(0deg)", opacity: 0 },
-             { transform: `translate(${(i - 2) * 46}px, ${-58 - (i % 2) * 26}px) scale(1) rotate(${(i - 2) * 16}deg)`, opacity: 1, offset: 0.38 },
-             { transform: `translate(${t.left + t.width / 2 - (r.left + r.width / 2)}px, ${t.top + t.height / 2 - (r.top + r.height / 2)}px) scale(0.28) rotate(0deg)`, opacity: 0 }],
-            { duration: 940, delay: i * 90, easing: EASE, fill: "both" }
-          );
-          setTimeout(() => { tab.animate([{ transform: "scale(1)" }, { transform: "scale(1.08)" }, { transform: "scale(1)" }], { duration: 380, easing: POP }); }, 940 + i * 90);
-        });
-      },
-    },
+    /* 5. 04 ↔ 05：和 01 ↔ 02 一样，正反两个方向都是最普通的页面 pin */
+    "product>elements": { plain: true },
 
     /* 6. 五个 tab 收拢，围出海报的方框 */
     "elements>poster": {
@@ -848,7 +824,7 @@
       // 从 04 卡片切回 03：03 一次性显示完整信息，不再分四次下滑拉出来
       if (prev.id === "direction") stageShowAll();
       const sc = SCENES[prev.id + ">" + cur.id];
-      // plain = 双向都普通（01↔02、02↔03）；plainUp = 只有回程普通（01 → 首屏）
+      // plain = 双向都普通（01↔02、02↔03、04↔05）；plainUp = 只有回程普通（01 → 首屏）
       if (sc && (sc.plain || sc.plainUp)) return false;
       return run(cur, prev, -1);
     },
