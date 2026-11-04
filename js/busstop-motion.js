@@ -763,27 +763,32 @@
        连续多少格，都最多只能滑到「看见这个板块最底部的文字」；
        必须停手、再滑一次，才允许切到下一个板块。
        绝不允许「猛滑一下」连带着把翻页也做掉（有些用户习惯滚轮拨很大一下）。
-     实现：一串连续滚轮（相邻两格间隔 <= GESTURE_GAP）算一个手势，
+       用户 2026-11-04 追加：**上滑也要一样**，小屏上一串上滑不能连退好几个板块。
+     实现：一串「同方向」连续滚轮（相邻两格间隔 <= GESTURE_GAP）算一个手势，
      一个手势只放行一次推进（滚到段底 / 出一批内容 / 直达 / 翻页都算推进），
-     同一串里剩下的滚轮格全部吞掉。板块放得下时没有「先看段底」这一步，
-     但仍遵守一手势一次，避免出完最后一批就顺势翻走。
+     同一串里剩下的滚轮格全部吞掉；换方向立刻算新的一次操作。
+     板块放得下时没有「先看段底」这一步，但仍遵守一手势一次，
+     避免出完最后一批就顺势翻走。
      ============================================================ */
   const GESTURE_GAP = 220;
-  let lastWheelAt = 0, gestureId = 0, usedGesture = -1;
-  function wheelGesture() {
+  let lastWheelAt = 0, lastWheelDir = 0, gestureId = 0, usedGesture = -1;
+  function wheelGesture(dir) {
     const now = performance.now();
-    if (now - lastWheelAt > GESTURE_GAP) gestureId++;
+    // 同一方向 + 间隔短 = 同一串；换方向立刻算新的一次操作
+    // （用户滑下去又马上滑回来必须马上响应，不能被当成惯性吞掉）
+    if (dir !== lastWheelDir || now - lastWheelAt > GESTURE_GAP) gestureId++;
     lastWheelAt = now;
+    lastWheelDir = dir;
     return gestureId;
   }
 
   // 返回 true = 这一格被 03 分段动画消费，分页器不翻页
   function stageIntercept(dir) {
-    const g = wheelGesture();
-    if (dir > 0) {
-      if (g === usedGesture) return true;   // 同一串大幅滚轮：只放行第一格
-      usedGesture = g;
-    }
+    const g = wheelGesture(dir);
+    // 上滑 / 下滑都遵守：一串大幅滚轮只放行第一格推进，同一串剩下的格全部吞掉，
+    // 必须停手再滑一次才能继续（小屏上一串上滑也不能连退好几个板块）。
+    if (g === usedGesture) return true;
+    usedGesture = g;
     const now = performance.now();
     if (!STAGE.active) {
       // 02 → 03：跟 01→02 一样「一滚直接到下一板块」。
