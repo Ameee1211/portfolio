@@ -374,12 +374,20 @@
         // 卡片退场 / 推进时露出的深色底，就是链接里那圈黑底
         main.classList.add("bs-cardmode");
         A.style.transformOrigin = "50% 0%";
-        A.style.willChange = "transform";
-        B.style.willChange = "transform";
+        /* ★ 27" / 高 DPI 屏上 03 会「像电视坏了一样一条条闪」：
+           整屏 section 含 212 个 inline-block 词 span，做 3D 变换时会被光栅成一张
+           超大纹理，GPU 按 tile 分块重绘，旋转到接近 90° 时文字行压到亚像素，
+           tile 边界就出现横条撕裂；15" 纹理小、不分块，所以看不出来。
+           三重防御：① 不提前 will-change（避免预分配超大合成层）
+                     ② 内容在明显压扁前淡掉，之后 GPU 只转一张纯色矩形
+                     ③ 最大角度 78° 而不是 88°，避开极端透视压缩。
+           内容淡出用 CSS 变量挂在 A 上，cleanup 恢复 A 的 style 时会自动清掉。 */
+        A.style.backfaceVisibility = "hidden";
 
         const setP = (p) => {
-          A.style.transform = "perspective(1400px) rotateX(" + (-88 * p).toFixed(2) + "deg)";
+          A.style.transform = "perspective(1400px) rotateX(" + (-78 * p).toFixed(2) + "deg)";
           B.style.transform = "translateY(" + (-H * p).toFixed(1) + "px)";
+          A.style.setProperty("--bs-card-fade", (1 - clamp01((p - 0.08) / 0.3)).toFixed(3));
         };
         setP(dir > 0 ? 0 : 1);
         if (dir < 0) {
@@ -743,6 +751,12 @@
     }
   }
 
+  // 当前板块还有多少内容没滚到（板块比视口高时 > 0）。
+  // 15" 笔记本 1366×768 上 02 / 03 都比视口高约 140px，那 140px 正好是
+  // 用户想看的最底部信息；27" 上 room=0，一整页就能看全。
+  const roomLeft = (sec) =>
+    Math.max(0, clampY(topOf(sec) + sec.offsetHeight - window.innerHeight) - window.scrollY);
+
   // 返回 true = 这一格被 03 分段动画消费，分页器不翻页
   function stageIntercept(dir) {
     const now = performance.now();
@@ -756,6 +770,9 @@
         const dt = topOf(SEC.direction);
         const pt = topOf(SEC.problem);
         if (y >= pt - 4 && y < dt - 4) {
+          // 放不下就别抢这一格：交回分页器先滚到 02 段底，让用户看全最底部信息；
+          // 滚到底后下一次下滑才会一滚直达 03。放得下（room<=24）仍是一滚直达。
+          if (roomLeft(SEC.problem) > 24) return false;
           stageReset();
           STAGE.suppressUntil = 0;      // 别让上一次离开时的抑制挡住落位激活
           window.scrollTo({ top: dt, behavior: "smooth" });
@@ -767,7 +784,10 @@
     if (dir > 0) {
       if (now < STAGE.lockUntil) return true;         // 一次手势只推一批
       if (STAGE.full || STAGE.step >= 4) {
-        // 完整态（从 04 回来）/ 四批出齐：直接整屏卡片切到 04
+        // 完整态（从 04 回来）/ 四批出齐：本该直接整屏卡片切到 04。
+        // 但内容放不下时先让这一格交回分页器滚到 03 段底，把最后一段看完，
+        // 下一次下滑才切 04；27" 上 room=0，仍是原来的「直接切」。
+        if (roomLeft(SEC.direction) > 24) return false;
         stageLeave();
         run(SEC.direction, SEC.product, 1);
         return true;

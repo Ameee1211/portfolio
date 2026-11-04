@@ -138,8 +138,12 @@
      深色字糊在深底上。卡片模式里给两张卡各自显式补上自己的底色。 */
   html.bs-motion #bsMain.bs-cardmode > #direction { background: var(--bs-bg); }
   html.bs-motion #bsMain.bs-cardmode > #product { background: var(--bs-purple-dark); }
+  /* 深色「缝」改由 inset 阴影画：clip-path 在大屏 3D 层上会按 tile 做 mask
+     光栅化，是横条闪烁的诱因之一；inset shadow 只是绘制指令，不切 mask。 */
   html.bs-motion #bsMain.bs-cardmode > #direction,
-  html.bs-motion #bsMain.bs-cardmode > #product { clip-path: inset(6px 8px); }
+  html.bs-motion #bsMain.bs-cardmode > #product { box-shadow: inset 0 0 0 8px #120b26; }
+  /* 03 的内容在卡片被明显压扁之前淡掉，之后 GPU 只需旋转一张纯色矩形 */
+  html.bs-motion #bsMain.bs-cardmode > #direction .bs-wrap { opacity: var(--bs-card-fade, 1); }
 
   /* ---------- 段内：入场（只在 .bs-motion 打开时） ---------- */
   html.bs-motion .bs-sec.is-live .bs-law,
