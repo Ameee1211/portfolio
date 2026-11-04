@@ -430,9 +430,10 @@
        · 白卡从卡片自己的位置与尺寸，直接插值到海报图片的位置与尺寸
        · 海报在框里淡入（略小 → 归位），同时左侧 06 文案淡入上移复位
        · 回程：海报**不缩**，在原位直接把透明度降下去消失；白框再缩回卡片，
-         底色从右往左刷回第五板块（整段与正放对称，只有海报那一路改成纯淡出）
+         底色从右往左掠过第五板块（整段与正放对称，只有海报那一路改成纯淡出）
        · 一次下滑播完整段，播放期间由 transition.busy() 吞掉滚轮
-       · 页面滚动与卡片位移同步：卡片是 fixed 的，背景由色幕接管，看不到接缝 */
+       · 转场期间真实页面不滚动：底色是整块「窗帘」横着推过去，卡片是 fixed 跟着插值，
+         落位那一下才由 run().finish() 一次性跳到目标板块（帘子已铺满，看不见跳） */
     "elements>poster": {
       dur: 1700,
       noBg: true,          // 自己铺色幕（两个板块底色只差一点点，但落位那一帧不能跳）
@@ -449,8 +450,6 @@
         // 刚点完 tab 就下滑时，面板的 bsPanelIn 还在播（translateX 26px），
         // 先把它收尾，否则量到的起点是偏的
         panel.getAnimations().forEach((a) => a.cancel());
-        const y0 = window.scrollY;
-        const y1 = topOf(dir > 0 ? poSec : elSec);
         const r0 = dir > 0 ? R(panel) : R(pImg);
         const r1 = dir > 0 ? landingRect(pImg, poSec) : landingRect(panel, elSec);
         // 基准画框永远是海报自己的尺寸（正反都一样）：框里的 pic 是按这个尺寸排版的，
@@ -459,10 +458,15 @@
         const frame = dir > 0 ? r1 : R(pImg);
         const FW = Math.max(1, frame.width), FH = Math.max(1, frame.height);
 
-        /* 色幕：换成目标板块的底色，按方向整块刷过去（下滑左→右，上滑右→左）
+        /* 色幕：一整块「窗帘」，颜色 = 目标板块的底色，从一侧横向推过整屏。
+           两条必须同时满足，少一条就会变成「缩成一个方块」：
+             1) 帘子整块平移（transform），不是让颜色原地淡入、也不是 clip 出一个小矩形；
+             2) 转场期间真实页面**不滚动**（下面不再逐帧 scrollTo）。
+           以前是边滚边刷：帘子没盖到的右半边露着第五板块正在滚走的深底，这块深色
+           一边被帘子从左侧吃掉、一边被滚动从下边切掉，最后缩成右上角一块方块。
+           落位那一下由 run().finish() 一次性跳到目标板块（此时帘子已铺满整屏，看不见跳）。
            #poster 自己没有 background（底色来自 body），getComputedStyle 只会返回
-           rgba(0,0,0,0) —— 直接拿来当幕色就是一整层透明，什么也看不见。
-           所以要往上找第一个有实色的祖先。 */
+           rgba(0,0,0,0) —— 直接拿来当幕色就是一整层透明，所以要往上找实色祖先。 */
         const solidBg = (node) => {
           let n = node, c = "rgba(0, 0, 0, 0)";
           while (n && (c === "rgba(0, 0, 0, 0)" || c === "transparent")) {
@@ -475,7 +479,9 @@
         veil.className = "bs-fly__veil";
         veil.style.background = solidBg(dir > 0 ? poSec : elSec);
         veil.style.opacity = "1";
-        veil.style.clipPath = dir > 0 ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)";
+        veil.style.willChange = "transform";
+        // 起点：整块停在屏幕外（下滑停在左边外、上滑停在右边外），随后整块推进来
+        veil.style.transform = dir > 0 ? "translate3d(-100%,0,0)" : "translate3d(100%,0,0)";
         L.appendChild(veil);
 
         /* 06 的文案：正向此刻还在下一屏外，只能用飞行层里的副本；
@@ -523,7 +529,7 @@
         const savedCopyOp = pCopy.style.opacity || "";
         if (dir > 0) pCopy.style.opacity = "0";
 
-        // 滚动位置由动画逐帧接管，必须关掉平滑滚动
+        // 落位那一下由 run().finish() 直接跳过去，这里只是把平滑滚动关掉
         const root = document.documentElement;
         const savedSB = root.style.scrollBehavior;
         root.style.scrollBehavior = "auto";
@@ -533,10 +539,10 @@
         /* lin：0 = 完全是第五板块，1 = 完全是第六板块，走线性时间。
            正反向共用一套时间轴，反向只把「位移」那一路反过来 —— 这样倒放
            的每一拍都与正放严格对称，不会出现某种顺序对不上的情况。
-           时间窗（总 1700ms）：洗白 0–0.12 / 变形 0.08–0.64 / 刷底色 0.14–0.50
+           时间窗（总 1700ms）：洗白 0–0.12 / 变形 0.08–0.64 / 窗帘 0.06–0.84
                                / 文案 0.52–0.86 / 海报 0.56–0.90
-           回程把这条轴倒过来读：刷底色变成 0.62–0.26（右→左），
-           海报改成 1.00–0.76 纯淡出（不参与变形） */
+           回程把这条轴倒过来读：窗帘变成 0.84–0.06（右→左），
+           海报改成 1.00–0.66 纯淡出（不参与变形） */
         const setP = (lin) => {
           const mp = easeIO(clamp01((lin - 0.08) / 0.56));
           // m = 0 在起点矩形（r0），m = 1 在终点矩形（r1）
@@ -584,20 +590,16 @@
             pCopy.style.opacity = ci.toFixed(3);
           }
 
-          // 回到第五板块时，卡片快到位了才把内容放回来
-          if (dir < 0 && lin < 0.10) elSec.classList.remove("is-clearing");
+          // 回到第五板块时把内容放回来。现在转场期间页面不滚动，第五板块还在
+          // 下一屏外，所以提前放回来也不会被看见，能保证落位那一刻它已经是完整状态
+          if (dir < 0 && lin < 0.40) elSec.classList.remove("is-clearing");
 
-          // 底色：换成目标板块的颜色，用一条会走的硬边刷过去
-          // 下滑 0.14→0.50 左→右；上滑 0.62→0.26 右→左（时间轴倒过来，正好反过来刷）
-          const vp = dir > 0 ? clamp01((lin - 0.14) / 0.36) : clamp01((0.62 - lin) / 0.36);
-          const cut = ((1 - vp) * 100).toFixed(2);
-          veil.style.clipPath = dir > 0
-            ? "inset(0 " + cut + "% 0 0)"
-            : "inset(0 0 0 " + cut + "%)";
-          // 上滑最后把幕化掉：这时它和第五板块的底色是同一个颜色，看不出变化，
-          // 但第五板块的内容回来时不会被它压着
-          veil.style.opacity = dir > 0 ? "1" : clamp01((lin - 0.08) / 0.18).toFixed(3);
-          window.scrollTo(0, y0 + (y1 - y0) * m);
+          // 窗帘：整块底板横向平移，前缘是一条通高的硬边，后面直接就是新底色。
+          // 下滑 0.06→0.84 从左往右推进；上滑读同一条轴（0.84→0.06），正好从右往左。
+          const sp = dir > 0 ? clamp01((lin - 0.06) / 0.78) : clamp01((0.84 - lin) / 0.78);
+          veil.style.transform = dir > 0
+            ? "translate3d(" + ((sp - 1) * 100).toFixed(2) + "%,0,0)"
+            : "translate3d(" + ((1 - sp) * 100).toFixed(2) + "%,0,0)";
         };
         setP(dir > 0 ? 0 : 1);
 
