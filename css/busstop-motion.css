@@ -145,6 +145,63 @@
   /* 03 的内容在卡片被明显压扁之前淡掉，之后 GPU 只需旋转一张纯色矩形 */
   html.bs-motion #bsMain.bs-cardmode > #direction .bs-wrap { opacity: var(--bs-card-fade, 1); }
 
+  /* ---------- 05 ↔ 06：选中的那张卡洗白、长成海报的画框 ----------
+     下滑时第五板块除当前卡片之外的信息（eyebrow / 标题 / 导语 / 01–05 标签列）
+     淡出并轻微上移，卡片本身被飞行层里那张白卡原地洗白，再插值到海报的位置与尺寸。
+     .bs-el 整体淡出：卡片离开原位后那里必须是空的，不能留一张白底壳子。 */
+  html.bs-motion #elements.is-clearing { pointer-events: none; }
+  html.bs-motion #elements.is-clearing .bs-eyebrow,
+  html.bs-motion #elements.is-clearing .bs-h2,
+  html.bs-motion #elements.is-clearing .bs-p {
+    opacity: 0;
+    transform: translateY(-14px);
+    transition: opacity 0.36s ease, transform 0.46s cubic-bezier(0.16, 0.84, 0.28, 1);
+  }
+  html.bs-motion #elements.is-clearing .bs-el {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  html.bs-motion #elements.is-clearing .bs-el__tabs {
+    transform: translateY(-14px);
+    transition: transform 0.46s cubic-bezier(0.16, 0.84, 0.28, 1);
+  }
+
+  /* 飞行层：色幕（抹平两个板块的底色差）→ 文案副本 → 白卡 */
+  .bs-fly__veil {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: var(--bs-bg);
+    opacity: 0;
+  }
+  .bs-fly__copy {
+    position: fixed;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    will-change: opacity, transform;
+  }
+  /* 外层只做 translate + 非等比 scale，所以原点必须在左上角 */
+  .bs-fly__card { transform-origin: 0 0; }
+  .bs-fly__cardbox {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: 18px;
+    background: #fff;
+  }
+  /* 海报做等量逆变换，框变形的全程里图片本身保持真实比例，不被拉扁 */
+  .bs-fly__poster {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform-origin: 50% 50%;
+    opacity: 0;
+  }
+
   /* ---------- 段内：入场（只在 .bs-motion 打开时） ---------- */
   html.bs-motion .bs-sec.is-live .bs-law,
   html.bs-motion .bs-sec.is-live .bs-stats > div,

@@ -178,6 +178,7 @@
      ============================================================ */
   let MORPH = null;      // 首屏→01 那条专属转场的复原上下文
   let CARD = null;       // 03↔04 整屏卡片切换的复原上下文
+  let POSTER = null;     // 05↔06 卡片长成海报画框的复原上下文
 
   const SCENES = {
     /* 1. 首屏 → 01：深色底整屏淡成浅色 → 大号小巴从屏幕最左开出
@@ -424,29 +425,163 @@
     /* 5. 04 ↔ 05：和 01 ↔ 02 一样，正反两个方向都是最普通的页面 pin */
     "product>elements": { plain: true },
 
-    /* 6. 五个 tab 收拢，围出海报的方框 */
+    /* 6. 05 ↔ 06：选中的那张卡先洗成一张纯白卡，再长成海报的画框
+       · 下滑：标题 / 导语 / 01–05 标签列淡出并轻微上移，卡片里的图与文字被白色洗掉
+       · 白卡从卡片自己的位置与尺寸，直接插值到海报图片的位置与尺寸
+       · 海报在框里淡入（略小 → 归位），同时左侧 06 文案淡入上移复位
+       · 回程整段倒放（上滑时海报淡出、白卡缩回卡片、第五板块内容回来）
+       · 一次下滑播完整段，播放期间由 transition.busy() 吞掉滚轮
+       · 页面滚动与卡片位移同步：卡片是 fixed 的，背景由色幕接管，看不到接缝 */
     "elements>poster": {
-      dur: 1350,
-      play(L, S, D) {
-        const tabs = $$(".bs-el__tab", S);
-        const fig = $(".bs-poster__fig", D);
-        if (!tabs.length || !fig) return;
-        const t = landingRect(fig, D);
-        const pts = [
-          { x: t.left, y: t.top }, { x: t.left + t.width, y: t.top },
-          { x: t.left + t.width, y: t.top + t.height }, { x: t.left, y: t.top + t.height },
-          { x: t.left + t.width / 2, y: t.top + t.height / 2 },
-        ];
-        tabs.forEach((tab, i) => {
-          const r = R(tab);
-          const n = prop(L, "bs-fly__dot", { left: r.left + 6, top: r.top + 6, width: 10, height: 10 },
-            { background: "#7469b6" });
-          n.animate(
-            [{ transform: "translate(0,0)", opacity: 1 },
-             { transform: `translate(${pts[i].x - (r.left + 6)}px, ${pts[i].y - (r.top + 6)}px)`, opacity: 0.2 }],
-            { duration: 780, delay: i * 70, easing: EASE, fill: "both" }
-          );
-        });
+      dur: 1700,
+      noBg: true,          // 自己铺色幕（两个板块底色只差一点点，但落位那一帧不能跳）
+      play(L, S, D, dir) {
+        const elSec = SEC.elements;
+        const poSec = SEC.poster;
+        const panel = $(".bs-el__panel.is-active", elSec);
+        const pFig = $(".bs-poster__fig", poSec);
+        const pImg = pFig && $("img", pFig);
+        const pCopy = $(".bs-poster__copy", poSec);
+        if (!panel || !pImg || !pCopy) return;
+
+        /* ---- 量：起点是当前卡片 / 海报，终点是「落位之后」的海报 / 卡片 ---- */
+        // 刚点完 tab 就下滑时，面板的 bsPanelIn 还在播（translateX 26px），
+        // 先把它收尾，否则量到的起点是偏的
+        panel.getAnimations().forEach((a) => a.cancel());
+        const y0 = window.scrollY;
+        const y1 = topOf(dir > 0 ? poSec : elSec);
+        const r0 = dir > 0 ? R(panel) : R(pImg);
+        const r1 = dir > 0 ? landingRect(pImg, poSec) : landingRect(panel, elSec);
+        const W1 = Math.max(1, r1.width), H1 = Math.max(1, r1.height);
+
+        /* 色幕：从第五板块的浅紫过渡到第六板块的底色，落位瞬间不闪 */
+        const veil = document.createElement("div");
+        veil.className = "bs-fly__veil";
+        L.appendChild(veil);
+
+        /* 06 的文案：正向此刻还在下一屏外，只能用飞行层里的副本；
+           反向真实文案就在视口里，直接让它淡出，不做副本 */
+        let copyFly = null;
+        if (dir > 0) {
+          const cr = R(pCopy);
+          const cl = landingRect(pCopy, poSec);
+          copyFly = document.createElement("div");
+          copyFly.className = "bs-fly__copy";
+          copyFly.innerHTML = pCopy.innerHTML;
+          Object.assign(copyFly.style, {
+            left: cl.left + "px", top: cl.top + "px", width: cr.width + "px",
+            opacity: "0", transform: "translateY(16px)",
+          });
+          L.appendChild(copyFly);
+        }
+
+        /* 白卡：外层只做 translate + 非等比 scale（纯合成，不触发布局重排），
+           里面的海报做等量逆变换 —— 框在变形的全程里，海报本身绝不被拉扁 */
+        const card = document.createElement("div");
+        card.className = "bs-fly__el bs-fly__card";
+        card.style.width = W1 + "px";
+        card.style.height = H1 + "px";
+        const box = document.createElement("div");
+        box.className = "bs-fly__cardbox";
+        const pic = document.createElement("img");
+        pic.className = "bs-fly__poster";
+        pic.src = pImg.currentSrc || pImg.src;
+        pic.alt = "";
+        box.appendChild(pic);
+        card.appendChild(box);
+        L.appendChild(card);
+
+        elSec.classList.add("is-clearing");
+        // 索引栏是常驻 UI：抬到色幕之上，否则转场中段它会被色幕一起盖淡、落位时又突然变亮
+        const rail = $("#bsIndex");
+        const savedRail = rail ? rail.style.zIndex : null;
+        if (rail) rail.style.zIndex = "46";
+        const savedFigOp = pFig.getAttribute("style") || "";
+        // 真实海报必须整段藏起来（飞行卡里是它的副本）。
+        // .bs-poster__fig 被 is-live 的 bsRise 动画以 fill:both 锁着 opacity，
+        // 普通 inline 值盖不住动画层，只能用 !important。
+        pFig.style.setProperty("opacity", "0", "important");
+        const savedCopyOp = pCopy.style.opacity || "";
+        if (dir > 0) pCopy.style.opacity = "0";
+
+        // 滚动位置由动画逐帧接管，必须关掉平滑滚动
+        const root = document.documentElement;
+        const savedSB = root.style.scrollBehavior;
+        root.style.scrollBehavior = "auto";
+
+        const easeIO = (q) => (q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2);
+
+        /* lin：0 = 完全是第五板块，1 = 完全是第六板块，走线性时间。
+           正反向共用一套时间轴，反向只把「位移」那一路反过来 —— 这样倒放
+           的每一拍都与正放严格对称，不会出现某种顺序对不上的情况。
+           时间窗（总 1700ms）：洗白 0–0.12 / 变形 0.08–0.64 / 色幕 0.12–0.42
+                               / 文案 0.52–0.86 / 海报 0.56–0.90 */
+        const setP = (lin) => {
+          const mp = easeIO(clamp01((lin - 0.08) / 0.56));
+          // m = 0 在起点矩形（r0），m = 1 在终点矩形（r1）
+          const m = dir > 0 ? mp : 1 - mp;
+          const w = r0.width + (W1 - r0.width) * m;
+          const h = r0.height + (H1 - r0.height) * m;
+          const x = r0.left + (r1.left - r0.left) * m;
+          const y = r0.top + (r1.top - r0.top) * m;
+          const sx = Math.max(0.02, w / W1);
+          const sy = Math.max(0.02, h / H1);
+          card.style.transform =
+            "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0) scale(" +
+            sx.toFixed(4) + "," + sy.toFixed(4) + ")";
+
+          // 白底 + 圆角 + 阴影：和真实卡片 → 真实海报的差值同步插值，
+          // 落位那一帧与真实海报完全重合，移除飞行层看不出接缝。
+          // 洗白走最前面 12%（约 200ms）：必须在 .bs-el 淡出之前把它整个盖住，
+          // 否则会先看见卡片变透明、背后背景露出来，再慢慢变白。
+          const white = clamp01(lin / 0.12);
+          box.style.background = "rgba(255,255,255," + white.toFixed(3) + ")";
+          box.style.borderRadius = (18 - 6 * m).toFixed(2) + "px";
+          box.style.boxShadow = "0 " + (10 + 20 * m).toFixed(1) + "px " +
+            (26 + 44 * m).toFixed(1) + "px rgba(36,31,61," + (0.07 + 0.15 * m).toFixed(3) + ")";
+
+          // 海报在框里淡入：k 从 0.982 归位到 1，再乘上逆变换抵消外层非等比缩放
+          const pi = clamp01((lin - 0.56) / 0.34);
+          const k = 0.982 + 0.018 * pi;
+          pic.style.transform = "scale(" + (k / sx).toFixed(4) + "," + (k / sy).toFixed(4) + ")";
+          pic.style.opacity = pi.toFixed(3);
+
+          // 06 的文案：和海报同时出现（正向副本 / 反向真实元素）
+          const ci = clamp01((lin - 0.52) / 0.34);
+          if (copyFly) {
+            copyFly.style.opacity = ci.toFixed(3);
+            copyFly.style.transform = "translateY(" + (16 * (1 - ci)).toFixed(1) + "px)";
+          } else {
+            pCopy.style.opacity = ci.toFixed(3);
+          }
+
+          // 回到第五板块时，卡片快到位了才把内容放回来
+          if (dir < 0 && lin < 0.14) elSec.classList.remove("is-clearing");
+
+          veil.style.opacity = clamp01((lin - 0.12) / 0.3).toFixed(3);
+          window.scrollTo(0, y0 + (y1 - y0) * m);
+        };
+        setP(dir > 0 ? 0 : 1);
+
+        const t0 = performance.now();
+        const tick = (now) => {
+          if (!POSTER) return;                 // cleanup 已跑，停
+          const q = clamp01((now - t0) / 1700);
+          setP(dir > 0 ? q : 1 - q);
+          if (q < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+
+        POSTER = { elSec, pFig, pCopy, savedFigOp, savedCopyOp, root, savedSB, rail, savedRail };
+      },
+      cleanup() {
+        if (!POSTER) return;
+        const p = POSTER; POSTER = null;
+        p.elSec.classList.remove("is-clearing");
+        p.pFig.setAttribute("style", p.savedFigOp);
+        p.pCopy.style.opacity = p.savedCopyOp;
+        p.root.style.scrollBehavior = p.savedSB;
+        if (p.rail) p.rail.style.zIndex = p.savedRail || "";
       },
     },
 
