@@ -28,6 +28,25 @@
   const POP = "cubic-bezier(0.34, 1.24, 0.5, 1)";
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
+  /* 板块的「实色底」：自己的 background 常是透明的（底色来自 body / 上层容器），
+     getComputedStyle 会返回 rgba(0,0,0,0)，得往上找到第一个不透明的祖先。 */
+  const secBg = (node) => {
+    let n = node, c = "rgba(0, 0, 0, 0)";
+    while (n && (c === "rgba(0, 0, 0, 0)" || c === "transparent")) {
+      c = getComputedStyle(n).backgroundColor;
+      n = n.parentElement;
+    }
+    return c && c !== "rgba(0, 0, 0, 0)" ? c : "#f7f5fc";
+  };
+  const rgbOf = (s) => {
+    const m = String(s).match(/-?[\d.]+/g) || [0, 0, 0];
+    return [Math.round(+m[0] || 0), Math.round(+m[1] || 0), Math.round(+m[2] || 0)];
+  };
+  const mixBg = (a, b, t) => {
+    const A = rgbOf(a), B = rgbOf(b);
+    return "rgb(" + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(",") + ")";
+  };
+
   const IDS = ["top", "overview", "problem", "direction", "product", "elements", "poster", "issues"];
   const SEC = {};
   IDS.forEach((id) => { SEC[id] = document.getElementById(id); });
@@ -179,6 +198,7 @@
   let MORPH = null;      // 首屏→01 那条专属转场的复原上下文
   let CARD = null;       // 03↔04 整屏卡片切换的复原上下文
   let POSTER = null;     // 05↔06 卡片长成海报画框的复原上下文
+  let FADE = null;       // 02→03 同屏淡出的复原上下文
 
   const SCENES = {
     /* 1. 首屏 → 01：深色底整屏淡成浅色 → 大号小巴从屏幕最左开出
@@ -347,10 +367,74 @@
        标 plain 后 down/up 会返回 false，交回共用分页器走它自己的 go() 平滑滚动。 */
     "overview>problem": { plain: true },
 
-    /* 3. 02 ↔ 03：跟 01↔02 一样，正反两个方向都是最普通的页面 pin，
-       不播「四个统计数字变箭头飞到四条 insight」那条分镜。
-       落位到 03 顶之后，板块内的四次下滑由 STAGE 接管。 */
-    "problem>direction": { plain: true },
+    /* 3. 02 → 03：不往下滚，在同一个屏幕上把 02 清空
+       （用户 2026-11-04 指定，替换掉原来「平滑下移」的普通 pin）
+       · 02 的内容原地淡出，不做任何位移
+       · 02 的底色淡成 03 的底色（两个板块各是一块实色，直接插值背景色）
+       · 两边都只剩一块同色空屏的那一帧才跳页 —— 看不见
+       · 跳完 03 的 eyebrow 淡入，还是「只有 03 — Choosing a direction」的状态，
+         之后每下滑一次出一批内容，仍由 STAGE 接管
+       · 回程 03 → 02 保持不变：plainUp 让 up() 直接返回 false，交回分页器普通上移 */
+    "problem>direction": {
+      dur: 1300,
+      noBg: true,          // 底色由本段自己插值，不要通用的「色幕淡入」
+      plainUp: true,
+      play(L, S, D) {
+        const from = S, to = D;
+        const wrap = $(".bs-wrap", from);
+        const eb = $(".bs-eyebrow", to);
+        const fromBg = secBg(from);
+        const toBg = secBg(to);
+        const savedWrap = wrap ? wrap.getAttribute("style") || "" : "";
+        const savedFrom = from.getAttribute("style") || "";
+        const savedEb = eb ? eb.getAttribute("style") || "" : "";
+        // 03 此刻还在下一屏外，先按住 eyebrow 不会有任何画面变化；跳页之后才让它淡入
+        if (eb) eb.style.opacity = "0";
+
+        // 跳页必须是「瞬移」：页面本身是 scroll-behavior: smooth，不关掉的话
+        // window.scrollTo 会自己滑一段 —— 那就又变成「往下移」的动画了
+        const root = document.documentElement;
+        const savedSB = root.style.scrollBehavior;
+        root.style.scrollBehavior = "auto";
+
+        let jumped = false;
+        // 时间轴（总 1300ms）：内容淡出 0–40% / 底色 0–55% / 55% 跳页 / eyebrow 60–90%
+        const setP = (lin) => {
+          // 02 的内容：原地淡出，不位移、不缩放
+          if (wrap) wrap.style.opacity = (1 - clamp01(lin / 0.40)).toFixed(3);
+          // 底色：02 的实色 → 03 的实色
+          from.style.backgroundColor = mixBg(fromBg, toBg, clamp01(lin / 0.55));
+          // 02 已经全空、底色已经是 03 的底色 —— 这一帧跳过去与原地看不出差别
+          if (!jumped && lin >= 0.55) {
+            jumped = true;
+            window.scrollTo(0, topOf(to));
+            // 跳完就等于「03 已钉住」，下一次下滑直接出第一批，不用再等 scroll 事件
+            STAGE.active = true;
+          }
+          if (eb) eb.style.opacity = clamp01((lin - 0.60) / 0.30).toFixed(3);
+        };
+        setP(0);
+
+        const t0 = performance.now();
+        const tick = (now) => {
+          if (!FADE) return;                    // cleanup 已跑，停
+          const q = clamp01((now - t0) / 1300);
+          setP(q);
+          if (q < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+
+        FADE = { wrap, from, eb, savedWrap, savedFrom, savedEb, root, savedSB };
+      },
+      cleanup() {
+        if (!FADE) return;
+        const f = FADE; FADE = null;
+        if (f.wrap) f.wrap.setAttribute("style", f.savedWrap);
+        f.from.setAttribute("style", f.savedFrom);
+        if (f.eb) f.eb.setAttribute("style", f.savedEb);
+        f.root.style.scrollBehavior = f.savedSB;
+      },
+    },
 
     /* 4. 03 ↔ 04：整屏卡片 3D 切换（参考 GSAP Effect 031「Scrolling sections」）
        · 03 卡片钉在顶部，绕 X 轴向后倒退，压成一条带透视的窄梯形
@@ -921,21 +1005,19 @@
     usedGesture = g;
     const now = performance.now();
     if (!STAGE.active) {
-      // 02 → 03：跟 01→02 一样「一滚直接到下一板块」。
-      // 02 比视口高一点（1440×900 下多 12px、1366×768 下多 144px），
-      // 通用 pin 会先滚到段底、再滚一次才翻页 —— 用户会觉得第一下滑没反应。
-      // 这里直接平移到 03 顶，把这一格消费掉（不改变其它任何板块的 pin 规则）。
+      // 02 → 03：不往下滚，在同一屏里把 02 清空、底色淡成 03 的，再跳页
+      // （用户 2026-11-04 指定，替换掉原来「平滑下移」的那一下）
       if (dir > 0) {
         const y = window.scrollY;
         const dt = topOf(SEC.direction);
         const pt = topOf(SEC.problem);
         if (y >= pt - 4 && y < dt - 4) {
           // 放不下就别抢这一格：交回分页器先滚到 02 段底，让用户看全最底部信息；
-          // 滚到底后下一次下滑才会一滚直达 03。放得下（room<=24）仍是一滚直达。
+          // 滚到底后下一次下滑才播「清空 02 → 淡底色 → 跳页」。放得下（room<=24）立刻播。
           if (roomLeft(SEC.problem) > 24) return false;
           stageReset();
           STAGE.suppressUntil = 0;      // 别让上一次离开时的抑制挡住落位激活
-          window.scrollTo({ top: dt, behavior: "smooth" });
+          run(SEC.problem, SEC.direction, 1);
           return true;
         }
       }
