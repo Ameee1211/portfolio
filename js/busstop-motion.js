@@ -5,6 +5,7 @@
    · 只在 >=1024px 且 hover:hover 的桌面端生效
    · 通过 window.BS_MOTION 接进共用的 initSectionPager
    · 每条板块边界一套专属分镜；正向播专属，反向镜像倒放
+   · 例外：01 ↔ 02 不播任何转场，正反向都走分页器自带的普通 pin
    ============================================================ */
 
 (function () {
@@ -338,25 +339,11 @@
       },
     },
 
-    /* 2. 四条 law 收成四个圆点，飞到四个统计数字上 */
-    "overview>problem": {
-      dur: 1250,
-      play(L, S, D) {
-        const src = $$(".bs-law", S);
-        const dst = $$(".bs-stats > div", D);
-        for (let i = 0; i < 4; i++) {
-          if (!src[i] || !dst[i]) continue;
-          const r = R(src[i]);
-          const n = prop(L, "bs-fly__dot", { left: r.left + 8, top: r.top + r.height / 2 - 6, width: 12, height: 12 });
-          const t = landingRect(dst[i], D);
-          n.animate(
-            [{ transform: "translate(0,0) scale(1)", opacity: 1 },
-             { transform: `translate(${t.left + 4 - (r.left + 8)}px, ${t.top + 8 - (r.top + r.height / 2 - 6)}px) scale(0.5)`, opacity: 0.1 }],
-            { duration: 760, delay: i * 90, easing: POP, fill: "both" }
-          );
-        }
-      },
-    },
+    /* 2. 01 ↔ 02：不要专属转场，正反向都只用最普通的页面 pin
+       （用户 2026-11-04 指定：这一段就是用户滑一下、页面直接往下移到 02，
+        不管滚轮滚多少都直接到 02；回程同样。不要圆点飞、不要背景幕、不要吞滚轮。）
+       标 plain 后 down/up 会返回 false，交回共用分页器走它自己的 go() 平滑滚动。 */
+    "overview>problem": { plain: true },
 
     /* 3. 统计数字变成四支箭头，落到四条 insight 上 */
     "problem>direction": {
@@ -546,12 +533,15 @@
     busy: () => busy,
     down(cur, next) {
       if (busy || !cur || !next) return false;
+      const sc = SCENES[cur.id + ">" + next.id];
+      if (sc && sc.plain) return false;    // 01 → 02：最普通的页面 pin，不播转场
       return run(cur, next, 1);
     },
     up(cur, prev) {
       if (busy || !cur || !prev) return false;
       const sc = SCENES[prev.id + ">" + cur.id];
-      if (sc && sc.plainUp) return false;   // 01 → 首屏：直接上移，不播任何转场
+      // plain = 双向都普通（01 ↔ 02）；plainUp = 只有回程普通（01 → 首屏）
+      if (sc && (sc.plain || sc.plainUp)) return false;
       return run(cur, prev, -1);
     },
     route: ROUTE,
