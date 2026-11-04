@@ -112,6 +112,9 @@
     rail.appendChild(bus);
     ROUTE.bus = bus;
 
+    // 悬浮优先：鼠标停在索引栏上时，sync（滚动/切板块）不要抢走车的位置
+    let hoverId = "";
+
     const sync = () => {
       const items = $$(".bs-index__item", rail);
       ROUTE.items = items;
@@ -124,7 +127,7 @@
         it.classList.toggle("is-active", i === railIdx);
       });
       const active = items[Math.min(railIdx, items.length - 1)];
-      if (active && bus) bus.style.transform = `translateY(${active.offsetTop + active.offsetHeight / 2 - 10}px)`;
+      if (active && bus && !hoverId) bus.style.transform = `translateY(${active.offsetTop + active.offsetHeight / 2 - 10}px)`;
       if (bus) {
         const atEnd = window.scrollY >= maxScroll() - 60;
         bus.classList.toggle("is-lit", atEnd);
@@ -134,12 +137,53 @@
     ROUTE.sync = sync;
     window.addEventListener("scroll", sync, { passive: true });
     window.addEventListener("resize", sync);
-    rail.addEventListener("mouseover", (e) => {
-      const it = e.target.closest && e.target.closest(".bs-index__item");
-      if (!it || !bus) return;
-      bus.style.transform = `translateY(${it.offsetTop + it.offsetHeight / 2 - 10}px)`;
-    });
-    rail.addEventListener("mouseleave", sync);
+    /* 悬浮跟随：整块索引栏算作一条「站点带」。
+       鼠标落在这条带里的任何位置 —— 包括两项之间 12px 的空隙、文字右侧的留白 ——
+       都按纵向「就近吸附」到某一项，车顺着跟过去，不会掉回当前板块。
+       原来用的是 item 的 mouseover + rail 的 mouseleave：索引栏是 pointer-events:none，
+       指针一进空隙就被浏览器判成「离开索引栏」→ sync() 把车拉回当前板块那一项，
+       鼠标上下晃时车就在「悬停项」和「当前板块项」之间来回弹（用户 2026-11-05 报的问题）。
+       这里只在 document 上读坐标、不拦截任何事件，可点区域与原来完全一致。
+       HIT_X / HIT_Y 是命中带在索引栏矩形外再放宽的像素。 */
+    const HIT_X = 16, HIT_Y = 13;
+    let mx = 0, my = 0, hoverQueued = false;
+
+    const applyHover = () => {
+      if (!bus) return;
+      const items = ROUTE.items;
+      // 首屏索引栏还没淡入，不吸附
+      if (!rail.classList.contains("is-on") || !items.length) {
+        if (hoverId) { hoverId = ""; sync(); }
+        return;
+      }
+      const r = rail.getBoundingClientRect();
+      const inside =
+        mx >= r.left - HIT_X && mx <= r.right + HIT_X &&
+        my >= r.top - HIT_Y && my <= r.bottom + HIT_Y;
+      if (!inside) {
+        if (hoverId) { hoverId = ""; sync(); }   // 真离开索引栏才交还给 sync
+        return;
+      }
+      // 就近：取纵向中心离指针最近的一项（两项正中间也一定落在其中一项，不会来回弹）
+      let pick = null, best = Infinity;
+      items.forEach((it) => {
+        const q = it.getBoundingClientRect();
+        const d = Math.abs(my - (q.top + q.height / 2));
+        if (d < best) { best = d; pick = it; }
+      });
+      if (!pick || pick.dataset.id === hoverId) return;
+      hoverId = pick.dataset.id;
+      bus.style.transform = `translateY(${pick.offsetTop + pick.offsetHeight / 2 - 10}px)`;
+    };
+
+    document.addEventListener("mousemove", (e) => {
+      mx = e.clientX;
+      my = e.clientY;
+      if (hoverQueued) return;        // 一帧只读一次布局
+      hoverQueued = true;
+      requestAnimationFrame(() => { hoverQueued = false; applyHover(); });
+    }, { passive: true });
+
     sync();
   }
 
