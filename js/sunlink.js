@@ -619,14 +619,15 @@
     const rail = document.createElement("nav");
     rail.className = "sl-index";
     rail.setAttribute("aria-label", "Section index");
-    rail.innerHTML = SL_SECTIONS.map(
-      (sec, i) => `
+    rail.innerHTML =
+      SL_SECTIONS.map(
+        (sec, i) => `
       <a class="sl-index__item" href="#${sec.id}" data-target="${sec.id}" aria-label="${sec.label}">
         <span class="sl-index__num">${String(i + 1).padStart(2, "0")}</span>
         <span class="sl-index__dot" aria-hidden="true"></span>
         <span class="sl-index__label">${sec.label}</span>
       </a>`
-    ).join("");
+      ).join("") + '<span class="sl-index__bus" aria-hidden="true"><i></i></span>';
     document.body.appendChild(rail);
     return rail;
   }
@@ -655,6 +656,16 @@
       const railW = rail.offsetWidth || 120;
       const gap = Math.min(78, Math.max(24, contentLeft - railW - 24));
       rail.style.left = Math.max(8, Math.round(contentLeft - gap - railW)) + "px";
+
+      // 母线：从第一项中心拉到末项中心（端子正好落在每一行的中线上）
+      const bus = rail.querySelector(".sl-index__bus");
+      if (bus && items.length > 1) {
+        const a = items[0].offsetTop + items[0].offsetHeight / 2;
+        const last = items[items.length - 1];
+        const b = last.offsetTop + last.offsetHeight / 2;
+        bus.style.top = a + "px";
+        bus.style.height = Math.max(0, b - a) + "px";
+      }
     };
 
     const sync = () => {
@@ -669,7 +680,19 @@
       sections.forEach((sec, i) => {
         if (sec.offsetTop <= probe) active = i;
       });
-      items.forEach((it, i) => it.classList.toggle("is-active", i === active));
+      items.forEach((it, i) => {
+        it.classList.toggle("is-active", i === active);
+        it.classList.toggle("is-past", i < active);
+      });
+
+      // 母线充能：和 is-active 同一个探针算连续进度，读到最后一段正好 100%
+      const bus = rail.querySelector(".sl-index__bus");
+      if (bus && sections.length > 1) {
+        const a = sections[0].offsetTop;
+        const b = sections[sections.length - 1].offsetTop;
+        const p = b > a ? (probe - a) / (b - a) : 0;
+        bus.style.setProperty("--sl-fill", Math.max(0, Math.min(1, p)).toFixed(4));
+      }
       // 深色板块（06 / 08）上索引必须反白，否则深蓝的字在深底上根本看不见
       const dark = active >= 0 && sections[active].classList.contains("sl-sec--ink");
       rail.classList.toggle("is-light", !!dark);

@@ -19,6 +19,10 @@
   --sl-card: #ffffff;
   --sl-line: rgba(22, 36, 58, 0.1);
   --sl-w: 1240px;
+
+  /* 极淡的「屋顶 → 电池 → 街道」走线，只作背景纹理（浅底 / 深底两套） */
+  --sl-wire: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 420'><path d='M26 74h124l60 84v196h222' fill='none' stroke='%234494e2' stroke-opacity='.12' stroke-width='1.3' stroke-dasharray='5 7' stroke-linecap='round'/><rect x='20' y='62' width='36' height='24' rx='2' fill='none' stroke='%234494e2' stroke-opacity='.11' stroke-width='1.1'/><path d='M20 70h36M20 78h36M38 62v24' stroke='%234494e2' stroke-opacity='.08' stroke-width='1'/><path d='M196 300h28M200 308h20' stroke='%234494e2' stroke-opacity='.15' stroke-width='1.5' stroke-linecap='round'/></svg>");
+  --sl-wire-light: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 420'><path d='M26 74h124l60 84v196h222' fill='none' stroke='%23ffffff' stroke-opacity='.09' stroke-width='1.3' stroke-dasharray='5 7' stroke-linecap='round'/><rect x='20' y='62' width='36' height='24' rx='2' fill='none' stroke='%23ffffff' stroke-opacity='.08' stroke-width='1.1'/><path d='M20 70h36M20 78h36M38 62v24' stroke='%23ffffff' stroke-opacity='.06' stroke-width='1'/><path d='M196 300h28M200 308h20' stroke='%23ffffff' stroke-opacity='.11' stroke-width='1.5' stroke-linecap='round'/></svg>");
 }
 
 /* ---------- 页面骨架 ---------- */
@@ -1179,23 +1183,70 @@
     transition: color 0.3s ease;
   }
   .sl-index__item.is-active .sl-index__label { color: var(--navy); }
-  .sl-index__item.is-active .sl-index__num { color: var(--purple); opacity: 1; }
-  .sl-index__item:hover .sl-index__label { color: var(--purple); }
+  .sl-index__item.is-active .sl-index__num { color: var(--sl-blue-deep); opacity: 1; }
+  .sl-index__item:hover .sl-index__label { color: var(--sl-blue-deep); }
+  /* 已读的项比未读稍实一点，母线不是唯一的「读到哪里」提示 */
+  .sl-index__item.is-past .sl-index__label { color: rgba(51, 61, 109, 0.8); }
+  .sl-index__item.is-past .sl-index__num { opacity: 0.8; }
+
+  /* ---------- 能量母线 ----------
+     一条竖线贯穿 11 项：未读是虚线，已读填实成品牌蓝，
+     纵向进度按滚动连续推进，读到最后一段正好充满。
+     端子（当前项）是 8px 方角接点，替换原来的 2px 短竖条。 */
+  .sl-index__bus {
+    position: absolute;
+    left: -10.5px;
+    top: 0;                    /* 由 JS 设成第一项中心 */
+    width: 1px;
+    height: 0;                 /* 由 JS 设成首项到末项中心的距离 */
+    background-image: linear-gradient(to bottom, rgba(51, 61, 109, 0.22) 50%, transparent 50%);
+    background-size: 1px 7px;
+    pointer-events: none;
+  }
+  .sl-index__bus i {
+    position: absolute;
+    left: -0.5px;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--sl-blue);
+    transform: scaleY(var(--sl-fill, 0));
+    transform-origin: 50% 0;
+    transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  /* 两端：上面实心小方块 = 电源端，下面空心 = 接地端 */
+  .sl-index__bus::before,
+  .sl-index__bus::after {
+    content: "";
+    position: absolute;
+    left: -2.5px;
+    width: 5px;
+    height: 5px;
+    border-radius: 1px;
+  }
+  .sl-index__bus::before { top: -6px; background: rgba(51, 61, 109, 0.34); }
+  .sl-index__bus::after {
+    bottom: -6px;
+    border: 1px solid rgba(51, 61, 109, 0.34);
+    background: transparent;
+  }
+
   .sl-index__item::before {
     content: "";
     position: absolute;
-    left: -11px;
+    left: -14px;
     top: 50%;
-    width: 2px;
-    height: 11px;
-    margin-top: -5.5px;
+    width: 8px;
+    height: 8px;
+    margin-top: -4px;
     border-radius: 2px;
-    background: var(--purple);
+    background: var(--sl-blue);
+    box-shadow: 0 0 0 3px rgba(68, 148, 226, 0.16);
     opacity: 0;
-    transform: scaleY(0.3);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: scale(0.35);
+    transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
   }
-  .sl-index__item.is-active::before { opacity: 1; transform: scaleY(1); }
+  .sl-index__item.is-active::before { opacity: 1; transform: scale(1); }
 }
 
 /* 深色板块（06 / 08）时整条索引反白 */
@@ -1208,11 +1259,51 @@
 .sl-index.is-light .sl-index__item.is-active .sl-index__label { color: #ffffff; }
 .sl-index.is-light .sl-index__item.is-active .sl-index__num { color: #8fc4f2; opacity: 1; }
 .sl-index.is-light .sl-index__item:hover .sl-index__label { color: #8fc4f2; }
-.sl-index.is-light .sl-index__item::before { background: #8fc4f2; }
+.sl-index.is-light .sl-index__item.is-past .sl-index__label { color: rgba(226, 238, 250, 0.86); }
+.sl-index.is-light .sl-index__item::before {
+  background: #8fc4f2;
+  box-shadow: 0 0 0 3px rgba(143, 196, 242, 0.2);
+}
 .sl-index.is-light .sl-index__dot { background: rgba(226, 238, 250, 0.45); }
+.sl-index.is-light .sl-index__bus {
+  background-image: linear-gradient(to bottom, rgba(226, 238, 250, 0.3) 50%, transparent 50%);
+}
+.sl-index.is-light .sl-index__bus i { background: #8fc4f2; }
+.sl-index.is-light .sl-index__bus::before { background: rgba(226, 238, 250, 0.6); }
+.sl-index.is-light .sl-index__bus::after { border-color: rgba(226, 238, 250, 0.6); }
 
 @media (max-width: 1179px) {
   .sl-index { display: none; }
+}
+
+/* ---------- 走线底纹（只在宽屏出现） ----------
+   用 section 自己的多层背景画，天然在所有内容之下：
+   不用伪元素、不改 .sl-wrap 的定位，零层叠风险。
+   手机 / 平板（<1180）完全不加载，保持原样。 */
+@media (min-width: 1180px) {
+  .sl-sec {
+    background-image: var(--sl-wire);
+    background-repeat: no-repeat;
+    background-position: right 1.5% top 8%;
+    background-size: clamp(220px, 29vw, 430px) auto;
+  }
+  .sl-sec--sky {
+    background-image: var(--sl-wire), linear-gradient(180deg, #eef5fc 0%, #f7f6fa 100%);
+    background-repeat: no-repeat, no-repeat;
+    background-position: right 1.5% top 8%, 0 0;
+    background-size: clamp(220px, 29vw, 430px) auto, 100% 100%;
+  }
+  .sl-sec--ink {
+    background-color: #101c2e;
+    background-image: var(--sl-wire-light);
+    background-repeat: no-repeat;
+    background-position: right 1.5% top 8%;
+    background-size: clamp(220px, 29vw, 430px) auto;
+  }
+  /* 相邻板块错开上下位置，翻页时不像同一条纹理在重复 */
+  .sl-sec:nth-of-type(even) { background-position: right 1.5% bottom 9%; }
+  .sl-sec--sky:nth-of-type(even) { background-position: right 1.5% bottom 9%, 0 0; }
+  .sl-sec--ink:nth-of-type(even) { background-position: right 1.5% bottom 9%; }
 }
 
 /* ---------- 响应式 ---------- */
