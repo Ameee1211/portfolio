@@ -9,26 +9,19 @@
 (function () {
   "use strict";
 
-  /* ---------- 1. 三种电池状态 ---------- */
-  function initStateTabs() {
-    const tabs = [...document.querySelectorAll(".sl-tab[data-state]")];
-    const panels = [...document.querySelectorAll(".sl-panel[data-panel]")];
-    if (!tabs.length || !panels.length) return;
+  /* 标签高亮：一块白药丸在三个标签之间平移（用户 2026-11-05：
+     要像开关一样滑过去，而不是在这边消失、在那边冒出来）。
+     04 的电池状态和 06 的原型状态共用这一套。 */
+  function initSlideTabs(tabs) {
+    const wrap = tabs.length ? tabs[0].closest(".sl-tabs") : null;
+    if (!wrap) return () => {};
+    wrap.classList.add("is-slide");
+    const thumb = document.createElement("span");
+    thumb.className = "sl-tabs__thumb";
+    thumb.setAttribute("aria-hidden", "true");
+    wrap.insertBefore(thumb, wrap.firstChild);
 
-    /* 高亮底：一块白药丸在三个标签之间平移（用户 2026-11-05：
-       要像开关一样滑过去，而不是在这边消失、在那边冒出来） */
-    const wrap = tabs[0].closest(".sl-tabs");
-    let thumb = null;
-    if (wrap) {
-      wrap.classList.add("is-slide");
-      thumb = document.createElement("span");
-      thumb.className = "sl-tabs__thumb";
-      thumb.setAttribute("aria-hidden", "true");
-      wrap.insertBefore(thumb, wrap.firstChild);
-    }
-
-    const moveThumb = (animate) => {
-      if (!thumb) return;
+    return (animate) => {
       const tab = tabs.find((t) => t.getAttribute("aria-selected") === "true") || tabs[0];
       if (!tab || !tab.offsetWidth) return;
       if (animate === false) thumb.style.transition = "none";
@@ -40,6 +33,15 @@
         thumb.style.transition = "";
       }
     };
+  }
+
+  /* ---------- 1. 三种电池状态 ---------- */
+  function initStateTabs() {
+    const tabs = [...document.querySelectorAll(".sl-tab[data-state]")];
+    const panels = [...document.querySelectorAll(".sl-panel[data-panel]")];
+    if (!tabs.length || !panels.length) return;
+
+    const moveThumb = initSlideTabs(tabs);
 
     /* 三个面板的文字长短不一样（392 / 435 / 414），原来一切换整个版面就跟着抖一下：
        右边的产品图上下挪几像素、下面四张规则卡也跟着跳。
@@ -97,6 +99,9 @@
     let current = "green";
     let iframe = null;
 
+    /* 和 04 一样：高亮是一块滑过去的白药丸 */
+    const moveThumb = initSlideTabs(tabs);
+
     const viewUrl = (k) => `https://xd.adobe.com/view/${XD[k].id}/`;
     const embedUrl = (k) => `https://xd.adobe.com/embed/${XD[k].id}/?fullscreen&hints=off`;
 
@@ -124,9 +129,15 @@
       tab.addEventListener("click", () => {
         current = tab.dataset.proto;
         tabs.forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+        moveThumb(true);
         sync();
       });
     });
+
+    /* 首帧直接落位（不从左边滑进来），字体加载完再对一次宽度 */
+    moveThumb(false);
+    window.addEventListener("resize", () => moveThumb(false));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => moveThumb(false));
   }
 
   /* ---------- 3. 电路图开关 ---------- */
