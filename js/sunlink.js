@@ -838,23 +838,37 @@
       const x0 = r0.left;
       const y0 = r0.top;
 
-      /* 终点一：铺满视口 */
-      const S1 = Math.max(vw / 1000, vh / 574);
-      const x1 = (vw - 1000 * S1) / 2;
-      const y1 = (vh - 574 * S1) / 2;
-
-      /* 终点二：再推近；电池那个绿环的圆心在屏坐标 (138,234)
+      /* 一次推到位：从墙面矩形直接推到「绿环居中」，中间不停在铺满视口那一档。
+         绿环圆心在屏坐标 (138,234)
          （界面图 1361×950 里在 (187.5,319)，cover 到 1000×574 后 ×0.7346） */
-      const S2 = S1 * 2.05;
       const RX = 138;
       const RY = 234;
+      const S1 = Math.max(vw / 1000, vh / 574);
+      const S2 = S1 * 2.05;
+      /* 终点让环心落在视口正中；万一屏边会露出外面就夹住 */
       const x2 = Math.max(vw - 1000 * S2, Math.min(0, vw / 2 - RX * S2));
       const y2 = Math.max(vh - 574 * S2, Math.min(0, vh / 2 - RY * S2));
 
-      /* 过曝的圆心：绿环最后落在视口的哪一点，光就从哪儿涌出来 */
-      const fx = x2 + RX * S2;
-      const fy = y2 + RY * S2;
-      const fp = ((fx / vw) * 100).toFixed(2) + "% " + ((fy / vh) * 100).toFixed(2) + "%";
+      /* 环心在屏幕坐标里的起点与终点：整段镜头都盯着这一点走，不许中途换目标 */
+      const ring0x = x0 + RX * s0;
+      const ring0y = y0 + RY * s0;
+      const ring1x = x2 + RX * S2;
+      const ring1y = y2 + RY * S2;
+
+      /* 过曝的圆心就是环心最后停下的那一点 */
+      const fp = ((ring1x / vw) * 100).toFixed(2) + "% " + ((ring1y / vh) * 100).toFixed(2) + "%";
+
+      /* 白场要盖满整屏所需的半径：取环心到四个角里最远的那个。
+         环被屏幕左边缘限制着，只能停在偏左的位置（约 31%），
+         所以这个值比「环在正中」时的 71% 大得多，固定写死会漏掉右边一整条。 */
+      const REF = Math.sqrt((vw * vw + vh * vh) / 2);
+      const farCorner = Math.max(
+        Math.hypot(ring1x, ring1y),
+        Math.hypot(vw - ring1x, ring1y),
+        Math.hypot(ring1x, vh - ring1y),
+        Math.hypot(vw - ring1x, vh - ring1y)
+      );
+      const RMAX = (farCorner / REF) * 100 * 1.06;   // 6% 余量，别在最后一帧露缝
 
       const fly = document.createElement("div");
       fly.className = "sl-morph";
@@ -888,19 +902,18 @@
       morphCtx = { fly, dusk, src, srcVis, fadeEls, kids, ov };
 
       const T = {
-        text1: 260,                    // 文字退场
-        out0: 280, out1: 1020,         // 墙面 → 铺满视口
-        push0: 1020, push1: 1400,      // 再推近
-        flash0: 1400, flash1: 1780,    // 从环心铺 01 的底色
-        jump: 1790,                    // 跳页（被白场盖着）
-        fade1: 1960,                   // 飞行层淡出
-        end: 1960,
+        text1: 240,                    // 文字退场
+        zoom0: 240, zoom1: 1300,       // 墙面 → 环心居中，一次连续，中途不减速
+        flash0: 1300, flash1: 2000,    // 白场从环心铺开：慢，700ms
+        jump: 1975,                    // 跳页（整屏已被白场盖住）
+        fade1: 2190,                   // 飞行层淡出
+        end: 2190,
       };
 
       const lerp = (a, b, t) => a + (b - a) * t;
       const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
       const eIo = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-      const eIn = (t) => t * t * t;
+      const eSm = (t) => t * t * (3 - 2 * t);
       const t0 = performance.now();
       let jumped = false;
 
@@ -920,25 +933,26 @@
         /* ② 房间沉进夜色（屏幕是克隆体，在飞行层里，不受影响） */
         dusk.style.opacity = String(0.62 * cl((el - 40) / 600));
 
-        /* ③ 屏幕出画：先回正铺满，再往前推。
-           当前这一帧的位置要留着，过曝的圆心得跟着环心走 —— 推近过程中
-           环心一直在动，用终点圆心会在开头错开一百多像素。 */
+        /* ③ 镜头推进：一条曲线走完。放大与位移同时发生，
+           缩放按对数插值（推近的速度感才均匀），环心自己走直线到视口正中。
+           中途没有停顿，也就没有「分两次放大」的断点。 */
         let cx = x2, cy = y2, cs = S2;
-        if (el <= T.out1) {
-          const p = eIo(cl((el - T.out0) / (T.out1 - T.out0)));
-          cx = lerp(x0, x1, p); cy = lerp(y0, y1, p); cs = lerp(s0, S1, p);
-        } else if (el <= T.push1) {
-          const p = eIn(cl((el - T.push0) / (T.push1 - T.push0)));
-          cx = lerp(x1, x2, p); cy = lerp(y1, y2, p); cs = lerp(S1, S2, p);
+        if (el <= T.zoom1) {
+          const p = eSm(cl((el - T.zoom0) / (T.zoom1 - T.zoom0)));
+          cs = s0 * Math.pow(S2 / s0, p);
+          cx = lerp(ring0x, ring1x, p) - RX * cs;
+          cy = lerp(ring0y, ring1y, p) - RY * cs;
         }
         scr.style.transform =
           "translate3d(" + cx.toFixed(2) + "px," + cy.toFixed(2) + "px,0) scale(" + cs.toFixed(5) + ")";
 
         /* ④ 过曝：从电池环现在的中心往外铺一整块 01 的底色。
-           用先快后慢的曲线，让光「砰」地铺开，硬边的圆只在头两帧露一下。 */
+           半径上限按「到最远那个角」算，所以这 700ms 每一帧都在真扩，
+           不会有一段时间在屏外空跑、也不会在跳页那一帧露缝。
+           缓动用两端都收的 eSm，起手不猛、落地不撞，眼睛才不难受。 */
         if (el >= T.flash0) {
-          const p = cl((el - T.flash0) / (T.flash1 - T.flash0));
-          const r = (1 - Math.pow(1 - p, 3)) * 130;
+          const p = eSm(cl((el - T.flash0) / (T.flash1 - T.flash0)));
+          const r = p * RMAX;
           const at = (((cx + RX * cs) / vw) * 100).toFixed(2) + "% " +
                      (((cy + RY * cs) / vh) * 100).toFixed(2) + "%";
           flat.style.clipPath = "circle(" + r.toFixed(2) + "% at " + at + ")";
