@@ -1105,13 +1105,11 @@ window.initSectionPager = function (opts) {
   const nav = document.querySelector(".nav");
   const THRESHOLD = 24;   // 滚轮 / 触控板累积阈值（触控板抖动不会误触发）
   const LOCK_MS = 520;    // 翻页动画锁上限，滚到目标位置会提前解锁
-  const SETTLE_MS = 240;  // 段末到位后停一下，再滚才翻页
   const EDGE = 2;         // 判定「已对齐」的容差
 
   let lockUntil = 0;
   let lockDir = 0;
   let lockTo = -1;
-  let settleUntil = 0;
   let acc = 0;
   let accTimer = 0;
 
@@ -1132,40 +1130,98 @@ window.initSectionPager = function (opts) {
 
   const go = (top, dir) => {
     const target = clampY(top);
+    stopGlide();
     lockUntil = performance.now() + LOCK_MS;
     lockDir = dir;
     lockTo = target;
     window.scrollTo({ top: target, behavior: "smooth" });
   };
 
-  const jump = (top) => {
+  const setY = (v) => {
     const root = document.documentElement;
     const prev = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
-    window.scrollTo(0, clampY(top));
+    window.scrollTo(0, v);
     root.style.scrollBehavior = prev;
+  };
+
+  /* 段内滚动改成「跟手缓动」：位移量照滚轮的累计量走，只是用几帧把它走完。
+     原来这里是 jump(y + delta) 的瞬时跳 —— 触控板一次滑动会拆成几十个小 delta，
+     每个都被 24px 阈值截断再瞬跳，看起来就是「每次只挪固定的一小格」。 */
+  let glideTo = -1;
+  let glideRaf = 0;
+  let glideWrote = -1;
+  const stopGlide = () => {
+    if (glideRaf) cancelAnimationFrame(glideRaf);
+    glideRaf = 0;
+    glideTo = -1;
+    glideWrote = -1;
+  };
+  const glideTick = () => {
+    glideRaf = 0;
+    if (glideTo < 0) return;
+    const y = window.scrollY;
+    /* 位置被别人动了（点索引栏、外部 scrollTo）：立刻让路，别抢回来 */
+    if (glideWrote >= 0 && Math.abs(y - glideWrote) > 40) {
+      stopGlide();
+      return;
+    }
+    const d = glideTo - y;
+    if (Math.abs(d) < 0.8) {
+      setY(glideTo);
+      stopGlide();
+      return;
+    }
+    const next = y + d * 0.32;
+    setY(next);
+    glideWrote = next;
+    glideRaf = requestAnimationFrame(glideTick);
+  };
+  const glide = (target) => {
+    glideTo = clampY(target);
+    if (!glideRaf) glideRaf = requestAnimationFrame(glideTick);
+  };
+
+  const jump = (top) => {
+    stopGlide();
+    setY(clampY(top));
   };
 
   const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
 
-  const step = (dir, delta) => {
+  /* ★ 一手势一次推进（全站通用）：同一串同向滚轮最多翻一次页。
+     段内滚动不受限制 —— 每一格都会真的位移；只有「翻到下一个板块」这件事
+     一个手势只做一次，段落滚到底之后必须停手再滑。 */
+  const GESTURE_GAP = 220;
+  let gestureId = 0;
+  let lastGidAt = 0;
+  let lastGidDir = 0;
+  let flipGid = -1;
+
+  const step = (dir, delta, gid) => {
+    /* 这一手势已经推进过（翻页 / 滚到段底）：剩下的滚轮一律吞掉，必须停手再滑。
+       段内正常滚动不会设置它，所以触控板的每一小格都还会真的位移。 */
+    if (flipGid === gid) return true;
+
     const y = window.scrollY;
     const idx = indexAt();
     const cur = idx >= 0 ? sections[idx] : null;
+    /* 缓动还没走完时，以「待到位」为准往下累加，否则快滑会丢掉位移量 */
+    const base = glideTo >= 0 ? glideTo : y;
 
     if (dir > 0) {
       if (cur) {
         const endY = endOf(cur);
-        if (y < endY - EDGE) {
-          const target = Math.min(y + delta, endY);
-          jump(target);
-          if (target >= endY - 1) settleUntil = performance.now() + SETTLE_MS;
+        if (base < endY - EDGE) {
+          const target = Math.min(base + delta, endY);
+          glide(target);
+          if (target >= endY - 1) flipGid = gid;
           return true;
         }
-        if (performance.now() < settleUntil) return true;
       }
       const next = sections[idx + 1];
       if (!next) return false;   // 最后一段：交回浏览器，页脚自然滑上来
+      flipGid = gid;
       // 专属转场接管：它自己负责落位（instant），不再走 go() 的平滑滚动
       if (transition && transition.down && transition.down(cur, next)) return true;
       const target = topOf(next);
@@ -1176,16 +1232,16 @@ window.initSectionPager = function (opts) {
 
     if (cur) {
       const curTop = topOf(cur);
-      if (y > curTop + EDGE) {
-        const target = Math.max(y - delta, curTop);
-        jump(target);
-        if (target <= curTop + 1) settleUntil = performance.now() + SETTLE_MS;
+      if (base > curTop + EDGE) {
+        const target = Math.max(base - delta, curTop);
+        glide(target);
+        if (target <= curTop + 1) flipGid = gid;
         return true;
       }
-      if (performance.now() < settleUntil) return true;
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
     if (!prev) return false;
+    flipGid = gid;
     if (transition && transition.up && transition.up(cur, prev)) return true;
     const prevTop = topOf(prev);
     const prevEnd = endOf(prev);
@@ -1248,13 +1304,21 @@ window.initSectionPager = function (opts) {
     const delta = Math.abs(acc);
     const dir = acc > 0 ? 1 : -1;
     acc = 0;
+
+    /* 手势编号：同方向且间隔 < GESTURE_GAP 算同一串（用户 2026-11-04 的铁律：
+       一次手势只放行一次推进；换方向立刻算新的一次操作） */
+    const now2 = performance.now();
+    if (dir !== lastGidDir || now2 - lastGidAt > GESTURE_GAP) gestureId++;
+    lastGidAt = now2;
+    lastGidDir = dir;
+
     // 可选：某页的「板块内分段动画」优先消费这一格（返回 true 就不翻页）。
     // 放在 acc 阈值之后，触控板抖动不会误触发；不传 transition 的页面行为不变。
     if (transition && transition.intercept && transition.intercept(dir, "wheel")) {
       e.preventDefault();
       return;
     }
-    if (step(dir, delta)) e.preventDefault();
+    if (step(dir, delta, gestureId)) e.preventDefault();
   };
 
   const onKey = (e) => {
@@ -1287,7 +1351,9 @@ window.initSectionPager = function (opts) {
       e.preventDefault();
       return;
     }
-    if (step(dir, window.innerHeight * 0.85)) e.preventDefault();
+    /* 键盘一次就是一整步，算「新的一次操作」 */
+    gestureId++;
+    if (step(dir, window.innerHeight * 0.85, gestureId)) e.preventDefault();
   };
 
   window.addEventListener("wheel", onWheel, { passive: false });

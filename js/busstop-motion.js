@@ -1064,12 +1064,10 @@
 
   // 返回 true = 这一格被 03 分段动画消费，分页器不翻页
   function stageIntercept(dir) {
-    const g = wheelGesture(dir);
-    // 上滑 / 下滑都遵守：一串大幅滚轮只放行第一格推进，同一串剩下的格全部吞掉，
-    // 必须停手再滑一次才能继续（小屏上一串上滑也不能连退好几个板块）。
-    if (g === usedGesture) return true;
-    usedGesture = g;
-    const now = performance.now();
+    /* ★ 只有真的在 03 里，才用手势编号限制「一手势一批」。
+       原来这里先判手势、后判是否在 03 —— 结果在别的板块（07 这种比一屏高的）
+       里，同一个手势从第 2 格起全部被吞掉，用户看到的就是
+       「不管滚多少，每次只挪固定一小段」（用户 2026-11-05 报的问题）。 */
     if (!STAGE.active) {
       // 02 → 03：不往下滚，在同一屏里把 02 清空、底色淡成 03 的，再跳页
       // （用户 2026-11-04 指定，替换掉原来「平滑下移」的那一下）
@@ -1089,6 +1087,12 @@
       }
       return false;
     }
+    const g = wheelGesture(dir);
+    // 上滑 / 下滑都遵守：一串大幅滚轮只放行第一格推进，同一串剩下的格全部吞掉，
+    // 必须停手再滑一次才能继续（小屏上一串上滑也不能连退好几个板块）。
+    if (g === usedGesture) return true;
+    usedGesture = g;
+    const now = performance.now();
     if (dir > 0) {
       if (now < STAGE.lockUntil) return true;         // 一次手势只推一批
       if (STAGE.full || STAGE.step >= 4) {

@@ -1124,8 +1124,259 @@
       return true;
     };
 
+    /* ---------- 02 → 03：三份概念摆上桌，逐份扫过，最后落在第二份 ----------
+       用户 2026-11-05 定：不再用卡片变形（01→02 已经用过）；
+       蓝框只走 1 → 2 → 3，然后直接让 02 亮起来（不走回头路）；
+       落选的两张**不压暗**（压暗字就看不清了，中间那张已经靠蓝边和浅蓝底区分开）；
+       判词（Killed for / Kept because）必须等徽章落下之后才出 ——
+       而且卡片是「先长高、上面的字一动不动，长完了判词才淡入」。
+       反向 03 → 02 不播这段，交回分页器做普通上滑。 */
+    let conCtx = null;
+
+    const conClear = () => {
+      const c = conCtx;
+      if (!c) return;
+      conCtx = null;
+      morphing = false;
+      c.restore.forEach(([el, prev]) => {
+        if (prev == null) el.removeAttribute("style");
+        else el.setAttribute("style", prev);
+      });
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const conBail = () => {
+      if (!conCtx) return;
+      const to = conCtx.to;
+      conClear();
+      jump(topOf(to));
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(topOf(to));
+    };
+
+    const conceptMorph = () => {
+      if (morphing || conCtx) return true;
+
+      const from = sections[1];     // 02
+      const to = sections[2];       // 03
+      if (!from || !to) return false;
+      const wrap02 = from.querySelector(".sl-wrap");
+      const cards = Array.from(to.querySelectorAll(".sl-concept"));
+      if (!wrap02 || cards.length !== 3) return false;
+
+      const dy = topOf(to) - window.scrollY;
+      const rect = (el) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top, w: r.width, h: r.height };
+      };
+      const at = (el) => {
+        const r = rect(el);
+        return { l: r.l, t: r.t - dy, w: r.w, h: r.h };
+      };
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+      const wash = document.createElement("div");
+      wash.className = "sl-flow__wash";
+      const pageBg = getComputedStyle(document.querySelector(".sl-page") || document.body).backgroundColor;
+      wash.style.background = pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa";
+      wash.style.opacity = "0";
+      fly.appendChild(wash);
+
+      const place = (el, r, extra) => {
+        const c = el.cloneNode(true);
+        const nowrap = el.matches(".sl-eyebrow");
+        c.style.cssText =
+          "position:absolute;left:" + r.l.toFixed(1) + "px;top:" + r.t.toFixed(1) + "px;margin:0;" +
+          (nowrap ? "width:max-content;white-space:nowrap;" : "width:" + r.w.toFixed(1) + "px;") +
+          "will-change:opacity,transform;" + extra;
+        fly.appendChild(c);
+        return c;
+      };
+
+      /* 标题三件套：位置就是落位之后的位置，所以跳页那一帧看不出来 */
+      const heads = Array.from(to.querySelectorAll(".sl-eyebrow, .sl-h2, .sl-p"))
+        .map((el) => place(el, at(el), "opacity:0;"));
+
+      /* 三张卡：盒子只管几何（高度会从 h0 长到 h1），里面的内容按 h1 固定排版、
+         靠 overflow 裁 —— 长高的过程中字一个都不会动。
+         h0 = 没有判词时的自然高度。三张按内容长度会算出不同值，
+         取最大的那个统一用，否则这一排会出现三个不一样的下边缘，像坏了。 */
+      const geo = cards.map((card) => {
+        const r = at(card);
+        const probe = card.cloneNode(true);
+        probe.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden;width:" + r.w + "px;";
+        const pv = probe.querySelector(".sl-concept__verdict");
+        if (pv) pv.remove();
+        document.body.appendChild(probe);
+        const h0 = Math.round(probe.offsetHeight);
+        probe.remove();
+        return { card, r, h0, h1: Math.round(r.h) };
+      });
+      const H0 = Math.max.apply(null, geo.map((g) => g.h0));
+
+      const boxes = geo.map(({ card, r, h1 }) => {
+        const h0 = H0;
+
+        const box = document.createElement("div");
+        box.className = "sl-flow__card";
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + r.w.toFixed(1) + "px;height:" + h0 + "px;" +
+          "background:#fff;border:1px solid var(--sl-line);border-radius:18px;overflow:hidden;" +
+          "transform:translate3d(" + r.l.toFixed(1) + "px," + r.t.toFixed(1) + "px,0);" +
+          "will-change:transform,height,opacity;";
+        const inner = card.cloneNode(true);
+        inner.style.cssText =
+          "position:absolute;left:-1px;top:-1px;width:" + r.w.toFixed(1) + "px;height:" + h1 + "px;" +
+          "box-sizing:border-box;background:transparent;border-color:transparent;";
+        const vin = inner.querySelector(".sl-concept__verdict");
+        if (vin) vin.style.opacity = "0";
+        /* 卡里的 Chosen 徽章要拿掉：它挂在卡的上边缘外面，会被盒子裁掉半截；
+           真正那枚由下面单独的克隆负责「落下来」 */
+        const bin = inner.querySelector(".sl-badge");
+        if (bin) bin.remove();
+        box.appendChild(inner);
+
+        /* 选中态叠一层，而不是改盒子的样式：蓝边 + 淡蓝底可以整层淡入 */
+        const pick = document.createElement("div");
+        pick.style.cssText =
+          "position:absolute;inset:0;border-radius:18px;opacity:0;pointer-events:none;" +
+          "border:2px solid var(--sl-blue);box-sizing:border-box;" +
+          "background:linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(242,248,254,.96) 100%);" +
+          "box-shadow:0 26px 60px -34px rgba(43,108,174,.55);will-change:opacity;";
+        /* 垫在内容下面：这层是「选中态」的底和蓝边，绝不能盖住卡片里的字 */
+        box.insertBefore(pick, inner);
+
+        fly.appendChild(box);
+        return {
+          box, pick, verdict: vin,
+          x: r.l, y: r.t, w: r.w, h0, h1,
+          h: Math.max(60, h0),
+        };
+      });
+
+      /* 扫过用的蓝框：一个薄框在三张之间平移 */
+      const outline = document.createElement("div");
+      outline.style.cssText =
+        "position:absolute;left:0;top:0;border:2px solid var(--sl-blue);border-radius:20px;" +
+        "opacity:0;pointer-events:none;will-change:transform,width,height,opacity;";
+      fly.appendChild(outline);
+
+      /* Chosen 徽章：从上方落到卡 02 的定格位置 */
+      const badgeSrc = cards[1].querySelector(".sl-badge");
+      const badge = badgeSrc ? place(badgeSrc, at(badgeSrc), "opacity:0;") : null;
+
+      const restore = [[wrap02, wrap02.getAttribute("style")]];
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (t) => t * t * (3 - 2 * t);
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const eBack = (p) => {
+        const c1 = 1.70158, c3 = c1 + 1;
+        return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
+      };
+
+      const T_JUMP = 1520;
+      const T_END = 1750;
+
+      const frame = (t) => {
+        /* ① 02 整体上移退场，底色同时铺上来（两者叠在一起，中间不空屏） */
+        const out = es(cl(t / 300));
+        wrap02.style.transform = "translateY(" + (-44 * out).toFixed(1) + "px)";
+        wrap02.style.opacity = String(1 - out);
+        wash.style.opacity = String(out);
+
+        /* ② 03 的标题逐件浮起 */
+        heads.forEach((g, i) => {
+          const k = es(cl((t - (120 + i * 40)) / 340));
+          g.style.opacity = String(k);
+          g.style.transform = "translateY(" + (14 * (1 - k)).toFixed(1) + "px)";
+        });
+
+        /* ③ 三张卡从下方升起（此时都还没有判词，所以是短的那一版） */
+        boxes.forEach((b, i) => {
+          const k = es(cl((t - (260 + i * 80)) / 380));
+          b.box.style.opacity = String(k);
+          b.box.style.transform =
+            "translate3d(" + b.x.toFixed(1) + "px," + (b.y + 150 * (1 - k)).toFixed(1) + "px,0)";
+        });
+
+        /* ④ 蓝框依次掠过 1 → 2 → 3（只去不回） */
+        if (t >= 680) {
+          const seg = cl((t - 680) / 140);
+          const i = Math.min(1, Math.floor(seg));
+          const p = es(cl(seg - i));
+          const a = boxes[i], b = boxes[i + 1] || boxes[i];
+          const x = lerp(a.x, b.x, p) - 5;
+          const y = lerp(a.y, b.y, p) - 5;
+          const w = lerp(a.w, b.w, p) + 10;
+          const h = lerp(a.h, b.h, p) + 10;
+          outline.style.transform = "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0)";
+          outline.style.width = w.toFixed(1) + "px";
+          outline.style.height = h.toFixed(1) + "px";
+          outline.style.opacity = String(Math.min(1, (t - 680) / 120) * (1 - es(cl((t - 960) / 120))));
+        }
+
+        /* ⑤ 02 号亮起来 + 徽章落下 */
+        boxes[1].pick.style.opacity = String(es(cl((t - 980) / 160)));
+        if (badge) {
+          const p = cl((t - 1000) / 220);
+          const k = eBack(p);
+          badge.style.opacity = String(cl(p * 2.4));
+          badge.style.transform = "translateY(" + (-18 * (1 - k)).toFixed(1) + "px)";
+        }
+
+        /* ⑥ 定了之后卡片才长高：上面的字一动不动，长完了判词才淡入 */
+        const grow = es(cl((t - 1120) / 260));
+        boxes.forEach((b) => {
+          b.box.style.height = lerp(b.h0, b.h1, grow).toFixed(1) + "px";
+        });
+        const vk = es(cl((t - 1380) / 120));
+        boxes.forEach((b) => {
+          if (b.verdict) b.verdict.style.opacity = String(vk);
+        });
+      };
+
+      morphing = true;
+      conCtx = { fly, to, restore };
+      frame(0);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!conCtx) return;
+        const t = ts - t0;
+        frame(Math.min(t, T_JUMP));
+
+        if (!indexMoved && t >= 620) {
+          indexMoved = true;
+          slIndexHold = 2;
+          if (slIndexSync) slIndexSync();
+        }
+
+        if (!jumped && t >= T_JUMP) {
+          jumped = true;
+          jump(topOf(to));
+          lockUntil = performance.now() + 320;
+          lockDir = 1;
+          lockTo = clampY(topOf(to));
+        }
+        if (t >= T_JUMP) {
+          fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        }
+        if (t < T_END) requestAnimationFrame(tick);
+        else conClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
-      if (morphing) return true;
 
       const ov = sections[0];
       const src = document.querySelector(".sl-screen");
@@ -1323,6 +1574,8 @@
         if (!next) return false;
         /* 01 → 02：交给卡片分裂转场 */
         if (cur === sections[0]) return flowMorph(1);
+        /* 02 → 03：交给「三份概念」转场 */
+        if (cur === sections[1]) return conceptMorph();
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -1434,7 +1687,7 @@
 
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", () => { morphBail(); flowBail(); });
+    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); });
   }
 
   /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
