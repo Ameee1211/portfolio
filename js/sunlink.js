@@ -784,7 +784,15 @@
         const el = document.getElementById(it.dataset.target);
         if (!el) return;
         e.preventDefault();
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        /* 原来用 smooth 滚过去：滚的过程中如果用户拨了一下滚轮，分页器还以为
+           自己仍在原来的板块（06 比一屏高，导航栏却已经亮到 06 了），
+           于是给他放了一段 05→06 的翻牌动画 —— 看着像 bug。
+           改成直接落位，落位之后再滚就是「在 06 里往下滚」。 */
+        const root = document.documentElement;
+        const prev = root.style.scrollBehavior;
+        root.style.scrollBehavior = "auto";
+        window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY);
+        root.style.scrollBehavior = prev;
         history.replaceState(null, "", "#" + it.dataset.target);
       });
     });
@@ -807,7 +815,6 @@
     const THRESHOLD = 24;
     const LOCK_MS = 520;
     const GESTURE_GAP = 90;
-    const SETTLE_MS = 240;
     const EDGE = 2;
     /* 刚落地时浏览器常常差几个像素（字体回流、取整），这不叫「在板块内部」。
        小于这个值直接吸附回顶边并继续处理这次滚轮，别单独吃掉一格 ——
@@ -817,7 +824,6 @@
     let lockUntil = 0;
     let lockDir = 0;
     let lockTo = -1;
-    let settleUntil = 0;
     let acc = 0;
     let accTimer = 0;
     let lastWheelAt = 0;
@@ -2383,7 +2389,16 @@
       return true;
     };
 
-    const step = (dir, delta, now, sinceLast) => {
+    /* 一手势一次推进（用户 2026-11-06）：一串连续滚轮（相邻两格间隔 <= GESTURE_GAP）
+       只放行一次推进 —— 段内滚到段底 / 翻页 / 播放转场都算一次推进。
+       同一串里剩下的格全部吞掉，必须停手再滑一次才继续。
+       这样：在一个比一屏高的板块底部，一串很猛的上滑只会把你送到这个板块的顶部，
+       不会顺势退到上一个板块；同理在板块顶部猛地下滑也不会直接跳走。 */
+    let flipGid = -1;
+    let gidSeq = 0;
+
+    const step = (dir, delta, gid) => {
+      if (flipGid === gid) return true;
       const y = window.scrollY;
       const idx = indexAt();
       const cur = idx >= 0 ? sections[idx] : null;
@@ -2391,19 +2406,24 @@
       if (dir > 0) {
         /* 首屏往下：交给专属转场，不再直接平滑滚过去。
            反向（01 → 首屏）一律走下面的普通上移，这里不碰。 */
-        if (!cur && morphDown()) return true;
-        if (cur) {
+        if (!cur) {
+          if (!morphDown()) return false;
+          flipGid = gid;
+          return true;
+        }
+        {
           const endY = endOf(cur);
           if (y < endY - EDGE) {
             const target = Math.min(y + delta, endY);
             jump(target);
-            if (target >= endY - 1) settleUntil = now + SETTLE_MS;
+            /* 这一段这一手势走到头了：同手势里剩下的滚轮只把页面停稳，不许顺势翻页 */
+            if (target >= endY - 1) flipGid = gid;
             return true;
           }
-          if (now < settleUntil) return true;
         }
         const next = sections[idx + 1];
         if (!next) return false;
+        flipGid = gid;
         /* 01 → 02：交给卡片分裂转场 */
         if (cur === sections[0]) return flowMorph(1);
         /* 02 → 03：交给「三份概念」转场 */
@@ -2425,15 +2445,15 @@
         if (y > curTop + NUDGE) {
           const target = Math.max(y - delta, curTop);
           jump(target);
-          if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
+          if (target <= curTop + 1) flipGid = gid;
           return true;
         }
         /* 几像素的漂移：吸附回顶边，但这次滚轮继续往下走（该翻页就翻页） */
         if (y > curTop + EDGE) jump(curTop);
-        if (now < settleUntil) return true;
       }
       const prev = idx > 0 ? sections[idx - 1] : hero;
       if (!prev) return false;
+      flipGid = gid;
       /* 02 → 01：同一段倒放 */
       if (prev === sections[0]) return flowMorph(-1);
       /* 04 → 03：同一段折叠倒放 */
@@ -2468,8 +2488,9 @@
       if (!d) return;
 
       const now = performance.now();
-      const sinceLast = lastWheelAt ? now - lastWheelAt : 1e9;
+      const gap = lastWheelAt ? now - lastWheelAt : 1e9;
       lastWheelAt = now;
+      if (gap > GESTURE_GAP) gidSeq++;      // 停顿超过 90ms 才算新手势
 
       if (now < lockUntil) {
         if (Math.sign(d) !== lockDir) {
@@ -2497,7 +2518,7 @@
       const delta = Math.abs(acc);
       const dir = acc > 0 ? 1 : -1;
       acc = 0;
-      if (step(dir, delta, now, sinceLast)) e.preventDefault();
+      if (step(dir, delta, gidSeq)) e.preventDefault();
     };
 
     const onKey = (e) => {
@@ -2526,7 +2547,8 @@
         }
         lockUntil = 0;
       }
-      if (step(dir, window.innerHeight * 0.85, performance.now(), 1e9)) e.preventDefault();
+      gidSeq++;   // 每次按键都算一次新手势
+      if (step(dir, window.innerHeight * 0.85, gidSeq)) e.preventDefault();
     };
 
     window.addEventListener("wheel", onWheel, { passive: false });

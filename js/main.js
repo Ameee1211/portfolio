@@ -850,13 +850,11 @@ function initPinPager() {
   const THRESHOLD = 24;
   const LOCK_MS = 520;
   const GESTURE_GAP = 90;
-  const SETTLE_MS = 240;
   const EDGE = 2;
 
   let lockUntil = 0;
   let lockDir = 0;
   let lockTo = -1;
-  let settleUntil = 0;
   let acc = 0;
   let accTimer = 0;
   let lastWheelAt = 0;
@@ -893,7 +891,13 @@ function initPinPager() {
 
   const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
 
-  const step = (dir, delta, now, sinceLast) => {
+  /* 一手势一次推进（用户 2026-11-06）：一串连续滚轮只放行一次推进，
+     同一串里剩下的格全部吞掉，必须停手再滑一次。 */
+  let flipGid = -1;
+  let gidSeq = 0;
+
+  const step = (dir, delta, gid) => {
+    if (flipGid === gid) return true;
     const y = window.scrollY;
     const idx = indexAt();
     const cur = idx >= 0 ? pinned[idx] : null;
@@ -904,13 +908,13 @@ function initPinPager() {
         if (y < endY - EDGE) {
           const target = Math.min(y + delta, endY);
           jump(target);
-          if (target >= endY - 1) settleUntil = now + SETTLE_MS;
+          if (target >= endY - 1) flipGid = gid;
           return true;
         }
-        if (now < settleUntil) return true;
       }
       const next = pinned[idx + 1];
       if (!next) return false; // 最后一屏：交回浏览器，页脚自然滑上来
+      flipGid = gid;
       const target = topOf(next);
       if (Math.abs(target - y) < 4) return false;
       go(target, 1);
@@ -922,13 +926,13 @@ function initPinPager() {
       if (y > curTop + EDGE) {
         const target = Math.max(y - delta, curTop);
         jump(target);
-        if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
+        if (target <= curTop + 1) flipGid = gid;
         return true;
       }
-      if (now < settleUntil) return true;
     }
     const prev = idx > 0 ? pinned[idx - 1] : hero;
     if (!prev) return false;
+    flipGid = gid;
     const prevTop = topOf(prev);
     const prevEnd = endOf(prev);
     const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -954,8 +958,9 @@ function initPinPager() {
     if (!d) return;
 
     const now = performance.now();
-    const sinceLast = lastWheelAt ? now - lastWheelAt : 1e9;
+    const gap = lastWheelAt ? now - lastWheelAt : 1e9;
     lastWheelAt = now;
+    if (gap > GESTURE_GAP) gidSeq++;      // 停顿超过 90ms 才算新手势
 
     if (now < lockUntil) {
       if (Math.sign(d) !== lockDir) {
@@ -982,7 +987,7 @@ function initPinPager() {
     const delta = Math.abs(acc);
     const dir = acc > 0 ? 1 : -1;
     acc = 0;
-    if (step(dir, delta, now, sinceLast)) e.preventDefault();
+    if (step(dir, delta, gidSeq)) e.preventDefault();
   };
 
   const onKey = (e) => {
@@ -1010,7 +1015,8 @@ function initPinPager() {
       }
       lockUntil = 0;
     }
-    if (step(dir, window.innerHeight * 0.85, performance.now(), 1e9)) e.preventDefault();
+    gidSeq++;   // 每次按键都算一次新手势
+    if (step(dir, window.innerHeight * 0.85, gidSeq)) e.preventDefault();
   };
 
   window.addEventListener("wheel", onWheel, { passive: false });
