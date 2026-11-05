@@ -1661,3 +1661,62 @@
   /* 这一档高度不够，提示会把信息行压住，先不显示 */
   .sl-hero__cue { display: none; }
 }
+
+/* ============================================================
+   首屏 → 01：把墙上的那块屏从墙上取下来，走进去
+   只在 ≥1024 的滚轮分页里创建；手机端一个元素都不会生成
+   ============================================================ */
+
+/* 压暗层：房间沉下去，只留屏幕还亮着 */
+.sl-morph__dusk {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: #0a1424;
+  opacity: 0;
+}
+
+/* 飞行层：整屏不拦截事件，只负责把屏幕画在真页面之上 */
+.sl-morph {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+/* 屏幕本体：1000×574 = 界面原始坐标系，位置与缩放全部由 transform 给 */
+.sl-morph__screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1000px;
+  height: 574px;
+  transform-origin: 0 0;
+  overflow: hidden;
+  background: #fff;
+  filter: drop-shadow(0 0 14px rgba(110, 175, 240, 0.16));
+  will-change: transform;
+}
+.sl-morph__screen img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+}
+.sl-morph__screen .sl-screen__glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 过曝：从绿环的中心往外铺开一整块 01 的底色，最后一帧跳页看不出来 */
+.sl-morph__flat {
+  position: absolute;
+  inset: 0;
+  background: #f7f6fa;
+  clip-path: circle(0% at 50% 50%);
+}

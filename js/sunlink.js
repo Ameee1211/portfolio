@@ -780,12 +780,213 @@
 
     const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
 
+    /* ---------- 首屏 → 01：把墙上的那块屏取下来，走进去 ----------
+       用户 2026-11-05 指定：只做这一段下行。01 回首屏保持普通上移，不拦、不播。
+       过程：房间沉进夜色只剩屏幕 → 屏幕脱离墙面回正、铺满视口
+       → 再推近一点，从电池环里涌出一整片 01 的底色 → 跳页（看不见切换）。 */
+    let morphing = false;
+    let morphCtx = null;
+
+    const morphClear = () => {
+      const c = morphCtx;
+      if (!c) return;
+      morphCtx = null;
+      morphing = false;
+      c.src.style.visibility = c.srcVis;
+      if (c.fly.parentNode) c.fly.remove();
+      if (c.dusk.parentNode) c.dusk.remove();
+      c.fadeEls.forEach((n) => {
+        n.style.removeProperty("opacity");
+        n.style.removeProperty("transform");
+      });
+    };
+
+    /* 转场中途改窗口尺寸（或页面被外部跳走）：直接落位到 01，不卡在半路 */
+    const morphBail = () => {
+      if (!morphCtx) return;
+      const ov = morphCtx.ov;
+      const c = morphCtx;
+      morphClear();
+      c.kids.forEach((n) => {
+        n.style.removeProperty("opacity");
+        n.style.removeProperty("transform");
+        n.style.removeProperty("transition");
+      });
+      jump(topOf(ov));
+      lockUntil = performance.now() + 400;
+    };
+
+    const morphDown = () => {
+      if (morphing) return true;
+
+      const ov = sections[0];
+      const src = document.querySelector(".sl-screen");
+      const heroInner = hero.querySelector(".sl-hero__inner");
+      const cue = hero.querySelector(".sl-hero__cue");
+      if (!ov || !src) return false;
+
+      const oldImg = src.querySelector("img");
+      const r0 = src.getBoundingClientRect();
+      if (!oldImg || r0.width < 80 || r0.height < 40) return false;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      /* 起点：屏幕此刻在墙面上的矩形。贴屏矩阵的透视项只有 0.003，
+         误差不到 2px，所以直接用矩形插值，不必真做 3D。 */
+      const s0 = r0.width / 1000;
+      const x0 = r0.left;
+      const y0 = r0.top;
+
+      /* 终点一：铺满视口 */
+      const S1 = Math.max(vw / 1000, vh / 574);
+      const x1 = (vw - 1000 * S1) / 2;
+      const y1 = (vh - 574 * S1) / 2;
+
+      /* 终点二：再推近；电池那个绿环的圆心在屏坐标 (138,234)
+         （界面图 1361×950 里在 (187.5,319)，cover 到 1000×574 后 ×0.7346） */
+      const S2 = S1 * 2.05;
+      const RX = 138;
+      const RY = 234;
+      const x2 = Math.max(vw - 1000 * S2, Math.min(0, vw / 2 - RX * S2));
+      const y2 = Math.max(vh - 574 * S2, Math.min(0, vh / 2 - RY * S2));
+
+      /* 过曝的圆心：绿环最后落在视口的哪一点，光就从哪儿涌出来 */
+      const fx = x2 + RX * S2;
+      const fy = y2 + RY * S2;
+      const fp = ((fx / vw) * 100).toFixed(2) + "% " + ((fy / vh) * 100).toFixed(2) + "%";
+
+      const fly = document.createElement("div");
+      fly.className = "sl-morph";
+      const scr = document.createElement("div");
+      scr.className = "sl-morph__screen";
+      scr.appendChild(oldImg.cloneNode(true));
+      const glare = document.createElement("span");
+      glare.className = "sl-screen__glare";
+      scr.appendChild(glare);
+      const flat = document.createElement("div");
+      flat.className = "sl-morph__flat";
+      flat.style.clipPath = "circle(0% at " + fp + ")";
+      fly.appendChild(scr);
+      fly.appendChild(flat);
+
+      const dusk = document.createElement("div");
+      dusk.className = "sl-morph__dusk";
+      hero.appendChild(dusk);
+
+      const srcVis = src.style.visibility;
+      src.style.visibility = "hidden";     // 由克隆体接管，避免两层重影
+      document.body.appendChild(fly);
+
+      const fadeEls = [heroInner, cue].filter(Boolean);
+      const wrap = ov.querySelector(".sl-wrap");
+      const kids = wrap ? Array.prototype.slice.call(wrap.children) : [];
+
+      scr.style.transform = "translate3d(" + x0 + "px," + y0 + "px,0) scale(" + s0 + ")";
+
+      morphing = true;
+      morphCtx = { fly, dusk, src, srcVis, fadeEls, kids, ov };
+
+      const T = {
+        text1: 260,                    // 文字退场
+        out0: 280, out1: 1020,         // 墙面 → 铺满视口
+        push0: 1020, push1: 1400,      // 再推近
+        flash0: 1400, flash1: 1780,    // 从环心铺 01 的底色
+        jump: 1790,                    // 跳页（被白场盖着）
+        fade1: 1960,                   // 飞行层淡出
+        end: 1960,
+      };
+
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const eIo = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+      const eIn = (t) => t * t * t;
+      const t0 = performance.now();
+      let jumped = false;
+
+      const tick = (ts) => {
+        if (!morphCtx) return;
+        const el = ts - t0;
+
+        /* ① 右侧文案与滚动提示先退场，画面安静下来只剩屏幕 */
+        const pt = cl(el / T.text1);
+        const py = (-14 * pt).toFixed(1) + "px";
+        const po = String(1 - pt);
+        fadeEls.forEach((n) => {
+          n.style.setProperty("opacity", po, "important");
+          n.style.setProperty("transform", "translateY(" + py + ")", "important");
+        });
+
+        /* ② 房间沉进夜色（屏幕是克隆体，在飞行层里，不受影响） */
+        dusk.style.opacity = String(0.62 * cl((el - 40) / 600));
+
+        /* ③ 屏幕出画：先回正铺满，再往前推。
+           当前这一帧的位置要留着，过曝的圆心得跟着环心走 —— 推近过程中
+           环心一直在动，用终点圆心会在开头错开一百多像素。 */
+        let cx = x2, cy = y2, cs = S2;
+        if (el <= T.out1) {
+          const p = eIo(cl((el - T.out0) / (T.out1 - T.out0)));
+          cx = lerp(x0, x1, p); cy = lerp(y0, y1, p); cs = lerp(s0, S1, p);
+        } else if (el <= T.push1) {
+          const p = eIn(cl((el - T.push0) / (T.push1 - T.push0)));
+          cx = lerp(x1, x2, p); cy = lerp(y1, y2, p); cs = lerp(S1, S2, p);
+        }
+        scr.style.transform =
+          "translate3d(" + cx.toFixed(2) + "px," + cy.toFixed(2) + "px,0) scale(" + cs.toFixed(5) + ")";
+
+        /* ④ 过曝：从电池环现在的中心往外铺一整块 01 的底色。
+           用先快后慢的曲线，让光「砰」地铺开，硬边的圆只在头两帧露一下。 */
+        if (el >= T.flash0) {
+          const p = cl((el - T.flash0) / (T.flash1 - T.flash0));
+          const r = (1 - Math.pow(1 - p, 3)) * 130;
+          const at = (((cx + RX * cs) / vw) * 100).toFixed(2) + "% " +
+                     (((cy + RY * cs) / vh) * 100).toFixed(2) + "%";
+          flat.style.clipPath = "circle(" + r.toFixed(2) + "% at " + at + ")";
+        }
+
+        /* ⑤ 白场铺满的那一帧跳页：底下和盖着的是同一个颜色 */
+        if (!jumped && el >= T.jump) {
+          jumped = true;
+          jump(topOf(ov));
+          lockUntil = performance.now() + 700;
+          kids.forEach((n) => {
+            n.style.transition = "none";
+            n.style.opacity = "0";
+            n.style.transform = "translateY(16px)";
+          });
+          requestAnimationFrame(() => {
+            if (!morphCtx) return;
+            kids.forEach((n, i) => {
+              const d = i * 55;
+              n.style.transition =
+                "opacity .55s cubic-bezier(.2,.8,.2,1) " + d + "ms, transform .55s cubic-bezier(.2,.8,.2,1) " + d + "ms";
+              n.style.opacity = "1";
+              n.style.transform = "none";
+            });
+          });
+        }
+
+        /* ⑥ 飞行层淡出，01 从同色的底里浮出来 */
+        if (el >= T.jump) {
+          fly.style.opacity = String(cl(1 - (el - T.jump) / (T.fade1 - T.jump)));
+        }
+
+        if (el < T.end) requestAnimationFrame(tick);
+        else morphClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const step = (dir, delta, now, sinceLast) => {
       const y = window.scrollY;
       const idx = indexAt();
       const cur = idx >= 0 ? sections[idx] : null;
 
       if (dir > 0) {
+        /* 首屏往下：交给专属转场，不再直接平滑滚过去。
+           反向（01 → 首屏）一律走下面的普通上移，这里不碰。 */
+        if (!cur && morphDown()) return true;
         if (cur) {
           const endY = endOf(cur);
           if (y < endY - EDGE) {
@@ -834,6 +1035,7 @@
     };
 
     const onWheel = (e) => {
+      if (morphing) { e.preventDefault(); return; }
       if (e.ctrlKey) return;
       if (e.target instanceof Element && inScroller(e.target)) return;
 
@@ -873,6 +1075,7 @@
     };
 
     const onKey = (e) => {
+      if (morphing) { e.preventDefault(); return; }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target && e.target.tagName) || "";
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
@@ -902,6 +1105,7 @@
 
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", morphBail);
   }
 
   /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
