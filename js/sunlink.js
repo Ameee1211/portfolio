@@ -858,7 +858,7 @@
         const p = Math.min(1, (now - t0) / dur);
         const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(2 - 2 * p, 2) / 2;
         markProg(90);
-        window.scrollTo(0, from + dist * e);
+        window.scrollTo(0, Math.round(from + dist * e));
         if (p < 1) slideRaf = requestAnimationFrame(tick);
         else {
           slideRaf = 0;
@@ -925,7 +925,9 @@
       const prev = root.style.scrollBehavior;
       root.style.scrollBehavior = "auto";
       markProg(90);
-      window.scrollTo(0, clampY(top));
+      /* 取整再滚：板块顶边常带小数（06 是 5531.52），直接滚小数会被浏览器
+         抹成 5531，视口最上沿就露出上一板块的 0.5px。 */
+      window.scrollTo(0, Math.round(clampY(top)));
       root.style.scrollBehavior = prev;
     };
 
@@ -956,7 +958,10 @@
 
     const measureRail = () => {
       bounds = sections.map((sec) => {
-        const top = topOf(sec);
+        const t = topOf(sec);
+        /* 顶边向上取整、底边向下取整 —— 都朝板块「里面」收，
+           这样落位时宁可少滚半像素，也绝不把相邻板块漏出来一条边。 */
+        const top = Math.ceil(t);
         return { top: top, end: Math.max(top, endOf(sec)) };
       });
     };
@@ -991,8 +996,14 @@
       /* 越出本板块区间就拉回。这里故意「不认账」——
          只要落在别的板块区间里就接受，那惯性滚过去就成了一次翻页，
          用户要的「必须停手再滑」就白做了。换板块只能走 go / 转场 / 导航。 */
-      if (y > b.end + 1) jump(b.end);
-      else if (y < b.top - 1) jump(b.top);
+      if (y > b.end) jump(b.end);
+      else if (y < b.top) jump(b.top);
+      else {
+        /* 贴边吸附：板块顶/底常带小数，落位取整后可能差 1px，
+           视口最上/最下沿就会漏出相邻板块的一条细边。差 2px 以内一律贴齐。 */
+        if (y - b.top > 0 && y - b.top <= 2) jump(b.top);
+        else if (b.end - y > 0 && b.end - y <= 2) jump(b.end);
+      }
     };
 
     /* 拖滚动条时放开，松手后如果停在半路就吸附回最近的边界 */
@@ -1009,7 +1020,13 @@
       jump(y > b.end ? b.end : b.top);
     }, true);
 
-    const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
+    /* 段底一律向下取整：板块高度带小数（例如 06 是 1334.99），滚动位置只能取整，
+       四舍五入会多滚不到 1px，视口最底下就会漏出下个板块的一条白边。
+       宁可少滚半像素，让本板块多盖住一点点。 */
+    const endOf = (el) => {
+      const h = el.getBoundingClientRect().height;
+      return Math.min(Math.floor(topOf(el) + h - window.innerHeight), maxScroll());
+    };
 
     /* ---------- 首屏 → 01：把墙上的那块屏取下来，走进去 ----------
        用户 2026-11-05 指定：只做这一段下行。01 回首屏保持普通上移，不拦、不播。
@@ -2364,6 +2381,142 @@
       return true;
     };
 
+    /* ---------- 06 ↔ 07：整屏平移（用户 2026-11-06） ----------
+       「最简单的一个屏的效果」：不做任何特技，两张整屏一起滑一屏 ——
+       06 整屏滑出视口上边，07 从视口下边补上来，正好滑满一屏时跳页。
+       反向就是把同一段倒着滑回去。 */
+    let panCtx = null;
+
+    const panClear = () => {
+      const c = panCtx;
+      if (!c) return;
+      panCtx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const panBail = () => {
+      if (!panCtx) return;
+      const to = panCtx.to;
+      panClear();
+      jump(topOf(to));
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(topOf(to));
+    };
+
+    const panMorph = (dir) => {
+      if (morphing || panCtx) return true;
+
+      const s6 = sections[5];      // prototype
+      const s7 = sections[6];      // circuit
+      if (!s6 || !s7) return false;
+
+      const to = dir > 0 ? s7 : s6;
+      /* 06 比一屏高，用户滑到的是它的段底 —— 卡片窗口按段底对齐，
+         跳页后的落点才会和卡片最后一帧严丝合缝。07 永远从顶边进。 */
+      const land6 = Math.max(topOf(s6), endOf(s6));
+      /* 落点压板块顶边时向上取整：顶边常带小数（07 是 6866.5），
+         落成 6866 就会在视口最上沿漏出 06 的深色 0.5px。 */
+      const land7 = Math.ceil(topOf(s7));
+      const targetY = dir > 0 ? land7 : land6;
+
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s6.offsetWidth || cw, s7.offsetWidth || cw);
+      const vh = document.documentElement.clientHeight;
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+      const pageBg = getComputedStyle(document.body).backgroundColor;
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;background:" +
+        (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa") + ";";
+
+      const build = (sec, off) => {
+        const card = document.createElement("div");
+        card.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;will-change:transform;";
+        const cs = getComputedStyle(sec);
+        card.style.background = cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)"
+          ? cs.backgroundColor : (pageBg || "#f7f6fa");
+
+        const inner = sec.cloneNode(true);
+        /* id 不能带过来（会跟真页面撞），iframe 不能克隆（会把原型整个重新加载） */
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("iframe").forEach((f) => {
+          const ph = document.createElement("div");
+          ph.style.cssText = "width:100%;height:100%;background:#16243a;";
+          f.parentNode.replaceChild(ph, f);
+        });
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + off.toFixed(1) + "px;width:" + vw + "px;margin:0;";
+        card.appendChild(inner);
+        fly.appendChild(card);
+        return card;
+      };
+
+      const card6 = build(s6, -(land6 - topOf(s6)));
+      const card7 = build(s7, 0);
+      card6.style.zIndex = "2";
+      card7.style.zIndex = "1";
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+
+      const T_JUMP = 640;   // 滑满一屏、跳页
+      const T_END = 780;    // 跳页后再留一点淡出，防止一帧闪烁
+
+      const frame = (u) => {
+        const k = es(cl(u));
+        /* 正向：06 从 0 滑到 -vh，07 从 +vh 滑到 0
+           反向：07 从 0 滑到 +vh，06 从 -vh 滑到 0 */
+        card6.style.transform =
+          "translate3d(0," + (-vh * (dir > 0 ? k : 1 - k)).toFixed(1) + "px,0)";
+        card7.style.transform =
+          "translate3d(0," + (vh * (dir > 0 ? 1 - k : k)).toFixed(1) + "px,0)";
+      };
+
+      morphing = true;
+      panCtx = { fly, to };
+      frame(0);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!panCtx) return;
+        const t = ts - t0;
+        const raw = Math.min(t / T_JUMP, 1);
+        frame(raw);
+
+        if (!indexMoved && raw >= 0.62) {
+          indexMoved = true;
+          slIndexHold = dir > 0 ? 6 : 5;
+          if (slIndexSync) slIndexSync();
+        }
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(targetY);
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          lockTo = clampY(targetY);
+        }
+        if (t >= T_JUMP) {
+          fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        }
+        if (t < T_END) requestAnimationFrame(tick);
+        else panClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
       if (morphing) return true;
 
@@ -2570,9 +2723,15 @@
           if (y < endY - EDGE) {
             const target = Math.min(y + delta, endY);
             jump(target);
-            /* 这一段走到头了：在段底立一道守卫，等用户停手再滑一次才翻页 */
+            /* 这一段走到头了：在段底立一道守卫，等用户停手再滑一次才翻页。
+               ★ 顺手把轨道的这一段量准、并把它设为「当前板块」——
+               轨道和守卫必须用同一个边界值。以前轨道用页面加载时的旧高度，
+               一旦对不上，它就一直把人拽回一个比真实段底更靠上的位置，
+               翻页判断永远以为「还没到底」，于是 06→07、07→08 滚不过去。 */
             if (target >= endY - 1) {
               flipGid = gid;
+              railIdx = idx;
+              bounds[idx] = { top: Math.ceil(topOf(cur)), end: endOf(cur) };
               setGuard(endY, 1);
             }
             return true;
@@ -2592,6 +2751,8 @@
         if (cur === sections[3]) return stepMorph(1);
         /* 05 → 06：交给「翻牌」转场 */
         if (cur === sections[4]) return deckMorph(1);
+        /* 06 → 07：整屏平移 */
+        if (cur === sections[5]) return panMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -2603,9 +2764,12 @@
         if (y > curTop + NUDGE) {
           const target = Math.max(y - delta, curTop);
           jump(target);
-          /* 上滑回到板块顶部：在顶边立一道守卫，猛滑也只会停在这，不会退到上一板块 */
+          /* 上滑回到板块顶部：在顶边立一道守卫，猛滑也只会停在这，不会退到上一板块。
+             同样把轨道同步到这一段，口径一致才不会互相打架。 */
           if (target <= curTop + 1) {
             flipGid = gid;
+            railIdx = idx;
+            bounds[idx] = { top: Math.ceil(curTop), end: endOf(cur) };
             setGuard(curTop, -1);
           }
           return true;
@@ -2616,6 +2780,8 @@
         if (y > curTop + EDGE) {
           jump(curTop);
           flipGid = gid;
+          railIdx = idx;
+          bounds[idx] = { top: Math.ceil(curTop), end: endOf(cur) };
           setGuard(curTop, -1);
           return true;
         }
@@ -2632,6 +2798,8 @@
       if (cur === sections[4]) return stepMorph(-1);
       /* 06 → 05：把后面那张再翻回前面 */
       if (cur === sections[5]) return deckMorph(-1);
+      /* 07 → 06：整屏平移回去 */
+      if (cur === sections[6]) return panMorph(-1);
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -2782,7 +2950,7 @@
       measureRail();
       railIdx = fitRail(window.scrollY);
       if (railIdx === -9) railIdx = -1;
-      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail();
+      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail();
     });
   }
 
