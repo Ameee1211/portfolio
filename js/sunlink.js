@@ -812,7 +812,7 @@
     if (sections.length < 2) return;
 
     const THRESHOLD = 24;
-    const LOCK_MS = 520;
+    const LOCK_MS = 380;
     const GESTURE_GAP = 90;
     const EDGE = 2;
     /* 刚落地时浏览器常常差几个像素（字体回流、取整），这不叫「在板块内部」。
@@ -881,26 +881,26 @@
        · 之后任何非程序性的位移，只要还朝越界方向走，立刻拉回来并重新计时；
        · 只有「安静够久」之后的第一次滚轮，才允许翻到相邻板块。
        哪怕某一格滚轮因为惯性 / 滚动链漏掉了，页面也跑不出这个板块。 */
-    const QUIET_MIN = 360;      // 最短安静判定
-    const QUIET_MAX = 700;      // 最长（慢速拨轮时自动放宽）
-    const GUARD_TTL = 900;      // 守卫寿命：最后一次滚轮之后这么久就撤，免得拽住滚动条
-    let guard = null;           // { y, dir, at, exp }  dir: 1 = 停在段底, -1 = 停在段顶
+    /* ★ 2026-11-06 重写（上一版有必死活锁）★
+       「停手」只用一个判据：**这一格和上一格的间隔**。
+       间隔 < EDGE_GAP → 还是同一串（猛滑），按住不放行；
+       间隔 >= EDGE_GAP → 手已经停了，这一格就是「停手之后的新一次」，放行翻页。
+       上一版拿「间隔 × 1.6」当门槛、又用同一个间隔去比，条件永远成立，
+       于是滚到边界之后同方向永远翻不了页 —— 用户要滑十几下就是这个。
+       另外加 guard.ticks 硬保底：同一方向最多按 6 格，第 7 格无条件放行，
+       任何没预料到的情况都不会再把人锁死。 */
+    const EDGE_GAP = 250;       // 一格间隔超过它就算「停手了」
+    const GUARD_MAX_TICKS = 20; // 同一串最多按住 20 格，兜底（正常猛滑根本到不了）
+    const GUARD_TTL = 1200;
+    let guard = null;           // { y, dir, ticks, exp }  dir: 1 = 停在段底, -1 = 停在段顶
     let progUntil = 0;          // 程序性滚动的豁免窗口
 
     function markProg(ms) { progUntil = performance.now() + (ms || 120); }
     function setGuard(y, dir) {
-      const t = performance.now();
-      guard = { y: Math.round(y), dir: dir, at: t, exp: t + GUARD_TTL };
+      guard = { y: Math.round(y), dir: dir, ticks: 0, exp: performance.now() + GUARD_TTL };
     }
-    function keepGuard(t) { guard.at = t; guard.exp = t + GUARD_TTL; }
+    function holdGuard() { guard.exp = performance.now() + GUARD_TTL; }
     function dropGuard() { guard = null; }
-
-    /* 安静多久算「停手」：跟着用户自己拨轮的节奏走，但给上下限。
-       拨得快（20ms 一格）→ 360ms 就够；拨得慢（400ms 一格）→ 640ms 才不会误判。 */
-    function quietMs(prevGap) {
-      const g = prevGap > 0 && prevGap < 1200 ? prevGap : QUIET_MIN;
-      return Math.max(QUIET_MIN, Math.min(QUIET_MAX, g * 1.6));
-    }
 
     const indexAt = () => {
       const probe = window.scrollY + navH() + 4;
@@ -1033,6 +1033,7 @@
        过程：房间沉进夜色只剩屏幕 → 屏幕脱离墙面回正、铺满视口
        → 再推近一点，从电池环里涌出一整片 01 的底色 → 跳页（看不见切换）。 */
     let morphing = false;
+    let morphStartedAt = 0;      // 转场开始的时刻，用来判断「用户等不及了，可以跳过」
     let morphCtx = null;
 
     const morphClear = () => {
@@ -1308,7 +1309,7 @@
         });
       };
 
-      morphing = true;
+      morphing = true; morphStartedAt = performance.now();
       flowCtx = { fly, wash, srcCards, srcHead, to };
       frame(dir > 0 ? 0 : 1);
 
@@ -1595,7 +1596,7 @@
         });
       };
 
-      morphing = true;
+      morphing = true; morphStartedAt = performance.now();
       conCtx = { fly, to, restore };
       frame(0);
 
@@ -1876,7 +1877,7 @@
         bg.style.opacity = String(pBg);
       };
 
-      morphing = true;
+      morphing = true; morphStartedAt = performance.now();
       foldCtx = { fly, to, hidden };
       frame(dir > 0 ? 0 : 1);
 
@@ -2161,7 +2162,7 @@
         bgTo.style.opacity = String(es(cl((rev ? rp - 0.30 : u - 0.35) / 0.35)));
       };
 
-      morphing = true;
+      morphing = true; morphStartedAt = performance.now();
       stepCtx = { fly, to, hidden };
       frame(dir > 0 ? 0 : 1);
 
@@ -2344,7 +2345,7 @@
         back.shade.style.opacity = String(0.30 * (1 - e2));
       };
 
-      morphing = true;
+      morphing = true; morphStartedAt = performance.now();
       deckCtx = { fly, to };
       frame(dir > 0 ? 0 : 1);
 
@@ -2481,7 +2482,7 @@
           "translate3d(0," + (vh * (dir > 0 ? 1 - k : k)).toFixed(1) + "px,0)";
       };
 
-      morphing = true;
+      morphing = true; morphStartedAt = performance.now();
       panCtx = { fly, to };
       frame(0);
 
@@ -2599,7 +2600,7 @@
 
       scr.style.transform = "translate3d(" + x0 + "px," + y0 + "px,0) scale(" + s0 + ")";
 
-      morphing = true;
+      morphing = true; morphStartedAt = performance.now();
       morphCtx = { fly, dusk, src, srcVis, fadeEls, kids, ov };
 
       const T = {
@@ -2822,8 +2823,18 @@
       return false;
     };
 
+    /* 转场期间滚轮一律吞掉。但如果动画已经跑了 0.7 秒、用户还在往下拨，
+       说明他等不及了 —— 直接快进到终点，别让人白滚十几下。 */
+    const skipMorph = () => {
+      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail();
+    };
+
     const onWheel = (e) => {
-      if (morphing) { e.preventDefault(); return; }
+      if (morphing) {
+        e.preventDefault();
+        if (performance.now() - morphStartedAt > 700) skipMorph();
+        return;
+      }
       if (e.ctrlKey) return;
       /* 导航栏点了之后正在平滑位移：全吞，让它走完，别中途插手 */
       if (sliding) { e.preventDefault(); return; }
@@ -2837,22 +2848,22 @@
       lastWheelAt = now;
       if (gap > GESTURE_GAP) gidSeq++;      // 停顿够久才算新手势
 
-      /* ★ 边界守卫：还在朝越界方向推、又没停够 —— 一格都不放行。
-         安静时长跟着用户自己拨轮的节奏走（quietMs），所以「拨得快」和
-         「一格 400ms 的慢拨」都按得住；真正停手之后的第一次滚轮才翻页。 */
+      /* ★ 边界守卫：还在朝越界方向推、又没停手 —— 一格都不放行。
+         判据只有「这一格和上一格的间隔」（见 EDGE_GAP）：
+         同一串猛滑按住，手一停、再滑的那一格就翻页。 */
       if (guard) {
         if (now > guard.exp) {
           dropGuard();                      // 寿命到了：撤掉，别挡住滚动条
-        } else if (Math.sign(d) === guard.dir) {
-          if (now - guard.at < quietMs(gap)) {
-            keepGuard(now);                 // 还在动，重新计时
-            acc = 0;
-            e.preventDefault();
-            return;
-          }
-          dropGuard();                      // 停够了，这一格放行
-        } else {
+        } else if (Math.sign(d) !== guard.dir) {
           dropGuard();                      // 反向：回板块内，立刻放行
+        } else if (gap < EDGE_GAP && guard.ticks < GUARD_MAX_TICKS) {
+          guard.ticks++;                    // 同一串里的一格，按住
+          holdGuard();
+          acc = 0;
+          e.preventDefault();
+          return;
+        } else {
+          dropGuard();                      // 手停了（或按太多次了），放行翻页
         }
       }
 
@@ -2863,8 +2874,12 @@
           lockUntil = 0;
           acc = 0;
         } else if (Math.abs(window.scrollY - lockTo) > 2) {
-          e.preventDefault();
-          return;
+          /* 翻页的平滑滚动还没走完，用户又在同一方向滚了一格。
+             以前这里直接吞掉 —— 用户一格 400ms、动画 520ms，必然吞掉一格，
+             于是「第二下才有反应」。现在直接落位到终点，并把这一格照常算进去，
+             用户滚了就有反应，不会白滚。 */
+          jump(lockTo);
+          lockUntil = 0;
         } else {
           lockUntil = 0;
         }
