@@ -1487,7 +1487,8 @@
       const h03 = h03Els.map((el) => place(el, m03(el), ""));
 
       /* 04 的标题：在上方落定 */
-      const h04 = headOf(s04).map((el) => place(el, m04(el), "opacity:0;"));
+      const h04Els = headOf(s04);
+      const h04 = h04Els.map((el) => place(el, m04(el), "opacity:0;"));
 
       /* 三张卡：克隆整张卡（这个时候中间那张的选中态是对的，要保留），
          盒子按顶边做 scaleY —— 卡片连同边框一起收成一条线。 */
@@ -1546,8 +1547,12 @@
       pBox.appendChild(pIn);
       fly.appendChild(pBox);
 
+      /* ★ 两边都要藏：飞行的克隆在上面，真实元素在下面。
+         正向时 04 在视口外无所谓；反向时 04 就在眼前，底色一淡它就露出来，
+         看起来就是「04 还没消失 03 就出来了」。所以 03 的标题/卡、04 的标题/标签/面板全藏，
+         跳页那一帧再一起放回来（那时两边都在各自该在的位置，内容与克隆一致）。 */
       const hidden = [];
-      [...h03Els, ...cardsEl].forEach((n) => {
+      [...h03Els, ...cardsEl, ...h04Els, tabsEl, panelEl].forEach((n) => {
         n.style.visibility = "hidden";
         hidden.push(n);
       });
@@ -1558,26 +1563,51 @@
       const es = (t) => t * t * (3 - 2 * t);
       const lerp = (a, b, t) => a + (b - a) * t;
 
-      const T_JUMP = 1150;
-      const T_END = 1400;
+      /* 反向要比正向长一点：它要「04 先退干净，03 再出来」，
+         比镜像多出一段空档，不然两头会撞在一起。 */
+      const T_JUMP = dir > 0 ? 1150 : 1320;
+      const T_END = dir > 0 ? 1400 : 1600;
 
-      /* u：0 = 03 的样子，1 = 04 的样子；倒放就是 u 从 1 走回 0 */
+      /* u：0 = 03 的样子，1 = 04 的样子。
+         正向按 u 走；反向虽然也是 u 从 1 回到 0，但**不镜像阈值** ——
+         反向单独排一遍顺序，04 的面板/标签/标题全部退完，才轮到 03 的线和卡。
+         （用户 2026-11-05：04 还没消失 03 就冒出来，看着很乱） */
       const frame = (u) => {
-        /* ① 03 的标题退场 */
-        const ho = es(cl(u / 0.26));
+        const rev = dir < 0;
+        const rp = 1 - u;                       // 反向自己的进度 0 → 1
+
+        /* —— 反向各段的档期（rp，×1320ms）——
+           0.08–0.34 面板收回 / 0.30–0.52 标签落回 / 0.32–0.58 标题退场
+           0.52–0.64 线显形   / 0.56–0.68 线散开   / 0.63–0.87 卡展开 / 0.66–0.96 03 标题 */
+        const pPanel = rev ? 1 - es(cl((rp - 0.08) / 0.26)) : es(cl((u - 0.40) / 0.46));
+        const pTabsR = rev ? 1 - es(cl((rp - 0.30) / 0.22)) : es(cl((u - 0.30) / 0.25));
+        const pTabsO = rev ? 1 - es(cl((rp - 0.30) / 0.22)) : es(cl((u - 0.345) / 0.16));
+        /* 反向时底色**一直保持 04 的浅蓝**，直到跳页：这期间视口里看到的还是 04 的位置，
+         底色一淡就会露出真实的 04 背景，跟 03 的内容对不上。跳页后飞行层淡出，
+         那 280ms 才是「浅蓝 → 03 的素底」真正该发生的时候。 */
+        const pBg = rev ? 1 : es(cl((u - 0.08) / 0.32));
+        const pLineOn = rev ? es(cl((rp - 0.52) / 0.12)) : 1;
+        const mg = rev ? 1 - es(cl((rp - 0.56) / 0.12)) : es(cl((u - 0.30) / 0.12));
+        const pH03 = rev ? es(cl((rp - 0.66) / 0.30)) : 1 - es(cl(u / 0.26));
+
+        /* ① 03 的标题：正向退场，反向最后才浮起来 */
         h03.forEach((g) => {
-          g.style.opacity = String(1 - ho);
+          const ho = 1 - pH03;
+          g.style.opacity = String(pH03);
           g.style.transform = "translateY(" + (-10 * ho).toFixed(1) + "px)";
         });
 
-        /* ② 三张卡向上折（错开 40ms），内容在起手 90ms 内先淡掉，别看着被压扁 */
-        const mg = es(cl((u - 0.30) / 0.12));      // 合并阶段的进度
+        /* ② 三张卡：k=1 是折成线，k=0 是摊开 */
         cards.forEach((c) => {
-          const k = es(cl((u - c.i * 0.035) / 0.27));
+          const p = rev
+            ? es(cl((rp - 0.63 - c.i * 0.03) / 0.24))
+            : es(cl((u - c.i * 0.035) / 0.27));
+          const k = rev ? 1 - p : p;
           c.box.style.transform =
             "translate3d(0,0,0) scaleY(" + Math.max(0.002, 1 - 0.998 * k).toFixed(4) + ")";
-          c.inner.style.opacity = String(1 - cl((u - c.i * 0.035) / 0.09));
-          c.line.style.opacity = String(Math.min(1, k * 3));
+          /* 折叠时先淡掉、展开时最后 20% 才显形，都不让人看到被压扁的字 */
+          c.inner.style.opacity = rev ? String(es(cl((1 - k - 0.80) / 0.20))) : String(1 - cl((u - c.i * 0.035) / 0.09));
+          c.line.style.opacity = String(Math.min(1, k * 3) * pLineOn);
 
           /* 三条线接成一条：中间两张各向两侧补 10px，填掉 20px 的缝；
              同时整体落到面板的上边缘 */
@@ -1589,30 +1619,29 @@
           c.line.style.width = lerp(c.w, lw, mg).toFixed(1) + "px";
         });
 
-        /* ③ 三颗标签从线上分离、升到 tab 行 */
-        const tb = es(cl((u - 0.30) / 0.25));
-        /* 先离地再显形：不然它刚起步时正好压在那条线上，糊成一团 */
-        tabs.style.opacity = String(es(cl((u - 0.345) / 0.16)));
-        tabs.style.transform = "translateY(" + (tabsRise * (1 - tb)).toFixed(1) + "px)";
+        /* ③ 三颗标签 */
+        tabs.style.opacity = String(pTabsO);
+        tabs.style.transform = "translateY(" + (tabsRise * (1 - pTabsR)).toFixed(1) + "px)";
 
-        /* ④ 04 的标题落定 */
+        /* ④ 04 的标题 */
         h04.forEach((g, i) => {
-          const k = es(cl((u - (0.16 + i * 0.03)) / 0.30));
+          const k = rev
+            ? 1 - es(cl((rp - 0.32 - i * 0.02) / 0.26))
+            : es(cl((u - (0.16 + i * 0.03)) / 0.30));
           g.style.opacity = String(k);
           g.style.transform = "translateY(" + (12 * (1 - k)).toFixed(1) + "px)";
         });
 
         /* ⑤ 那条线向下展开成面板 */
-        const pn = es(cl((u - 0.40) / 0.46));
-        pBox.style.height = (pR.h * pn).toFixed(1) + "px";
-        /* 面板已经铺开的地方，线自己退掉 */
-        const lo = 1 - es(cl((u - 0.50) / 0.22));
-        cards.forEach((c) => {
-          c.line.style.opacity = String(Math.min(1, es(cl((u - c.i * 0.035) / 0.27)) * 3) * lo);
-        });
+        pBox.style.height = (pR.h * pPanel).toFixed(1) + "px";
+        /* 正向：面板铺开的地方线自己退掉 */
+        if (!rev) {
+          const lo = 1 - es(cl((u - 0.50) / 0.22));
+          cards.forEach((c) => { c.line.style.opacity = String(parseFloat(c.line.style.opacity) * lo); });
+        }
 
-        /* ⑥ 底色从 03 的素底淡到 04 的浅蓝 */
-        bg.style.opacity = String(es(cl((u - 0.08) / 0.32)));
+        /* ⑥ 底色 */
+        bg.style.opacity = String(pBg);
       };
 
       morphing = true;
