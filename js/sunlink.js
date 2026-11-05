@@ -784,16 +784,15 @@
         const el = document.getElementById(it.dataset.target);
         if (!el) return;
         e.preventDefault();
-        /* 原来用 smooth 滚过去：滚的过程中如果用户拨了一下滚轮，分页器还以为
-           自己仍在原来的板块（06 比一屏高，导航栏却已经亮到 06 了），
-           于是给他放了一段 05→06 的翻牌动画 —— 看着像 bug。
-           改成直接落位，落位之后再滚就是「在 06 里往下滚」。 */
-        const root = document.documentElement;
-        const prev = root.style.scrollBehavior;
-        root.style.scrollBehavior = "auto";
-        window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY);
-        root.style.scrollBehavior = prev;
         history.replaceState(null, "", "#" + it.dataset.target);
+        /* 导航栏点了就「一版宽一版宽」平滑位移过去（用户 2026-11-06 明确要这个，
+           上一版我图省事改成瞬移落位，是不对的，这里恢复）。
+           用自己写的位移函数而不是浏览器 smooth：滚的过程中用户拨滚轮不会把
+           平滑滚动打断在半路，也不会因为「导航已经指到 06、页面还在 05」而
+           误播一段 05→06 的翻牌动画。 */
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        if (window.__slSlideTo) window.__slSlideTo(top);
+        else el.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
   }
@@ -833,6 +832,76 @@
     const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
     const clampY = (v) => Math.max(0, Math.min(v, maxScroll()));
 
+    /* ---------- 导航栏点击：一版宽一版宽的平滑位移 ----------
+       用户 2026-11-06 明确要导航栏切换时有上下位移（最普通那种），
+       所以这里不用瞬移，也不用浏览器的 smooth（它会被滚轮打断在半路）。
+       自己用 rAF 走完全程，期间滚轮一律吞掉，且不经过 step()，
+       所以跨好几个板块也只是一次连续位移，不会连着播一串转场。 */
+    let sliding = false;
+    let slideRaf = 0;
+
+    function slSlideTo(target) {
+      const to = clampY(target);
+      const from = window.scrollY;
+      const dist = to - from;
+      if (slideRaf) cancelAnimationFrame(slideRaf);
+      if (Math.abs(dist) < 3) { sliding = false; return; }
+      /* 距离越远时间越长，但封顶 780ms —— 跨三个板块飘太久反而不像「翻页」 */
+      const dur = Math.min(780, 340 + Math.abs(dist) * 0.16);
+      const t0 = performance.now();
+      const root = document.documentElement;
+      const prevSB = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      sliding = true;
+      dropGuard();
+      const tick = (now) => {
+        const p = Math.min(1, (now - t0) / dur);
+        const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(2 - 2 * p, 2) / 2;
+        markProg(90);
+        window.scrollTo(0, from + dist * e);
+        if (p < 1) slideRaf = requestAnimationFrame(tick);
+        else {
+          slideRaf = 0;
+          sliding = false;
+          root.style.scrollBehavior = prevSB;
+          const f = fitRail(window.scrollY);
+          if (f !== -9) railIdx = f;
+        }
+      };
+      slideRaf = requestAnimationFrame(tick);
+    }
+    window.__slSlideTo = slSlideTo;
+
+    /* ---------- 板块边界守卫（2026-11-06 重做） ----------
+       上一版只靠「滚轮事件的间隔」判断用户有没有停手，结果时好时坏：
+       一串滚轮的第一格撞到边界时，间隔平均值还是 0，按停时长退化成最小值，
+       而 Windows 鼠标拨一格常常 300~450ms，于是每一格都刚好「够久」被放行。
+       现在加一层只看滚动位置的守卫：
+       · 滚到某板块的顶 / 底，就把这个位置记成边界；
+       · 之后任何非程序性的位移，只要还朝越界方向走，立刻拉回来并重新计时；
+       · 只有「安静够久」之后的第一次滚轮，才允许翻到相邻板块。
+       哪怕某一格滚轮因为惯性 / 滚动链漏掉了，页面也跑不出这个板块。 */
+    const QUIET_MIN = 360;      // 最短安静判定
+    const QUIET_MAX = 700;      // 最长（慢速拨轮时自动放宽）
+    const GUARD_TTL = 900;      // 守卫寿命：最后一次滚轮之后这么久就撤，免得拽住滚动条
+    let guard = null;           // { y, dir, at, exp }  dir: 1 = 停在段底, -1 = 停在段顶
+    let progUntil = 0;          // 程序性滚动的豁免窗口
+
+    function markProg(ms) { progUntil = performance.now() + (ms || 120); }
+    function setGuard(y, dir) {
+      const t = performance.now();
+      guard = { y: Math.round(y), dir: dir, at: t, exp: t + GUARD_TTL };
+    }
+    function keepGuard(t) { guard.at = t; guard.exp = t + GUARD_TTL; }
+    function dropGuard() { guard = null; }
+
+    /* 安静多久算「停手」：跟着用户自己拨轮的节奏走，但给上下限。
+       拨得快（20ms 一格）→ 360ms 就够；拨得慢（400ms 一格）→ 640ms 才不会误判。 */
+    function quietMs(prevGap) {
+      const g = prevGap > 0 && prevGap < 1200 ? prevGap : QUIET_MIN;
+      return Math.max(QUIET_MIN, Math.min(QUIET_MAX, g * 1.6));
+    }
+
     const indexAt = () => {
       const probe = window.scrollY + navH() + 4;
       let idx = -1;
@@ -847,6 +916,7 @@
       lockUntil = performance.now() + LOCK_MS;
       lockDir = dir;
       lockTo = target;
+      markProg(LOCK_MS + 340);     // 平滑滚动这段时间别被轨道拦下来
       window.scrollTo({ top: target, behavior: "smooth" });
     };
 
@@ -854,9 +924,90 @@
       const root = document.documentElement;
       const prev = root.style.scrollBehavior;
       root.style.scrollBehavior = "auto";
+      markProg(90);
       window.scrollTo(0, clampY(top));
       root.style.scrollBehavior = prev;
     };
+
+    /* 守卫的执行者：只拦「继续越界」的方向，往回滚（回板块里）一律放行 */
+    const onGuardScroll = () => {
+      if (!guard || sliding) return;
+      const now = performance.now();
+      if (now > guard.exp) { dropGuard(); return; }   // 过期：多半是用户在拖滚动条
+      if (now < progUntil) return;
+      const y = window.scrollY;
+      const over = guard.dir < 0 ? y < guard.y - 1 : y > guard.y + 1;
+      if (!over) return;
+      jump(guard.y);
+      guard.at = now;          // 还在动，重新计时（但不续命，寿命到了就交给滚动条）
+    };
+
+    /* ---------- 板块轨道（2026-11-06 新增） ----------
+       上面的守卫只认 wheel 事件，可真实浏览器里有一批滚动根本不经过 wheel：
+       合成器把几格合并、触控板惯性、滚动链……只盯滚轮永远会漏。
+       所以再加一层只看「位置」的硬约束：
+       每个板块都有一段合法滚动区间 —— 顶边对齐视口顶 ~ 底边对齐视口底。
+       页面只要落在任何板块的区间之外，就说明它被带出去了，立刻拉回最近的边界。
+       翻页（go / 转场 / 导航位移）都有豁免窗口，不受这一层影响。
+       这一层和滚轮无关，所以就算某一格事件丢了，也绝不可能跳出板块。 */
+    let bounds = [];          // [{ top, end }]
+    let railIdx = -1;         // 当前所在板块，-1 = 首屏
+    let dragging = false;     // 正在拖滚动条：放行，别跟用户抢
+
+    const measureRail = () => {
+      bounds = sections.map((sec) => {
+        const top = topOf(sec);
+        return { top: top, end: Math.max(top, endOf(sec)) };
+      });
+    };
+
+    /* y 落在哪个板块的合法区间里？-1 = 首屏，-9 = 谁的区间都不在 */
+    const fitRail = (y) => {
+      for (let i = bounds.length - 1; i >= 0; i--) {
+        const b = bounds[i];
+        if (y >= b.top - 1.5 && y <= b.end + 1.5) return i;
+      }
+      if (y >= -1.5 && bounds.length && y <= bounds[0].top + 1.5) return -1;
+      return -9;
+    };
+
+    const railEnds = (i) => (i >= 0 ? bounds[i] : { top: 0, end: bounds.length ? bounds[0].top : 0 });
+
+    const onRailScroll = () => {
+      /* 转场 / 导航位移 / 拖滚动条：放行，同时让轨道跟着当前位置走 */
+      if (morphing || sliding || dragging) {
+        const f0 = fitRail(window.scrollY);
+        if (f0 !== -9) railIdx = f0;
+        return;
+      }
+      const y = window.scrollY;
+      if (performance.now() < progUntil) {        // 程序性翻页：放行并跟上
+        const f1 = fitRail(y);
+        if (f1 !== -9) railIdx = f1;
+        return;
+      }
+      const b = railEnds(railIdx);
+      if (!b) { const f2 = fitRail(y); if (f2 !== -9) railIdx = f2; return; }
+      /* 越出本板块区间就拉回。这里故意「不认账」——
+         只要落在别的板块区间里就接受，那惯性滚过去就成了一次翻页，
+         用户要的「必须停手再滑」就白做了。换板块只能走 go / 转场 / 导航。 */
+      if (y > b.end + 1) jump(b.end);
+      else if (y < b.top - 1) jump(b.top);
+    };
+
+    /* 拖滚动条时放开，松手后如果停在半路就吸附回最近的边界 */
+    window.addEventListener("pointerdown", (e) => {
+      if (e.clientX >= document.documentElement.clientWidth - 2) dragging = true;
+    }, true);
+    window.addEventListener("pointerup", () => {
+      if (!dragging) return;
+      dragging = false;
+      const y = window.scrollY;
+      if (fitRail(y) !== -9) return;
+      const b = railEnds(railIdx);
+      if (!b) return;
+      jump(y > b.end ? b.end : b.top);
+    }, true);
 
     const endOf = (el) => Math.min(topOf(el) + el.offsetHeight - window.innerHeight, maxScroll());
 
@@ -2398,17 +2549,8 @@
     let gidSeq = 0;
 
     /* ★ 到了板块边界之后「必须停手」才允许翻页（用户 2026-11-06）：
-       只要滚轮还在继续（两格间隔 < EDGE_HOLD），就一直按住不放；停手超过
-       EDGE_HOLD 之后的下一格才翻到相邻板块。
-       光靠「手势间隔」判不出来 —— 真实鼠标一格之间的间隔在 100~250ms 之间浮动，
-       同一串猛滑经常被拆成好几次手势，于是「有时跳、有时不跳」。 */
-    const EDGE_HOLD = 340;        // 最短按停时间
-    const EDGE_HOLD_MAX = 760;    // 最长（慢速滚轮时自动放宽）
-    let edgeHoldMs = EDGE_HOLD;
-    let edgeHoldUntil = 0;
-    let edgeHoldDir = 0;
-    let gapEma = 0;               // 这一串滚轮的平均间隔
-
+       按停的判断全部交给上面的 guard —— 到达边界就先按住，
+       安静时间不够就一格都不放行，够久之后的第一次滚轮才翻到相邻板块。 */
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
       const y = window.scrollY;
@@ -2428,11 +2570,10 @@
           if (y < endY - EDGE) {
             const target = Math.min(y + delta, endY);
             jump(target);
-            /* 这一段走到头了：先按住，等用户停手再滑一次才翻页 */
+            /* 这一段走到头了：在段底立一道守卫，等用户停手再滑一次才翻页 */
             if (target >= endY - 1) {
               flipGid = gid;
-              edgeHoldUntil = performance.now() + edgeHoldMs;
-              edgeHoldDir = 1;
+              setGuard(endY, 1);
             }
             return true;
           }
@@ -2440,6 +2581,7 @@
         const next = sections[idx + 1];
         if (!next) return false;
         flipGid = gid;
+        dropGuard();
         /* 01 → 02：交给卡片分裂转场 */
         if (cur === sections[0]) return flowMorph(1);
         /* 02 → 03：交给「三份概念」转场 */
@@ -2461,19 +2603,27 @@
         if (y > curTop + NUDGE) {
           const target = Math.max(y - delta, curTop);
           jump(target);
+          /* 上滑回到板块顶部：在顶边立一道守卫，猛滑也只会停在这，不会退到上一板块 */
           if (target <= curTop + 1) {
             flipGid = gid;
-            edgeHoldUntil = performance.now() + edgeHoldMs;
-            edgeHoldDir = -1;
+            setGuard(curTop, -1);
           }
           return true;
         }
-        /* 几像素的漂移：吸附回顶边，但这次滚轮继续往下走（该翻页就翻页） */
-        if (y > curTop + EDGE) jump(curTop);
+        /* 几像素的漂移：吸附回顶边。这一格只做吸附，绝不顺势翻页 ——
+           以前这里吸附完继续往下走翻页逻辑，于是「离顶边还有 23px」被
+           NUDGE 的容差当成「已经在顶边」，一格就把人送回上一板块。 */
+        if (y > curTop + EDGE) {
+          jump(curTop);
+          flipGid = gid;
+          setGuard(curTop, -1);
+          return true;
+        }
       }
       const prev = idx > 0 ? sections[idx - 1] : hero;
       if (!prev) return false;
       flipGid = gid;
+      dropGuard();
       /* 02 → 01：同一段倒放 */
       if (prev === sections[0]) return flowMorph(-1);
       /* 04 → 03：同一段折叠倒放 */
@@ -2490,10 +2640,15 @@
       return true;
     };
 
-    const inScroller = (el) => {
+    /* 内部滚动容器：只有还能往这个方向滚，才把滚轮让给它；
+       已经到底了就交回分页器，否则滚动链会把整页带着跑，守卫都来不及拦。 */
+    const inScroller = (el, dir) => {
       while (el && el !== document.body && el !== document.documentElement) {
         const oy = getComputedStyle(el).overflowY;
-        if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 4) return true;
+        if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 4) {
+          const maxTop = el.scrollHeight - el.clientHeight;
+          return dir > 0 ? el.scrollTop < maxTop - 1 : el.scrollTop > 1;
+        }
         el = el.parentElement;
       }
       return false;
@@ -2502,28 +2657,35 @@
     const onWheel = (e) => {
       if (morphing) { e.preventDefault(); return; }
       if (e.ctrlKey) return;
-      if (e.target instanceof Element && inScroller(e.target)) return;
+      /* 导航栏点了之后正在平滑位移：全吞，让它走完，别中途插手 */
+      if (sliding) { e.preventDefault(); return; }
 
       const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
       if (!d) return;
+      if (e.target instanceof Element && inScroller(e.target, d)) return;
 
       const now = performance.now();
       const gap = lastWheelAt ? now - lastWheelAt : 1e9;
       lastWheelAt = now;
       if (gap > GESTURE_GAP) gidSeq++;      // 停顿够久才算新手势
-      /* 按停时间跟着滚轮节奏走：慢速滚轮（一格 300~400ms）也按得住 */
-      if (gap < 900) gapEma = gapEma ? gapEma * 0.6 + gap * 0.4 : gap;
-      else gapEma = 0;
-      edgeHoldMs = Math.max(EDGE_HOLD, Math.min(EDGE_HOLD_MAX, gapEma * 1.8));
 
-      /* 刚在板块边界停住：只要还在继续滚，就一直按住（每格续一次） */
-      if (now < edgeHoldUntil) {
-        if (Math.sign(d) === edgeHoldDir) {
-          edgeHoldUntil = now + edgeHoldMs;
-          e.preventDefault();
-          return;
+      /* ★ 边界守卫：还在朝越界方向推、又没停够 —— 一格都不放行。
+         安静时长跟着用户自己拨轮的节奏走（quietMs），所以「拨得快」和
+         「一格 400ms 的慢拨」都按得住；真正停手之后的第一次滚轮才翻页。 */
+      if (guard) {
+        if (now > guard.exp) {
+          dropGuard();                      // 寿命到了：撤掉，别挡住滚动条
+        } else if (Math.sign(d) === guard.dir) {
+          if (now - guard.at < quietMs(gap)) {
+            keepGuard(now);                 // 还在动，重新计时
+            acc = 0;
+            e.preventDefault();
+            return;
+          }
+          dropGuard();                      // 停够了，这一格放行
+        } else {
+          dropGuard();                      // 反向：回板块内，立刻放行
         }
-        edgeHoldUntil = 0;                  // 反向：立刻放行
       }
 
       if (now < lockUntil) {
@@ -2566,10 +2728,12 @@
       else if (e.key === "PageUp" || e.key === "ArrowUp") dir = -1;
       else if (e.key === "Home") {
         e.preventDefault();
+        dropGuard();
         go(0, -1);
         return;
       } else if (e.key === "End") {
         e.preventDefault();
+        dropGuard();
         go(maxScroll(), 1);
         return;
       }
@@ -2582,12 +2746,44 @@
         lockUntil = 0;
       }
       gidSeq++;   // 每次按键都算一次新手势
+      /* 键盘一下就是一页，不必再按停；先撤掉守卫，否则会被自己挡住 */
+      dropGuard();
       if (step(dir, window.innerHeight * 0.85, gidSeq)) e.preventDefault();
     };
 
+    /* 地址栏里直接改 hash、或者按浏览器前进后退回到某个锚点：
+       交给平滑位移，别让轨道把它当成「滚出去了」再拽回来。 */
+    window.addEventListener("hashchange", () => {
+      const id = location.hash.slice(1);
+      const el = id ? document.getElementById(id) : null;
+      if (!el) return;
+      slSlideTo(el.getBoundingClientRect().top + window.scrollY);
+    });
+
+    measureRail();
+    railIdx = fitRail(window.scrollY);
+    if (railIdx === -9) railIdx = -1;
+
     window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("scroll", () => { onGuardScroll(); onRailScroll(); }, { passive: true });
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); });
+    window.addEventListener("load", () => { measureRail(); railIdx = fitRail(window.scrollY); });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { measureRail(); railIdx = fitRail(window.scrollY); });
+    }
+    if (window.ResizeObserver) {
+      let roT = 0;
+      new ResizeObserver(() => {
+        clearTimeout(roT);
+        roT = setTimeout(() => { measureRail(); if (railIdx < 0) railIdx = fitRail(window.scrollY); }, 160);
+      }).observe(document.body);
+    }
+    window.addEventListener("resize", () => {
+      measureRail();
+      railIdx = fitRail(window.scrollY);
+      if (railIdx === -9) railIdx = -1;
+      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail();
+    });
   }
 
   /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
