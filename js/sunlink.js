@@ -1228,9 +1228,14 @@
           "transform:translate3d(" + r.l.toFixed(1) + "px," + r.t.toFixed(1) + "px,0);" +
           "will-change:transform,height,opacity;";
         const inner = card.cloneNode(true);
+        /* 中间那张卡本身带 .is-pick（蓝边 + 渐变 + 投影 + ::before 描边）。
+           克隆里必须摘掉：不然它从一开始就显得"已经被选中"了，
+           而且 ::before 那圈蓝边会一直浮在盒子里。选中态统一交给 pick 层。 */
+        inner.classList.remove("is-pick");
         inner.style.cssText =
           "position:absolute;left:-1px;top:-1px;width:" + r.w.toFixed(1) + "px;height:" + h1 + "px;" +
-          "box-sizing:border-box;background:transparent;border-color:transparent;";
+          "box-sizing:border-box;background:transparent;border-color:transparent;" +
+          "box-shadow:none;";
         const vin = inner.querySelector(".sl-concept__verdict");
         if (vin) vin.style.opacity = "0";
         /* 卡里的 Chosen 徽章要拿掉：它挂在卡的上边缘外面，会被盒子裁掉半截；
@@ -1251,7 +1256,7 @@
 
         fly.appendChild(box);
         return {
-          box, pick, verdict: vin,
+          box, pick, verdict: vin, tag: inner.querySelector(".sl-concept__tag"),
           x: r.l, y: r.t, w: r.w, h0, h1,
           h: Math.max(60, h0),
         };
@@ -1279,8 +1284,8 @@
         return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
       };
 
-      const T_JUMP = 1520;
-      const T_END = 1750;
+      const T_JUMP = 2460;
+      const T_END = 2700;
 
       const frame = (t) => {
         /* ① 02 整体上移退场，底色同时铺上来（两者叠在一起，中间不空屏） */
@@ -1298,43 +1303,61 @@
 
         /* ③ 三张卡从下方升起（此时都还没有判词，所以是短的那一版） */
         boxes.forEach((b, i) => {
-          const k = es(cl((t - (260 + i * 80)) / 380));
+          const k = es(cl((t - (220 + i * 70)) / 320));
           b.box.style.opacity = String(k);
           b.box.style.transform =
             "translate3d(" + b.x.toFixed(1) + "px," + (b.y + 150 * (1 - k)).toFixed(1) + "px,0)";
         });
 
-        /* ④ 蓝框依次掠过 1 → 2 → 3（只去不回） */
-        if (t >= 680) {
-          const seg = cl((t - 680) / 140);
-          const i = Math.min(1, Math.floor(seg));
-          const p = es(cl(seg - i));
-          const a = boxes[i], b = boxes[i + 1] || boxes[i];
-          const x = lerp(a.x, b.x, p) - 5;
-          const y = lerp(a.y, b.y, p) - 5;
-          const w = lerp(a.w, b.w, p) + 10;
-          const h = lerp(a.h, b.h, p) + 10;
-          outline.style.transform = "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0)";
-          outline.style.width = w.toFixed(1) + "px";
-          outline.style.height = h.toFixed(1) + "px";
-          outline.style.opacity = String(Math.min(1, (t - 680) / 120) * (1 - es(cl((t - 960) / 120))));
+        /* ④ 蓝框：在 1 上停一下 → 到 2 停一下 → 到 3 停一下 → **回到 2**
+           （用户 2026-11-05：要看得清是在三张里比，停一停再走，最后落回第二张） */
+        const put = (i, j, p) => {
+          const A = boxes[i], B = boxes[j];
+          return {
+            x: lerp(A.x, B.x, p) - 5,
+            y: lerp(A.y, B.y, p) - 5,
+            w: lerp(A.w, B.w, p) + 10,
+            h: lerp(A.h, B.h, p) + 10,
+          };
+        };
+        let cur = null;
+        if (t >= 660) {
+          if (t < 920) cur = put(0, 0, 0);
+          else if (t < 1040) cur = put(0, 1, es(cl((t - 920) / 120)));
+          else if (t < 1290) cur = put(1, 1, 0);
+          else if (t < 1410) cur = put(1, 2, es(cl((t - 1290) / 120)));
+          else if (t < 1660) cur = put(2, 2, 0);
+          else if (t < 1780) cur = put(2, 1, es(cl((t - 1660) / 120)));
+          else cur = put(1, 1, 0);
         }
+        if (cur) {
+          outline.style.transform =
+            "translate3d(" + cur.x.toFixed(1) + "px," + cur.y.toFixed(1) + "px,0)";
+          outline.style.width = cur.w.toFixed(1) + "px";
+          outline.style.height = cur.h.toFixed(1) + "px";
+        }
+        /* 停在三号上之后才淡出，同时第二张自己亮起来（不是同一帧，眼睛才跟得上） */
+        outline.style.opacity = String(
+          t < 660 ? 0 : Math.min(1, (t - 660) / 80) * (1 - es(cl((t - 1780) / 120)))
+        );
 
-        /* ⑤ 02 号亮起来 + 徽章落下 */
-        boxes[1].pick.style.opacity = String(es(cl((t - 980) / 160)));
+        /* ⑤ 回到 2 之后：02 号亮起来 + 徽章落下 */
+        boxes[1].pick.style.opacity = String(es(cl((t - 1880) / 160)));
+        /* 卡片顶上那行 CONCEPT 02 也跟着变蓝（真卡是靠 .is-pick 上色的，克隆里摘掉了） */
+        if (boxes[1].tag && t >= 1880) boxes[1].tag.style.color = "#4494e2";
         if (badge) {
-          const p = cl((t - 1000) / 220);
+          const p = cl((t - 1900) / 240);
           const k = eBack(p);
           badge.style.opacity = String(cl(p * 2.4));
           badge.style.transform = "translateY(" + (-18 * (1 - k)).toFixed(1) + "px)";
         }
 
         /* ⑥ 定了之后卡片才长高：上面的字一动不动，长完了判词才淡入 */
-        const grow = es(cl((t - 1120) / 260));
+        const grow = es(cl((t - 2040) / 260));
         boxes.forEach((b) => {
           b.box.style.height = lerp(b.h0, b.h1, grow).toFixed(1) + "px";
         });
-        const vk = es(cl((t - 1380) / 120));
+        const vk = es(cl((t - 2300) / 140));
         boxes.forEach((b) => {
           if (b.verdict) b.verdict.style.opacity = String(vk);
         });
@@ -1353,7 +1376,7 @@
         const t = ts - t0;
         frame(Math.min(t, T_JUMP));
 
-        if (!indexMoved && t >= 620) {
+        if (!indexMoved && t >= 700) {
           indexMoved = true;
           slIndexHold = 2;
           if (slIndexSync) slIndexSync();
