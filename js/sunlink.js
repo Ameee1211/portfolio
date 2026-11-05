@@ -751,6 +751,10 @@
     const GESTURE_GAP = 90;
     const SETTLE_MS = 240;
     const EDGE = 2;
+    /* 刚落地时浏览器常常差几个像素（字体回流、取整），这不叫「在板块内部」。
+       小于这个值直接吸附回顶边并继续处理这次滚轮，别单独吃掉一格 ——
+       否则会看到页面自己往上跳几像素、里面的文字跟着移位一下。 */
+    const NUDGE = 24;
 
     let lockUntil = 0;
     let lockDir = 0;
@@ -961,6 +965,18 @@
       const g01 = h01.map((el) => place(el, dir > 0 ? rect(el) : at(el), ""));
       const g02 = h02.map((el) => place(el, dir > 0 ? at(el) : rect(el), "opacity:0;"));
 
+      /* 数字：记下它原本是多少、要不要千分位。
+         正放时四个数字都从 0 数上去（用户 2026-11-05 要求）；
+         倒放时原样显示，绝不倒着数。 */
+      const countOf = (face) => {
+        const el = face ? face.querySelector(".sl-stat__n") : null;
+        if (!el || !el.firstChild || el.firstChild.nodeType !== 3) return null;
+        const txt = el.firstChild.nodeValue;
+        const digits = txt.replace(/[^\d]/g, "");
+        if (!digits) return null;
+        return { el, target: Number(digits), comma: txt.indexOf(",") >= 0 };
+      };
+
       /* 卡片：一个白框负责几何，里面叠两层固定尺寸的内容，靠 overflow 裁，
          所以文字全程不重排（重排会露馅）。 */
       const boxes = pairs.map((p) => {
@@ -982,7 +998,7 @@
         const f01 = p.f01 ? face(p.f01.el, p.f01.r, "will-change:opacity,transform;") : null;
         const f02 = p.f02 ? face(p.f02.el, p.f02.r, "opacity:0;will-change:opacity,transform;") : null;
         fly.appendChild(box);
-        return { box, a: p.a, b: p.b, f01, f02, num: f02 ? f02.querySelector(".sl-stat__n") : null };
+        return { box, a: p.a, b: p.b, f01, f02, num: countOf(f02) };
       });
 
       /* 02 下面那条「Roof → Battery, full → and then what?」和来源行：
@@ -1049,10 +1065,12 @@
             const a = eSm(rp(u, 0.24, 0.56));
             b.f02.style.opacity = String(a);
             b.f02.style.transform = "scale(" + (0.74 + 0.26 * a).toFixed(3) + ")";
-            /* 只有第一个数数着往上跳；倒放时一直是 39，不倒着数 */
-            if (i === 0 && dir > 0 && b.num && b.num.firstChild) {
-              const c = eSm(rp(u, 0.38, 0.62));
-              b.num.firstChild.nodeValue = String(Math.round(39 * c));
+            /* 四个都数：从 0 数到它自己的值，四张错开 40ms。
+               倒放时这段不跑，所以一直是最终值，不会倒着数 */
+            if (dir > 0 && b.num && b.num.el.firstChild) {
+              const c = eSm(rp(u, 0.30 + i * 0.03, 0.62 + i * 0.03));
+              const v = Math.round(b.num.target * c);
+              b.num.el.firstChild.nodeValue = b.num.comma ? v.toLocaleString("en-US") : String(v);
             }
           }
         });
@@ -1088,9 +1106,11 @@
         if (!jumped && raw >= 1) {
           jumped = true;
           jump(topOf(to));
-          /* 锁短一点：动画本身还要 220ms 才收尾，锁太长会把用户接下来的那次滚轮吃掉 */
+          /* 锁短一点：动画本身还要 220ms 才收尾，锁太长会把用户接下来的那次滚轮吃掉。
+             lockTo 必须一起写，否则锁里比对的是上一次留下的旧目标。 */
           lockUntil = performance.now() + 320;
           lockDir = dir;
+          lockTo = clampY(topOf(to));
         }
 
         if (el >= T_JUMP) {
@@ -1311,12 +1331,14 @@
 
       if (cur) {
         const curTop = topOf(cur);
-        if (y > curTop + EDGE) {
+        if (y > curTop + NUDGE) {
           const target = Math.max(y - delta, curTop);
           jump(target);
           if (target <= curTop + 1) settleUntil = now + SETTLE_MS;
           return true;
         }
+        /* 几像素的漂移：吸附回顶边，但这次滚轮继续往下走（该翻页就翻页） */
+        if (y > curTop + EDGE) jump(curTop);
         if (now < settleUntil) return true;
       }
       const prev = idx > 0 ? sections[idx - 1] : hero;
@@ -1354,15 +1376,16 @@
 
       if (now < lockUntil) {
         if (Math.sign(d) !== lockDir) {
+          /* 反向：解锁，但这一格必须拦下来。以前这里直接 return 不拦截，
+             浏览器就自己滚了一下 —— 页面窜几像素、里面的文字跟着移位，看着像 bug。 */
           lockUntil = 0;
           acc = 0;
-          return;
-        }
-        if (Math.abs(window.scrollY - lockTo) > 2) {
+        } else if (Math.abs(window.scrollY - lockTo) > 2) {
           e.preventDefault();
           return;
+        } else {
+          lockUntil = 0;
         }
-        lockUntil = 0;
       }
 
       acc += d;
