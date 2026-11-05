@@ -3666,8 +3666,11 @@ function abInitPager() {
      原来是 90ms：真实鼠标一格之间 100~250ms 不等，同一串猛滑会被拆成好几次，
      于是「有时跳到上一个板块、有时不跳」（用户 2026-11-06 报）。放到 340ms。 */
   const GESTURE_GAP = 340;
-  let edgeHoldMs = GESTURE_GAP;   // 按停时间跟着滚轮节奏走（慢速滚轮也按得住）
-  let gapEma = 0;
+  /* ★ 2026-11-06 改：以前 edgeHoldMs = clamp(间隔 × 1.8, 340, 760)，
+     再拿「间隔 < edgeHoldMs」判断 —— 间隔 < 1.8×间隔 恒成立，
+     滚到边界后同方向永远翻不了页（要滑十几下）。现在只用固定间隔门槛：
+     短于 EDGE_GAP 算同一串猛滑（按住），长于它算手停了（放行翻页）。 */
+  const EDGE_GAP = 250;
   const SETTLE_MS = 240;    // 碰到板块底部后先停一下，让底部留白被看见
   const EDGE = 2;           // 判定「已对齐到板块顶部 / 底部」的容差
 
@@ -3746,7 +3749,7 @@ function abInitPager() {
       // 这一下是「同一次滑动」的余量（触控板惯性 / 一口气滚很多格）：
       // 不管还剩多少，都只停在本板块结尾，不放它翻到下一块
       if (cur && holdEdge === 1) {
-        if (sinceLast < edgeHoldMs) return true;
+        if (sinceLast < EDGE_GAP) return true;
         holdEdge = 0;
       }
       const next = sections[idx + 1];
@@ -3785,7 +3788,7 @@ function abInitPager() {
     // 刚从板块内部滑到顶部：这次滑动剩下的滚轮（含触控板惯性）一律吞掉。
     // 用户松手、隔一下再滑，才算新的一次操作，这时才往上翻一块。
     if (cur && holdEdge === -1) {
-      if (sinceLast < edgeHoldMs) return true;
+      if (sinceLast < EDGE_GAP) return true;
       holdEdge = 0;
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
@@ -3867,9 +3870,6 @@ function abInitPager() {
     const delta = Math.abs(acc);
     const dir = acc > 0 ? 1 : -1;
     acc = 0;
-    if (sinceLast < 900) gapEma = gapEma ? gapEma * 0.6 + sinceLast * 0.4 : sinceLast;
-    else gapEma = 0;
-    edgeHoldMs = Math.max(GESTURE_GAP, Math.min(760, gapEma * 1.8));
     if (step(dir, delta, now, sinceLast)) e.preventDefault();
   };
 

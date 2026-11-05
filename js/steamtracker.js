@@ -161,12 +161,16 @@
     let flipGid = -1;
     let gidSeq = 0;
     /* ★ 到板块边界后「必须停手」才允许翻页（用户 2026-11-06） */
-    const EDGE_HOLD = 340;      // 最短按停
-    const EDGE_HOLD_MAX = 760;  // 最长（慢速滚轮时自动放宽）
-    let edgeHoldMs = EDGE_HOLD;
-    let edgeHoldUntil = 0;
-    let edgeHoldDir = 0;
-    let gapEma = 0;
+  /* ★ 2026-11-06 改：以前用「edgeHoldUntil = now + edgeHoldMs」，
+     而 edgeHoldMs 是「上一格间隔 × 1.8」—— 间隔 < 1.8×间隔 恒成立，
+     于是滚到边界后同方向永远翻不了页（要滑十几下）。
+     现在只用「这一格与上一格的间隔」当判据：短于 EDGE_GAP 算同一串，
+     长于它就算手停了，放行翻页。另加 tick 兜底，杜绝再次锁死。 */
+  const EDGE_GAP = 250;
+  const EDGE_MAX_TICKS = 20;
+  let edgeHold = 0;
+  let edgeHoldDir = 0;
+  let edgeHoldTicks = 0;
 
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
@@ -185,8 +189,7 @@
             jump(target);
             if (target >= endY - 1) {
               flipGid = gid;
-              edgeHoldUntil = performance.now() + edgeHoldMs;
-              edgeHoldDir = 1;
+              edgeHold = 1; edgeHoldDir = 1; edgeHoldTicks = 0;
             }
             return true;
           }
@@ -207,8 +210,7 @@
           jump(target);
           if (target <= curTop + 1) {
             flipGid = gid;
-            edgeHoldUntil = performance.now() + edgeHoldMs;
-            edgeHoldDir = -1;
+            edgeHold = 1; edgeHoldDir = -1; edgeHoldTicks = 0;
           }
           return true;
         }
@@ -244,18 +246,17 @@
       const gap = lastWheelAt ? now - lastWheelAt : 1e9;
       lastWheelAt = now;
       if (gap > GESTURE_GAP) gidSeq++;      // 停顿够久才算新手势
-      if (gap < 900) gapEma = gapEma ? gapEma * 0.6 + gap * 0.4 : gap;
-      else gapEma = 0;
-      edgeHoldMs = Math.max(EDGE_HOLD, Math.min(EDGE_HOLD_MAX, gapEma * 1.8));
-
-      if (now < edgeHoldUntil) {
-        if (Math.sign(d) === edgeHoldDir) {
-          edgeHoldUntil = now + edgeHoldMs;
-          e.preventDefault();
-          return;
-        }
-        edgeHoldUntil = 0;                  // 反向：立刻放行
+    if (edgeHold) {
+      if (Math.sign(d) !== edgeHoldDir) {
+        edgeHold = 0;                       // 反向：回板块里，立刻放行
+      } else if (gap < EDGE_GAP && edgeHoldTicks < EDGE_MAX_TICKS) {
+        edgeHoldTicks++;                    // 同一串猛滑，按住
+        e.preventDefault();
+        return;
+      } else {
+        edgeHold = 0;                       // 手停了，这一格放行翻页
       }
+    }
 
       if (now < lockUntil) {
         if (Math.sign(d) !== lockDir) {
