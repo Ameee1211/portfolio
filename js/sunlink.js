@@ -1520,9 +1520,19 @@
       /* 那条线要接到 04 面板的上边缘 */
       const lineY = m04(panelEl).t;
 
-      /* 三颗标签：从线上分离、升到 tab 行 */
+      /* 三颗标签：从线上分离、升到 tab 行。
+         ★ 这里不能沿用 place() 给的固定宽度：那个宽度是「收缩到刚好」量出来的，
+         只要字体或取整差零点几像素，三颗就会挤成两行（insufficient 被折成两段）。
+         所以改成按内容宽度 + 永不换行，三颗永远是一行。 */
       const tR = m04(tabsEl);
       const tabs = place(tabsEl, tR, "opacity:0;");
+      tabs.style.width = "max-content";
+      tabs.style.flexWrap = "nowrap";
+      tabs.style.whiteSpace = "nowrap";
+      Array.from(tabs.children).forEach((b) => {
+        b.style.flex = "0 0 auto";
+        b.style.whiteSpace = "nowrap";
+      });
       const tabsRise = Math.max(0, lineY - tR.t);
 
       /* 面板：盒子控高度，内容按最终尺寸固定排版，从上往下卷帘式露出 */
