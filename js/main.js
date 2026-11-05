@@ -895,6 +895,14 @@ function initPinPager() {
      同一串里剩下的格全部吞掉，必须停手再滑一次。 */
   let flipGid = -1;
   let gidSeq = 0;
+  /* ★ 到板块边界后「必须停手」才允许翻页（用户 2026-11-06）：
+     滚轮还在继续就一直按住，停手超过 EDGE_HOLD 之后的下一格才翻页 */
+  const EDGE_HOLD = 340;      // 最短按停
+  const EDGE_HOLD_MAX = 760;  // 最长（慢速滚轮时自动放宽）
+  let edgeHoldMs = EDGE_HOLD;
+  let edgeHoldUntil = 0;
+  let edgeHoldDir = 0;
+  let gapEma = 0;
 
   const step = (dir, delta, gid) => {
     if (flipGid === gid) return true;
@@ -908,7 +916,11 @@ function initPinPager() {
         if (y < endY - EDGE) {
           const target = Math.min(y + delta, endY);
           jump(target);
-          if (target >= endY - 1) flipGid = gid;
+          if (target >= endY - 1) {
+            flipGid = gid;
+            edgeHoldUntil = performance.now() + edgeHoldMs;
+            edgeHoldDir = 1;
+          }
           return true;
         }
       }
@@ -926,7 +938,11 @@ function initPinPager() {
       if (y > curTop + EDGE) {
         const target = Math.max(y - delta, curTop);
         jump(target);
-        if (target <= curTop + 1) flipGid = gid;
+        if (target <= curTop + 1) {
+          flipGid = gid;
+          edgeHoldUntil = performance.now() + edgeHoldMs;
+          edgeHoldDir = -1;
+        }
         return true;
       }
     }
@@ -960,7 +976,19 @@ function initPinPager() {
     const now = performance.now();
     const gap = lastWheelAt ? now - lastWheelAt : 1e9;
     lastWheelAt = now;
-    if (gap > GESTURE_GAP) gidSeq++;      // 停顿超过 90ms 才算新手势
+    if (gap > GESTURE_GAP) gidSeq++;      // 停顿够久才算新手势
+    if (gap < 900) gapEma = gapEma ? gapEma * 0.6 + gap * 0.4 : gap;
+    else gapEma = 0;
+    edgeHoldMs = Math.max(EDGE_HOLD, Math.min(EDGE_HOLD_MAX, gapEma * 1.8));
+
+    if (now < edgeHoldUntil) {
+      if (Math.sign(d) === edgeHoldDir) {
+        edgeHoldUntil = now + edgeHoldMs;
+        e.preventDefault();
+        return;
+      }
+      edgeHoldUntil = 0;                  // 反向：立刻放行
+    }
 
     if (now < lockUntil) {
       if (Math.sign(d) !== lockDir) {
@@ -1203,6 +1231,13 @@ window.initSectionPager = function (opts) {
   let lastGidAt = 0;
   let lastGidDir = 0;
   let flipGid = -1;
+  /* ★ 到板块边界后「必须停手」才允许翻页（用户 2026-11-06）：见 onWheel */
+  const EDGE_HOLD = 340;      // 最短按停
+  const EDGE_HOLD_MAX = 760;  // 最长（慢速滚轮时自动放宽）
+  let edgeHoldMs = EDGE_HOLD;
+  let edgeHoldUntil = 0;
+  let edgeHoldDir = 0;
+  let gapEma = 0;
 
   const step = (dir, delta, gid) => {
     /* 这一手势已经推进过（翻页 / 滚到段底）：剩下的滚轮一律吞掉，必须停手再滑。
@@ -1221,7 +1256,11 @@ window.initSectionPager = function (opts) {
         if (base < endY - EDGE) {
           const target = Math.min(base + delta, endY);
           glide(target);
-          if (target >= endY - 1) flipGid = gid;
+          if (target >= endY - 1) {
+            flipGid = gid;
+            edgeHoldUntil = performance.now() + edgeHoldMs;
+            edgeHoldDir = 1;
+          }
           return true;
         }
       }
@@ -1241,7 +1280,11 @@ window.initSectionPager = function (opts) {
       if (base > curTop + EDGE) {
         const target = Math.max(base - delta, curTop);
         glide(target);
-        if (target <= curTop + 1) flipGid = gid;
+        if (target <= curTop + 1) {
+          flipGid = gid;
+          edgeHoldUntil = performance.now() + edgeHoldMs;
+          edgeHoldDir = -1;
+        }
         return true;
       }
     }
@@ -1284,6 +1327,15 @@ window.initSectionPager = function (opts) {
 
     const now = performance.now();
 
+    if (now < edgeHoldUntil) {
+      if (Math.sign(d) === edgeHoldDir) {
+        edgeHoldUntil = now + edgeHoldMs;
+        e.preventDefault();
+        return;
+      }
+      edgeHoldUntil = 0;                  // 反向：立刻放行
+    }
+
     if (now < lockUntil) {
       // 反向操作立刻解锁，不打断用户
       if (Math.sign(d) !== lockDir) {
@@ -1314,6 +1366,10 @@ window.initSectionPager = function (opts) {
     /* 手势编号：同方向且间隔 < GESTURE_GAP 算同一串（用户 2026-11-04 的铁律：
        一次手势只放行一次推进；换方向立刻算新的一次操作） */
     const now2 = performance.now();
+    const gapW = lastGidAt ? now2 - lastGidAt : 1e9;
+    if (gapW < 900) gapEma = gapEma ? gapEma * 0.6 + gapW * 0.4 : gapW;
+    else gapEma = 0;
+    edgeHoldMs = Math.max(EDGE_HOLD, Math.min(EDGE_HOLD_MAX, gapEma * 1.8));
     if (dir !== lastGidDir || now2 - lastGidAt > GESTURE_GAP) gestureId++;
     lastGidAt = now2;
     lastGidDir = dir;

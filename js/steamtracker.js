@@ -160,6 +160,13 @@
        同一串里剩下的格全部吞掉，必须停手再滑一次。 */
     let flipGid = -1;
     let gidSeq = 0;
+    /* ★ 到板块边界后「必须停手」才允许翻页（用户 2026-11-06） */
+    const EDGE_HOLD = 340;      // 最短按停
+    const EDGE_HOLD_MAX = 760;  // 最长（慢速滚轮时自动放宽）
+    let edgeHoldMs = EDGE_HOLD;
+    let edgeHoldUntil = 0;
+    let edgeHoldDir = 0;
+    let gapEma = 0;
 
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
@@ -176,7 +183,11 @@
           if (y < endY - EDGE) {
             const target = Math.min(y + page, endY);
             jump(target);
-            if (target >= endY - 1) flipGid = gid;
+            if (target >= endY - 1) {
+              flipGid = gid;
+              edgeHoldUntil = performance.now() + edgeHoldMs;
+              edgeHoldDir = 1;
+            }
             return true;
           }
         }
@@ -194,7 +205,11 @@
         if (y > curTop + EDGE) {
           const target = Math.max(y - page, curTop);
           jump(target);
-          if (target <= curTop + 1) flipGid = gid;
+          if (target <= curTop + 1) {
+            flipGid = gid;
+            edgeHoldUntil = performance.now() + edgeHoldMs;
+            edgeHoldDir = -1;
+          }
           return true;
         }
       }
@@ -228,7 +243,19 @@
       const now = performance.now();
       const gap = lastWheelAt ? now - lastWheelAt : 1e9;
       lastWheelAt = now;
-      if (gap > GESTURE_GAP) gidSeq++;      // 停顿超过 90ms 才算新手势
+      if (gap > GESTURE_GAP) gidSeq++;      // 停顿够久才算新手势
+      if (gap < 900) gapEma = gapEma ? gapEma * 0.6 + gap * 0.4 : gap;
+      else gapEma = 0;
+      edgeHoldMs = Math.max(EDGE_HOLD, Math.min(EDGE_HOLD_MAX, gapEma * 1.8));
+
+      if (now < edgeHoldUntil) {
+        if (Math.sign(d) === edgeHoldDir) {
+          edgeHoldUntil = now + edgeHoldMs;
+          e.preventDefault();
+          return;
+        }
+        edgeHoldUntil = 0;                  // 反向：立刻放行
+      }
 
       if (now < lockUntil) {
         if (Math.sign(d) !== lockDir) {

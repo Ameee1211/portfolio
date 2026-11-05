@@ -3662,7 +3662,12 @@ function abInitPager() {
 
   const THRESHOLD = 24;      // 滚轮 / 触控板累积阈值
   const LOCK_MS = 520;      // 翻页动画锁
-  const GESTURE_GAP = 90;   // 两次滚轮间隔小于此值 → 视为同一次滑动（惯性）
+  /* 两次滚轮间隔小于此值 → 视为同一次滑动（惯性）。
+     原来是 90ms：真实鼠标一格之间 100~250ms 不等，同一串猛滑会被拆成好几次，
+     于是「有时跳到上一个板块、有时不跳」（用户 2026-11-06 报）。放到 340ms。 */
+  const GESTURE_GAP = 340;
+  let edgeHoldMs = GESTURE_GAP;   // 按停时间跟着滚轮节奏走（慢速滚轮也按得住）
+  let gapEma = 0;
   const SETTLE_MS = 240;    // 碰到板块底部后先停一下，让底部留白被看见
   const EDGE = 2;           // 判定「已对齐到板块顶部 / 底部」的容差
 
@@ -3741,7 +3746,7 @@ function abInitPager() {
       // 这一下是「同一次滑动」的余量（触控板惯性 / 一口气滚很多格）：
       // 不管还剩多少，都只停在本板块结尾，不放它翻到下一块
       if (cur && holdEdge === 1) {
-        if (sinceLast < GESTURE_GAP) return true;
+        if (sinceLast < edgeHoldMs) return true;
         holdEdge = 0;
       }
       const next = sections[idx + 1];
@@ -3780,7 +3785,7 @@ function abInitPager() {
     // 刚从板块内部滑到顶部：这次滑动剩下的滚轮（含触控板惯性）一律吞掉。
     // 用户松手、隔一下再滑，才算新的一次操作，这时才往上翻一块。
     if (cur && holdEdge === -1) {
-      if (sinceLast < GESTURE_GAP) return true;
+      if (sinceLast < edgeHoldMs) return true;
       holdEdge = 0;
     }
     const prev = idx > 0 ? sections[idx - 1] : hero;
@@ -3862,6 +3867,9 @@ function abInitPager() {
     const delta = Math.abs(acc);
     const dir = acc > 0 ? 1 : -1;
     acc = 0;
+    if (sinceLast < 900) gapEma = gapEma ? gapEma * 0.6 + sinceLast * 0.4 : sinceLast;
+    else gapEma = 0;
+    edgeHoldMs = Math.max(GESTURE_GAP, Math.min(760, gapEma * 1.8));
     if (step(dir, delta, now, sinceLast)) e.preventDefault();
   };
 

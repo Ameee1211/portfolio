@@ -2397,6 +2397,18 @@
     let flipGid = -1;
     let gidSeq = 0;
 
+    /* ★ 到了板块边界之后「必须停手」才允许翻页（用户 2026-11-06）：
+       只要滚轮还在继续（两格间隔 < EDGE_HOLD），就一直按住不放；停手超过
+       EDGE_HOLD 之后的下一格才翻到相邻板块。
+       光靠「手势间隔」判不出来 —— 真实鼠标一格之间的间隔在 100~250ms 之间浮动，
+       同一串猛滑经常被拆成好几次手势，于是「有时跳、有时不跳」。 */
+    const EDGE_HOLD = 340;        // 最短按停时间
+    const EDGE_HOLD_MAX = 760;    // 最长（慢速滚轮时自动放宽）
+    let edgeHoldMs = EDGE_HOLD;
+    let edgeHoldUntil = 0;
+    let edgeHoldDir = 0;
+    let gapEma = 0;               // 这一串滚轮的平均间隔
+
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
       const y = window.scrollY;
@@ -2416,8 +2428,12 @@
           if (y < endY - EDGE) {
             const target = Math.min(y + delta, endY);
             jump(target);
-            /* 这一段这一手势走到头了：同手势里剩下的滚轮只把页面停稳，不许顺势翻页 */
-            if (target >= endY - 1) flipGid = gid;
+            /* 这一段走到头了：先按住，等用户停手再滑一次才翻页 */
+            if (target >= endY - 1) {
+              flipGid = gid;
+              edgeHoldUntil = performance.now() + edgeHoldMs;
+              edgeHoldDir = 1;
+            }
             return true;
           }
         }
@@ -2445,7 +2461,11 @@
         if (y > curTop + NUDGE) {
           const target = Math.max(y - delta, curTop);
           jump(target);
-          if (target <= curTop + 1) flipGid = gid;
+          if (target <= curTop + 1) {
+            flipGid = gid;
+            edgeHoldUntil = performance.now() + edgeHoldMs;
+            edgeHoldDir = -1;
+          }
           return true;
         }
         /* 几像素的漂移：吸附回顶边，但这次滚轮继续往下走（该翻页就翻页） */
@@ -2490,7 +2510,21 @@
       const now = performance.now();
       const gap = lastWheelAt ? now - lastWheelAt : 1e9;
       lastWheelAt = now;
-      if (gap > GESTURE_GAP) gidSeq++;      // 停顿超过 90ms 才算新手势
+      if (gap > GESTURE_GAP) gidSeq++;      // 停顿够久才算新手势
+      /* 按停时间跟着滚轮节奏走：慢速滚轮（一格 300~400ms）也按得住 */
+      if (gap < 900) gapEma = gapEma ? gapEma * 0.6 + gap * 0.4 : gap;
+      else gapEma = 0;
+      edgeHoldMs = Math.max(EDGE_HOLD, Math.min(EDGE_HOLD_MAX, gapEma * 1.8));
+
+      /* 刚在板块边界停住：只要还在继续滚，就一直按住（每格续一次） */
+      if (now < edgeHoldUntil) {
+        if (Math.sign(d) === edgeHoldDir) {
+          edgeHoldUntil = now + edgeHoldMs;
+          e.preventDefault();
+          return;
+        }
+        edgeHoldUntil = 0;                  // 反向：立刻放行
+      }
 
       if (now < lockUntil) {
         if (Math.sign(d) !== lockDir) {
