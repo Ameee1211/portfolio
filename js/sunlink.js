@@ -2057,8 +2057,13 @@
          否则转场第一帧会比真实画面矮一截。06 永远从它的顶边进。 */
       const land5 = Math.max(topOf(s5), endOf(s5));
       const targetY = dir > 0 ? topOf(s6) : land5;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
+      /* ★ 牌面宽度不能取 innerWidth —— 它包含右侧滚动条那 15px，牌就比真实版面宽一截，
+         里面的内容整体右偏 7~8px；跳页后真页面露出来的那一瞬间，就会看到「页面从右往左
+         挪了一下」。（用户 2026-11-05 报的就是这个）这里取「视口宽」和「板块实际宽」
+         的较小值，两种情况都对得上。 */
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s6.offsetWidth || cw, s5.offsetWidth || cw);
+      const vh = document.documentElement.clientHeight;
 
       const fly = document.createElement("div");
       fly.className = "sl-flow sl-deck";
