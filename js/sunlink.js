@@ -615,6 +615,12 @@
     { id: "issues", label: "Known issues" },
   ];
 
+  /* 转场期间把索引栏临时锁在某个板块：卡片还没跳页，滚动位置没变，
+     但索引得跟着卡片提前走一步，否则最后半秒画面已经是 02、索引还亮着 01。
+     -1 = 不锁，按滚动位置正常算。 */
+  let slIndexHold = -1;
+  let slIndexSync = null;
+
   function slRenderIndex() {
     const rail = document.createElement("nav");
     rail.className = "sl-index";
@@ -675,7 +681,12 @@
       const heroH = hero ? hero.offsetHeight : 0;
       rail.classList.toggle("is-visible", y > heroH - vh * 0.55);
 
-      const probe = y + vh * 0.42;
+      /* 被锁住时，把探针挪到目标板块的顶边：选中项、已读项、母线充能
+         三样会一起变成「已经在那一页」的样子，不会只有高亮跳而母线不动。 */
+      const probe =
+        slIndexHold >= 0 && sections[slIndexHold]
+          ? sections[slIndexHold].offsetTop
+          : y + vh * 0.42;
       let active = -1;
       sections.forEach((sec, i) => {
         if (sec.offsetTop <= probe) active = i;
@@ -701,6 +712,7 @@
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(sync);
     };
+    slIndexSync = onScroll;
 
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", place);
@@ -832,11 +844,10 @@
       morphing = false;
       c.srcCards.forEach((n) => n.style.removeProperty("visibility"));
       c.srcHead.forEach((n) => n.style.removeProperty("visibility"));
-      c.extras.forEach((n) => {
-        n.style.removeProperty("opacity");
-        n.style.removeProperty("transition");
-      });
       if (c.fly.parentNode) c.fly.remove();
+      /* 交还索引栏：这时滚动位置已经是目标板块，正常算出来的就是它 */
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
     };
 
     /* 转场中途改窗口尺寸（或页面被外部跳走）：直接落位，不卡在半路 */
@@ -974,9 +985,14 @@
         return { box, a: p.a, b: p.b, f01, f02, num: f02 ? f02.querySelector(".sl-stat__n") : null };
       });
 
+      /* 02 下面那条「Roof → Battery, full → and then what?」和来源行：
+         以前是跳页后才淡入，看着像凭空冒出来。现在把它也做成飞行层里的幽灵，
+         跟卡片一起浮上来，跳页那一刻它已经站在自己的位置上。
+         （01 侧没有这类元素，所以倒放时这里是空的。） */
       const extras = Array.from(dstWrap.children).filter(
         (n) => !n.matches(".sl-brief, .sl-stats, .sl-eyebrow, .sl-h2, .sl-p")
       );
+      const gEx = extras.map((el) => place(el, at(el), "opacity:0;"));
 
       srcCards.forEach((n) => { n.style.visibility = "hidden"; });
       srcHead.forEach((n) => { n.style.visibility = "hidden"; });
@@ -1005,6 +1021,13 @@
         const swap = eSm(rp(u, 0.50, 0.86));
         wash.style.opacity = String(1 - swap);
         if (bgLayer) bgLayer.style.opacity = String(swap);
+
+        /* 横幅跟在数字后面浮上来：比卡片慢一拍，落到位置时正好是跳页前 */
+        gEx.forEach((g, i) => {
+          const t = eSm(rp(u, 0.52 + i * 0.06, 0.84 + i * 0.06));
+          g.style.opacity = String(t);
+          g.style.transform = "translateY(" + (16 * (1 - t)).toFixed(1) + "px)";
+        });
 
         boxes.forEach((b, i) => {
           const p = eSm(rp(u, 0.12 + i * 0.035, 0.54 + i * 0.035));
@@ -1036,20 +1059,31 @@
       };
 
       morphing = true;
-      flowCtx = { fly, wash, srcCards, srcHead, extras, to };
+      flowCtx = { fly, wash, srcCards, srcHead, to };
       frame(dir > 0 ? 0 : 1);
 
       const T_JUMP = 1300;
       const T_END = 1520;
       const t0 = performance.now();
       let jumped = false;
+      let indexMoved = false;
 
       const tick = (ts) => {
         if (!flowCtx) return;
         const el = ts - t0;
         const raw = Math.min(el / T_JUMP, 1);
+        const u = dir > 0 ? raw : 1 - raw;
 
-        frame(dir > 0 ? raw : 1 - raw);
+        frame(u);
+
+        /* 索引栏跟着卡片走：四格基本成形（u≈0.58，约 760ms）就把选中项拨到目标板块，
+           比跳页早半秒，CSS 的 0.3s 过渡结束时正好和画面同步。
+           只拨一次，之后不管 u 怎么走都不再改，免得来回闪。 */
+        if (!indexMoved && (dir > 0 ? u >= 0.58 : u <= 0.42)) {
+          indexMoved = true;
+          slIndexHold = dir > 0 ? 1 : 0;
+          if (slIndexSync) slIndexSync();
+        }
 
         if (!jumped && raw >= 1) {
           jumped = true;
@@ -1057,17 +1091,6 @@
           /* 锁短一点：动画本身还要 220ms 才收尾，锁太长会把用户接下来的那次滚轮吃掉 */
           lockUntil = performance.now() + 320;
           lockDir = dir;
-          extras.forEach((n) => {
-            n.style.opacity = "0";
-            n.style.transition = "none";
-          });
-          requestAnimationFrame(() => {
-            if (!flowCtx) return;
-            extras.forEach((n, i) => {
-              n.style.transition = "opacity .32s cubic-bezier(.2,.8,.2,1) " + (i * 60) + "ms";
-              n.style.opacity = "1";
-            });
-          });
         }
 
         if (el >= T_JUMP) {
