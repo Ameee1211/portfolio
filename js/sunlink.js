@@ -1731,6 +1731,290 @@
       return true;
     };
 
+    /* ---------- 04 → 05：四个取景框先换画，再被一个一个提起来 ----------
+       事实依据（1440×900）：04 的四张规则卡 252×159，x = 250/516/782/1048；
+       05 的四张截图框 247×159，x = 251/518/785/1052 —— 高度一模一样，列位差 1–3px。
+       所以框不动，换的是框里的画；然后整排上提 220px，落到 05 里图片该在的位置。
+       用户 2026-11-05 定稿：220px 要「一张一张」提（四张是四个步骤），
+       截图从卡片底边往上推入；反向单独排顺序（05 先退干净，04 再回来）。 */
+    let stepCtx = null;
+
+    const stepClear = () => {
+      const c = stepCtx;
+      if (!c) return;
+      stepCtx = null;
+      morphing = false;
+      c.hidden.forEach((n) => n.style.removeProperty("visibility"));
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const stepBail = () => {
+      if (!stepCtx) return;
+      const to = stepCtx.to;
+      stepClear();
+      jump(topOf(to));
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(topOf(to));
+    };
+
+    const stepMorph = (dir) => {
+      if (morphing || stepCtx) return true;
+
+      const s04 = sections[3];      // states
+      const s05 = sections[4];      // usage
+      if (!s04 || !s05) return false;
+
+      const lawsEl = Array.from(s04.querySelectorAll(".sl-law"));
+      const stepsEl = Array.from(s05.querySelectorAll(".sl-step"));
+      const imgsEl = Array.from(s05.querySelectorAll(".sl-step__img"));
+      const panelEl = s04.querySelector(".sl-panel:not([hidden])");
+      const tabsEl = s04.querySelector(".sl-tabs");
+      if (lawsEl.length !== 4 || stepsEl.length !== 4 || imgsEl.length !== 4) return false;
+      if (!panelEl || !tabsEl) return false;
+
+      /* 只取板块自己的标题行：不能用 querySelectorAll(".sl-p")，
+         04 的面板里也有一堆 .sl-p，会被当成标题克隆出来 */
+      const headOf = (sec) =>
+        Array.from(sec.querySelector(".sl-wrap").children)
+          .filter((n) => n.matches(".sl-eyebrow, .sl-h2, .sl-p"));
+      const h05Els = headOf(s05);
+
+      const to = dir > 0 ? s05 : s04;
+      /* 05 只有一屏，落位是它的顶边；04 比一屏高，落位是它的段底 ——
+         这两个不是一回事，所以不能像 03↔04 那样统一用 topOf。
+         （04 万一比视口还矮时 endOf 会跑到它顶边上面，取两者较大的那个） */
+      const targetY = dir > 0 ? topOf(s05) : Math.max(topOf(s04), endOf(s04));
+      const dy = targetY - window.scrollY;
+
+      const rect = (el) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top, w: r.width, h: r.height };
+      };
+      /* dy：跳页后目标板块的元素会整体移到这个位置，减掉就是「落位之后」的屏幕坐标 */
+      const at = (el) => {
+        const r = rect(el);
+        return { l: r.l, t: r.t - dy, w: r.w, h: r.h };
+      };
+      const m04 = (el) => (dir > 0 ? rect(el) : at(el));
+      const m05 = (el) => (dir > 0 ? at(el) : rect(el));
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+      const pageBg = getComputedStyle(document.body).backgroundColor;
+      fly.style.background = pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa";
+
+      /* 两层底色：当前板块的（按现在的滚动位置摆）、目标板块的（按落位后的位置摆）。
+         起点那一帧和底下完全一致，所以不会闪；落位那一帧也和目标完全一致，
+         所以跳页那一下看不出来（04 是浅蓝渐变 + 线稿，05 是素底 + 右下角线稿，本来就不一样）。 */
+      const bgOf = (sec, scrollFor) => {
+        const cs = getComputedStyle(sec);
+        const d = document.createElement("div");
+        d.style.cssText =
+          "position:absolute;left:0;width:100%;height:" + sec.offsetHeight + "px;" +
+          "top:" + (topOf(sec) - scrollFor).toFixed(1) + "px;" +
+          "background-image:" + cs.backgroundImage + ";background-position:" + cs.backgroundPosition +
+          ";background-size:" + cs.backgroundSize + ";background-repeat:" + cs.backgroundRepeat + ";";
+        fly.appendChild(d);
+        return d;
+      };
+      const bgFrom = bgOf(dir > 0 ? s04 : s05, window.scrollY);
+      const bgTo = bgOf(dir > 0 ? s05 : s04, targetY);
+      bgTo.style.opacity = "0";
+
+      const place = (el, r, extra) => {
+        const c = el.cloneNode(true);
+        const nowrap = el.matches(".sl-eyebrow");
+        c.style.cssText =
+          "position:absolute;left:" + r.l.toFixed(1) + "px;top:" + r.t.toFixed(1) + "px;margin:0;" +
+          (nowrap ? "width:max-content;white-space:nowrap;" : "width:" + r.w.toFixed(1) + "px;") +
+          "will-change:opacity,transform;" + extra;
+        fly.appendChild(c);
+        return c;
+      };
+
+      /* 04 的面板和标签：正向退场，反向最后才回来 */
+      const pBox0 = m04(panelEl);
+      const gPanel = place(panelEl, pBox0, "");
+      /* place() 用 cssText 覆盖了整个 style，面板上那条 min-height（三个状态统一高度）
+         会被一起抹掉，克隆就矮 6px —— 落位淡出时下边缘会露一条。补回来。 */
+      gPanel.style.height = pBox0.h.toFixed(1) + "px";
+      const gTabs = place(tabsEl, m04(tabsEl), "");
+      /* 标签行按内容宽度 + 永不换行：给固定宽度的话，差零点几像素就挤成两行 */
+      gTabs.style.width = "max-content";
+      gTabs.style.flexWrap = "nowrap";
+      Array.from(gTabs.children).forEach((b) => {
+        b.style.flex = "0 0 auto";
+        b.style.whiteSpace = "nowrap";
+      });
+
+      /* 05 的三行标题 */
+      const h05 = h05Els.map((el) => place(el, m05(el), "opacity:0;"));
+
+      /* 四个框：一个盒子负责几何，里面两层（规则卡 / 截图）按高度首尾相接，
+         一层往上一滑、下一层就跟上来 —— 像两条胶片在同一条轨道上走。 */
+      const frames = lawsEl.map((law, i) => {
+        const L = m04(law);
+        const I = m05(imgsEl[i]);
+        const box = document.createElement("div");
+        box.className = "sl-flow__frame";
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + L.w.toFixed(1) + "px;height:" + L.h.toFixed(1) + "px;" +
+          "overflow:hidden;background:#fff;border-radius:0 12px 12px 0;" +
+          "transform:translate3d(" + L.l.toFixed(1) + "px," + L.t.toFixed(1) + "px,0);" +
+          "will-change:transform,width,border-radius;";
+
+        const lawLayer = law.cloneNode(true);
+        lawLayer.style.cssText =
+          "position:absolute;left:0;top:0;width:" + L.w.toFixed(1) + "px;height:" + L.h.toFixed(1) + "px;" +
+          "box-sizing:border-box;will-change:transform;";
+
+        const imgLayer = imgsEl[i].cloneNode(true);
+        imgLayer.style.cssText =
+          "position:absolute;left:0;top:0;width:100%;height:100%;" +
+          "box-sizing:border-box;border-bottom:0;will-change:transform;";
+
+        box.appendChild(lawLayer);
+        box.appendChild(imgLayer);
+        fly.appendChild(box);
+        return { box, lawLayer, imgLayer, L, I, i };
+      });
+
+      /* 卡框的下半截（Step 编号 / 标题 / 说明）：把整张卡克隆过来、从图片底边往下裁，
+         这样侧边框、圆角、白底都跟真卡一模一样，接在框下面就是一张完整的卡。 */
+      const bodies = stepsEl.map((card, i) => {
+        const C = m05(card);
+        const I = m05(imgsEl[i]);
+        const c = card.cloneNode(true);
+        c.classList.add("sl-flow__body");
+        c.style.cssText =
+          "position:absolute;left:" + C.l.toFixed(1) + "px;top:" + C.t.toFixed(1) + "px;" +
+          "width:" + C.w.toFixed(1) + "px;height:" + C.h.toFixed(1) + "px;margin:0;" +
+          "clip-path:inset(" + (I.h + 1).toFixed(1) + "px 0 0 0);" +
+          "opacity:0;will-change:opacity,transform;";
+        fly.appendChild(c);
+        return c;
+      });
+
+      /* 两边都藏：飞行的克隆在上面，真实元素在下面。跳页那一帧一起放回来。 */
+      const hidden = [...lawsEl, panelEl, tabsEl, ...stepsEl, ...h05Els];
+
+      document.body.appendChild(fly);
+      hidden.forEach((n) => { n.style.visibility = "hidden"; });
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (t) => t * t * (3 - 2 * t);
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      /* 反向要多留一点时间：它得让 05 先退干净，04 才回来。 */
+      const T_JUMP = dir > 0 ? 1000 : 1250;
+      const T_END = dir > 0 ? 1250 : 1500;
+
+      /* u：0 = 04 的样子，1 = 05 的样子。反向不镜像，单独排一遍顺序。 */
+      const frame = (u) => {
+        const rev = dir < 0;
+        const rp = 1 - u;
+        /* 反向从右边收：最后提起来的那张先落回去 */
+        const od = (i) => (rev ? 3 - i : i);
+
+        /* ① 04 的面板 + 标签 */
+        const po = rev ? 1 - es(cl((rp - 0.82) / 0.14)) : es(cl(u / 0.24));
+        gPanel.style.opacity = String(1 - po);
+        gTabs.style.opacity = String(1 - po);
+        gPanel.style.transform = "translateY(" + (-18 * po).toFixed(1) + "px)";
+        gTabs.style.transform = "translateY(" + (-18 * po).toFixed(1) + "px)";
+
+        /* ② 四个框：换画 + 提起。错开量给得比动画本身还长一点，
+             所以同一时刻最多只有两张在动 —— 眼睛能看清是「一张一张」被拎上去的。
+             反向是「框先落回原位、落定了再换回规则卡」：不然会看到规则文字
+             已经回来了、却还挂在 05 的位置上。 */
+        frames.forEach((f) => {
+          const o = od(f.i);
+          const sp = rev
+            ? 1 - es(cl((rp - (0.34 + o * 0.10)) / 0.16))
+            : es(cl((u - (0.02 + o * 0.05)) / 0.16));
+          const lp = rev
+            ? 1 - es(cl((rp - (0.18 + o * 0.10)) / 0.22))
+            : es(cl((u - (0.14 + o * 0.15)) / 0.22));
+
+          const x = lerp(f.L.l, f.I.l, sp);
+          const y = lerp(f.L.t, f.I.t, lp);
+          const w = lerp(f.L.w, f.I.w, sp);
+          f.box.style.transform = "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0)";
+          f.box.style.width = w.toFixed(1) + "px";
+          /* 圆角：规则卡是「左直角 + 右侧圆角」，截图框是「上面圆角 + 下面直角」 */
+          f.box.style.borderRadius =
+            (15 * sp).toFixed(1) + "px " + (12 + 3 * sp).toFixed(1) + "px " +
+            (12 * (1 - sp)).toFixed(1) + "px 0";
+
+          /* 两层首尾相接：规则卡往上滑出去多少，截图就从下面顶上来多少 */
+          f.lawLayer.style.transform = "translate3d(0," + (-f.L.h * sp).toFixed(1) + "px,0)";
+          f.imgLayer.style.transform = "translate3d(0," + (f.L.h * (1 - sp)).toFixed(1) + "px,0)";
+        });
+
+        /* ③ 卡的下半截：框落定之后才挂上去 */
+        bodies.forEach((c, i) => {
+          const o = od(i);
+          const k = rev
+            ? 1 - es(cl((rp - (0.02 + o * 0.04)) / 0.14))
+            : es(cl((u - (0.30 + o * 0.14)) / 0.20));
+          c.style.opacity = String(k);
+          c.style.transform = "translateY(" + (10 * (1 - k)).toFixed(1) + "px)";
+        });
+
+        /* ④ 05 的标题 */
+        h05.forEach((g, i) => {
+          const k = rev
+            ? 1 - es(cl((rp - i * 0.02) / 0.16))
+            : es(cl((u - (0.40 + i * 0.02)) / 0.26));
+          g.style.opacity = String(k);
+          g.style.transform = "translateY(" + (12 * (1 - k)).toFixed(1) + "px)";
+        });
+
+        /* ⑤ 底色 */
+        bgTo.style.opacity = String(es(cl((rev ? rp - 0.30 : u - 0.35) / 0.35)));
+      };
+
+      morphing = true;
+      stepCtx = { fly, to, hidden };
+      frame(dir > 0 ? 0 : 1);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!stepCtx) return;
+        const t = ts - t0;
+        const raw = Math.min(t / T_JUMP, 1);
+        frame(dir > 0 ? raw : 1 - raw);
+
+        if (!indexMoved && raw >= 0.62) {
+          indexMoved = true;
+          slIndexHold = dir > 0 ? 4 : 3;
+          if (slIndexSync) slIndexSync();
+        }
+
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(targetY);
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          lockTo = clampY(targetY);
+          /* 落位那一帧把真实元素放出来：此刻飞行层里的内容和它们完全一致 */
+          hidden.forEach((n) => n.style.removeProperty("visibility"));
+        }
+        if (t >= T_JUMP) {
+          fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        }
+        if (t < T_END) requestAnimationFrame(tick);
+        else stepClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
       if (morphing) return true;
 
@@ -1934,6 +2218,8 @@
         if (cur === sections[1]) return conceptMorph();
         /* 03 → 04：交给「折叠 / 展开」转场 */
         if (cur === sections[2]) return foldMorph(1);
+        /* 04 → 05：交给「换画 + 逐个提起」转场 */
+        if (cur === sections[3]) return stepMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -1958,6 +2244,8 @@
       if (prev === sections[0]) return flowMorph(-1);
       /* 04 → 03：同一段折叠倒放 */
       if (cur === sections[3]) return foldMorph(-1);
+      /* 05 → 04：同一段换画转场的反向（单独排过顺序） */
+      if (cur === sections[4]) return stepMorph(-1);
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -2047,7 +2335,7 @@
 
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); foldBail(); });
+    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); foldBail(); stepBail(); });
   }
 
   /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
