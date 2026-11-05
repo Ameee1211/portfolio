@@ -467,6 +467,34 @@
   box-shadow: 0 6px 18px -8px rgba(22, 36, 58, 0.35);
 }
 .sl-tab[aria-selected="true"] i { transform: scale(1.15); }
+
+/* ---------- 状态标签的高亮：一块白药丸在三个之间「滑」过去 ----------
+   原来是各自亮灭（点一下，这边的白底消失、那边冒出来），像换了一页；
+   现在只有一块底，靠 transform 平移，读起来像一个三档开关。 */
+.sl-tabs.is-slide { position: relative; }
+.sl-tabs__thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 18px -8px rgba(22, 36, 58, 0.35);
+  pointer-events: none;
+  transition:
+    transform 0.34s cubic-bezier(0.22, 0.8, 0.24, 1),
+    width 0.34s cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+.sl-tabs.is-slide .sl-tab {
+  position: relative;
+  z-index: 1;
+  background: none;
+  box-shadow: none;
+}
+.sl-tabs.is-slide .sl-tab[aria-selected="true"] {
+  background: none;
+  box-shadow: none;
+}
+
 /* 三个状态的色彩语义：绿 / 蓝 / 红 */
 .sl-tab[data-state="full"] i,
 .sl-tab[data-proto="green"] i { background: var(--sl-green); }
@@ -486,7 +514,10 @@
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
   gap: 44px;
-  align-items: center;
+  /* 原来是 center：左边文字一长，右边的产品图就被挤下去几像素。
+     改成顶对齐之后，文字卡只往下长，产品图钉在面板顶边不动。
+     （用户 2026-11-05 要求） */
+  align-items: start;
 }
 .sl-state__rule {
   background: #fff;

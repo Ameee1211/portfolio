@@ -15,13 +15,60 @@
     const panels = [...document.querySelectorAll(".sl-panel[data-panel]")];
     if (!tabs.length || !panels.length) return;
 
+    /* 高亮底：一块白药丸在三个标签之间平移（用户 2026-11-05：
+       要像开关一样滑过去，而不是在这边消失、在那边冒出来） */
+    const wrap = tabs[0].closest(".sl-tabs");
+    let thumb = null;
+    if (wrap) {
+      wrap.classList.add("is-slide");
+      thumb = document.createElement("span");
+      thumb.className = "sl-tabs__thumb";
+      thumb.setAttribute("aria-hidden", "true");
+      wrap.insertBefore(thumb, wrap.firstChild);
+    }
+
+    const moveThumb = (animate) => {
+      if (!thumb) return;
+      const tab = tabs.find((t) => t.getAttribute("aria-selected") === "true") || tabs[0];
+      if (!tab || !tab.offsetWidth) return;
+      if (animate === false) thumb.style.transition = "none";
+      thumb.style.width = tab.offsetWidth + "px";
+      thumb.style.height = tab.offsetHeight + "px";
+      thumb.style.transform = "translate(" + tab.offsetLeft + "px," + tab.offsetTop + "px)";
+      if (animate === false) {
+        void thumb.offsetWidth;          // 先落位，再把过渡装回去
+        thumb.style.transition = "";
+      }
+    };
+
+    /* 三个面板的文字长短不一样（392 / 435 / 414），原来一切换整个版面就跟着抖一下：
+       右边的产品图上下挪几像素、下面四张规则卡也跟着跳。
+       量出最高那个，给三个面板统一 min-height，版面就定死了。 */
+    const lockHeight = () => {
+      const prev = panels.map((p) => p.hidden);
+      panels.forEach((p) => {
+        p.style.minHeight = "";
+        p.hidden = false;
+      });
+      let max = 0;
+      panels.forEach((p) => { max = Math.max(max, p.offsetHeight); });
+      panels.forEach((p) => { p.style.minHeight = max + "px"; });
+      panels.forEach((p, i) => { p.hidden = prev[i]; });
+      moveThumb(false);
+    };
+
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         const key = tab.dataset.state;
         tabs.forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
         panels.forEach((p) => (p.hidden = p.dataset.panel !== key));
+        moveThumb(true);
       });
     });
+
+    lockHeight();
+    window.addEventListener("resize", lockHeight);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(lockHeight);
   }
 
   /* ---------- 2. XD 原型嵌入 ---------- */
