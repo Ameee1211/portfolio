@@ -1399,7 +1399,254 @@
       return true;
     };
 
+    /* ---------- 03 → 04：三份方案折起来，这条线再展开成规则面板 ----------
+       用户 2026-11-05 定稿：三张卡错开 40ms 向上折成三条线 → 三条线接成一条
+       （正好是 04 面板的上边缘）→ 三颗状态标签从线上分离、升到 tab 行 →
+       那条线向下展开成整块面板。反向 04 → 03 是同一段倒放。 */
+    let foldCtx = null;
+
+    const foldClear = () => {
+      const c = foldCtx;
+      if (!c) return;
+      foldCtx = null;
+      morphing = false;
+      c.hidden.forEach((n) => n.style.removeProperty("visibility"));
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const foldBail = () => {
+      if (!foldCtx) return;
+      const to = foldCtx.to;
+      foldClear();
+      jump(topOf(to));
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(topOf(to));
+    };
+
+    const foldMorph = (dir) => {
+      if (morphing || foldCtx) return true;
+
+      const s03 = sections[2];      // concepts
+      const s04 = sections[3];      // states
+      if (!s03 || !s04) return false;
+
+      const cardsEl = Array.from(s03.querySelectorAll(".sl-concept"));
+      const tabsEl = s04.querySelector(".sl-tabs");
+      const panelEl = s04.querySelector(".sl-panel:not([hidden])");
+      if (cardsEl.length !== 3 || !tabsEl || !panelEl) return false;
+
+      const to = dir > 0 ? s04 : s03;
+
+      const rect = (el) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top, w: r.width, h: r.height };
+      };
+      /* dy：跳页后目标板块的元素会整体上移这么多，减掉就是「落位之后」的屏幕坐标 */
+      const dy = topOf(to) - window.scrollY;
+      const at = (el) => {
+        const r = rect(el);
+        return { l: r.l, t: r.t - dy, w: r.w, h: r.h };
+      };
+      /* 03 侧 / 04 侧各自用「当前」还是「落位后」的坐标 */
+      const m03 = (el) => (dir > 0 ? rect(el) : at(el));
+      const m04 = (el) => (dir > 0 ? at(el) : rect(el));
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+
+      /* 04 的底色（浅蓝渐变 + 走线纹理）：从 03 的素底淡过来 */
+      const cs = getComputedStyle(s04);
+      const bg = document.createElement("div");
+      bg.style.cssText =
+        "position:absolute;inset:0;opacity:0;" +
+        "background-image:" + cs.backgroundImage + ";background-position:" + cs.backgroundPosition +
+        ";background-size:" + cs.backgroundSize + ";background-repeat:" + cs.backgroundRepeat +
+        ";background-color:" + cs.backgroundColor + ";";
+      fly.appendChild(bg);
+
+      const place = (el, r, extra) => {
+        const c = el.cloneNode(true);
+        const nowrap = el.matches(".sl-eyebrow");
+        c.style.cssText =
+          "position:absolute;left:" + r.l.toFixed(1) + "px;top:" + r.t.toFixed(1) + "px;margin:0;" +
+          (nowrap ? "width:max-content;white-space:nowrap;" : "width:" + r.w.toFixed(1) + "px;") +
+          "will-change:opacity,transform;" + extra;
+        fly.appendChild(c);
+        return c;
+      };
+
+      /* 03 的标题：跟着卡片一起退场 */
+      /* 只取板块自己的标题行 —— 不能用 querySelectorAll(".sl-p")，
+         面板里也有一堆 .sl-p，会被当成标题一起克隆出来（会看到一段浮着的正文） */
+      const headOf = (sec) =>
+        Array.from(sec.querySelector(".sl-wrap").children)
+          .filter((n) => n.matches(".sl-eyebrow, .sl-h2, .sl-p"));
+      const h03Els = headOf(s03);
+      const h03 = h03Els.map((el) => place(el, m03(el), ""));
+
+      /* 04 的标题：在上方落定 */
+      const h04 = headOf(s04).map((el) => place(el, m04(el), "opacity:0;"));
+
+      /* 三张卡：克隆整张卡（这个时候中间那张的选中态是对的，要保留），
+         盒子按顶边做 scaleY —— 卡片连同边框一起收成一条线。 */
+      const cards = cardsEl.map((el, i) => {
+        const r = m03(el);
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:" + r.l.toFixed(1) + "px;top:" + r.t.toFixed(1) + "px;" +
+          "width:" + r.w.toFixed(1) + "px;height:" + r.h.toFixed(1) + "px;" +
+          "transform-origin:50% 0;will-change:transform;";
+        const inner = el.cloneNode(true);
+        inner.style.cssText =
+          "position:absolute;left:0;top:0;width:" + r.w.toFixed(1) + "px;height:" + r.h.toFixed(1) + "px;";
+        box.appendChild(inner);
+        fly.appendChild(box);
+
+        /* 折到底时会变成 0 高、边框也没了，所以另给一条实线接着 */
+        const line = document.createElement("div");
+        /* 位置全部走 transform（left/top 留 0），否则坐标会被加两次 */
+        line.style.cssText =
+          "position:absolute;left:0;top:0;" +
+          "width:" + r.w.toFixed(1) + "px;height:1.5px;border-radius:1px;" +
+          "background:" + (i === 1 ? "var(--sl-blue)" : "rgba(22,36,58,.18)") + ";" +
+          "transform:translate3d(" + r.l.toFixed(1) + "px," + r.t.toFixed(1) + "px,0);" +
+          "opacity:0;will-change:transform,width,opacity;";
+        fly.appendChild(line);
+        return { box, inner, line, x: r.l, y: r.t, w: r.w, i };
+      });
+
+      /* 那条线要接到 04 面板的上边缘 */
+      const lineY = m04(panelEl).t;
+
+      /* 三颗标签：从线上分离、升到 tab 行 */
+      const tR = m04(tabsEl);
+      const tabs = place(tabsEl, tR, "opacity:0;");
+      const tabsRise = Math.max(0, lineY - tR.t);
+
+      /* 面板：盒子控高度，内容按最终尺寸固定排版，从上往下卷帘式露出 */
+      const pR = m04(panelEl);
+      const pBox = document.createElement("div");
+      pBox.style.cssText =
+        "position:absolute;left:" + pR.l.toFixed(1) + "px;top:" + pR.t.toFixed(1) + "px;" +
+        "width:" + pR.w.toFixed(1) + "px;height:0;overflow:hidden;will-change:height;";
+      const pIn = panelEl.cloneNode(true);
+      pIn.style.cssText = "width:" + pR.w.toFixed(1) + "px;height:" + pR.h.toFixed(1) + "px;";
+      pBox.appendChild(pIn);
+      fly.appendChild(pBox);
+
+      const hidden = [];
+      [...h03Els, ...cardsEl].forEach((n) => {
+        n.style.visibility = "hidden";
+        hidden.push(n);
+      });
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (t) => t * t * (3 - 2 * t);
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      const T_JUMP = 1150;
+      const T_END = 1400;
+
+      /* u：0 = 03 的样子，1 = 04 的样子；倒放就是 u 从 1 走回 0 */
+      const frame = (u) => {
+        /* ① 03 的标题退场 */
+        const ho = es(cl(u / 0.26));
+        h03.forEach((g) => {
+          g.style.opacity = String(1 - ho);
+          g.style.transform = "translateY(" + (-10 * ho).toFixed(1) + "px)";
+        });
+
+        /* ② 三张卡向上折（错开 40ms），内容在起手 90ms 内先淡掉，别看着被压扁 */
+        const mg = es(cl((u - 0.30) / 0.12));      // 合并阶段的进度
+        cards.forEach((c) => {
+          const k = es(cl((u - c.i * 0.035) / 0.27));
+          c.box.style.transform =
+            "translate3d(0,0,0) scaleY(" + Math.max(0.002, 1 - 0.998 * k).toFixed(4) + ")";
+          c.inner.style.opacity = String(1 - cl((u - c.i * 0.035) / 0.09));
+          c.line.style.opacity = String(Math.min(1, k * 3));
+
+          /* 三条线接成一条：中间两张各向两侧补 10px，填掉 20px 的缝；
+             同时整体落到面板的上边缘 */
+          const lw = c.w + (c.i > 0 ? 10 : 0) + (c.i < 2 ? 10 : 0);
+          const lx = c.x - (c.i > 0 ? 10 : 0);
+          c.line.style.transform =
+            "translate3d(" + lerp(c.x, lx, mg).toFixed(1) + "px," +
+            lerp(c.y, lineY, mg).toFixed(1) + "px,0)";
+          c.line.style.width = lerp(c.w, lw, mg).toFixed(1) + "px";
+        });
+
+        /* ③ 三颗标签从线上分离、升到 tab 行 */
+        const tb = es(cl((u - 0.30) / 0.25));
+        /* 先离地再显形：不然它刚起步时正好压在那条线上，糊成一团 */
+        tabs.style.opacity = String(es(cl((u - 0.345) / 0.16)));
+        tabs.style.transform = "translateY(" + (tabsRise * (1 - tb)).toFixed(1) + "px)";
+
+        /* ④ 04 的标题落定 */
+        h04.forEach((g, i) => {
+          const k = es(cl((u - (0.16 + i * 0.03)) / 0.30));
+          g.style.opacity = String(k);
+          g.style.transform = "translateY(" + (12 * (1 - k)).toFixed(1) + "px)";
+        });
+
+        /* ⑤ 那条线向下展开成面板 */
+        const pn = es(cl((u - 0.40) / 0.46));
+        pBox.style.height = (pR.h * pn).toFixed(1) + "px";
+        /* 面板已经铺开的地方，线自己退掉 */
+        const lo = 1 - es(cl((u - 0.50) / 0.22));
+        cards.forEach((c) => {
+          c.line.style.opacity = String(Math.min(1, es(cl((u - c.i * 0.035) / 0.27)) * 3) * lo);
+        });
+
+        /* ⑥ 底色从 03 的素底淡到 04 的浅蓝 */
+        bg.style.opacity = String(es(cl((u - 0.08) / 0.32)));
+      };
+
+      morphing = true;
+      foldCtx = { fly, to, hidden };
+      frame(dir > 0 ? 0 : 1);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!foldCtx) return;
+        const t = ts - t0;
+        const raw = Math.min(t / T_JUMP, 1);
+        frame(dir > 0 ? raw : 1 - raw);
+
+        if (!indexMoved && raw >= 0.55) {
+          indexMoved = true;
+          slIndexHold = dir > 0 ? 3 : 2;
+          if (slIndexSync) slIndexSync();
+        }
+
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(topOf(to));
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          lockTo = clampY(topOf(to));
+          /* 落位那一帧就把真实元素放出来：飞行层里此刻的内容和它们完全一致，
+             这样飞行层淡出时不会出现「淡着淡着内容消失了」 */
+          hidden.forEach((n) => n.style.removeProperty("visibility"));
+        }
+        if (t >= T_JUMP) {
+          fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        }
+        if (t < T_END) requestAnimationFrame(tick);
+        else foldClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
+      if (morphing) return true;
 
       const ov = sections[0];
       const src = document.querySelector(".sl-screen");
@@ -1599,6 +1846,8 @@
         if (cur === sections[0]) return flowMorph(1);
         /* 02 → 03：交给「三份概念」转场 */
         if (cur === sections[1]) return conceptMorph();
+        /* 03 → 04：交给「折叠 / 展开」转场 */
+        if (cur === sections[2]) return foldMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -1621,6 +1870,8 @@
       if (!prev) return false;
       /* 02 → 01：同一段倒放 */
       if (prev === sections[0]) return flowMorph(-1);
+      /* 04 → 03：同一段折叠倒放 */
+      if (cur === sections[3]) return foldMorph(-1);
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -1710,7 +1961,7 @@
 
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); });
+    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); foldBail(); });
   }
 
   /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
