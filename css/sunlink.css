@@ -1720,3 +1720,25 @@
   background: #f7f6fa;
   clip-path: circle(0% at 50% 50%);
 }
+
+/* ---------- 01 ↔ 02：卡片分裂 ----------
+   z-index 取 40：高于正文（auto），低于导航（50）和左侧索引（60），
+   这样转场期间页头和索引栏都不会被盖住。 */
+.sl-flow {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: opacity;
+}
+/* 垫底的那层底色：一开始是 01 的底色（看不出来），
+   越接近 02 越透明，让 02 自己的淡蓝渐变和线稿露出来 */
+.sl-flow__wash {
+  position: absolute;
+  inset: 0;
+}
+.sl-flow__card {
+  box-sizing: border-box;
+}
+

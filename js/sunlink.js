@@ -816,6 +816,271 @@
       lockUntil = performance.now() + 400;
     };
 
+    /* ---------- 01 ↔ 02：三张说明卡原地长成四格数字条 ----------
+       用户 2026-11-05 决定：第 4 张从行的右端展开；只有 39% 数着往上跳，
+       另外三个直接出现；倒放时不倒着数（一直是 39）；时长 1.5 秒。
+
+       两屏的卡片块左右边缘完全重合，所以整个过程页面一动不动 ——
+       只有卡片本身在收缩、裂成四格。0.5 段是「文字收进左上角」，
+       数字再从同一个角落长出来。 */
+    let flowCtx = null;
+
+    const flowClear = () => {
+      const c = flowCtx;
+      if (!c) return;
+      flowCtx = null;
+      morphing = false;
+      c.srcCards.forEach((n) => n.style.removeProperty("visibility"));
+      c.srcHead.forEach((n) => n.style.removeProperty("visibility"));
+      c.extras.forEach((n) => {
+        n.style.removeProperty("opacity");
+        n.style.removeProperty("transition");
+      });
+      if (c.fly.parentNode) c.fly.remove();
+    };
+
+    /* 转场中途改窗口尺寸（或页面被外部跳走）：直接落位，不卡在半路 */
+    const flowBail = () => {
+      if (!flowCtx) return;
+      const to = flowCtx.to;
+      flowClear();
+      jump(topOf(to));
+      lockUntil = performance.now() + 400;
+    };
+
+    const flowMorph = (dir) => {
+      if (morphing || flowCtx) return true;
+
+      const from = dir > 0 ? sections[0] : sections[1];
+      const to = dir > 0 ? sections[1] : sections[0];
+      if (!from || !to) return false;
+
+      const srcWrap = from.querySelector(".sl-wrap");
+      const dstWrap = to.querySelector(".sl-wrap");
+      if (!srcWrap || !dstWrap) return false;
+
+      const parts = (w) => ({
+        brief: Array.from(w.querySelectorAll(".sl-brief__item")),
+        stat: Array.from(w.querySelectorAll(".sl-stat")),
+        head: Array.from(w.children).filter((n) => n.matches(".sl-eyebrow, .sl-h2, .sl-p")),
+      });
+      const S = parts(srcWrap);
+      const D = parts(dstWrap);
+      const oneCards = dir > 0 ? S.brief : D.brief;
+      const srcCards = dir > 0 ? S.brief : S.stat;
+      const dstCards = dir > 0 ? D.stat : D.brief;
+      const srcHead = S.head;
+      const h01 = dir > 0 ? S.head : D.head;
+      const h02 = dir > 0 ? D.head : S.head;
+      if (oneCards.length < 3 || srcCards.length < 3 || dstCards.length < 3) return false;
+      if (!h01.length || !h02.length) return false;
+
+      const dy = topOf(to) - window.scrollY;   // 跳页后，目标页元素会整体上移这么多
+      const rect = (el) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top, w: r.width, h: r.height };
+      };
+      const at = (el) => {
+        const r = rect(el);
+        return { l: r.l, t: r.t - dy, w: r.w, h: r.h };
+      };
+
+      /* 01 那一排的右边缘：第 4 张卡就从这里展开 / 折回去 */
+      const oneRects = oneCards.map((n) => (dir > 0 ? rect(n) : at(n)));
+      const rowRight = Math.max.apply(null, oneRects.map((r) => r.l + r.w));
+      const rowTop = Math.min.apply(null, oneRects.map((r) => r.t));
+      const rowBot = Math.max.apply(null, oneRects.map((r) => r.t + r.h));
+      const degen = { l: rowRight, t: rowTop, w: 0, h: rowBot - rowTop };
+
+      /* 每一格都同时记下「01 里的样子」和「02 里的样子」。
+         a 永远对应 u=0（01），b 永远对应 u=1（02）——
+         这样倒放只是 u 从 1 走回 0，几何自动对，不用判断方向。 */
+      const statCards = dir > 0 ? D.stat : S.stat;
+      const total = Math.max(oneCards.length, statCards.length);
+      const pairs = [];
+      for (let i = 0; i < total; i++) {
+        const brief = oneCards[i] || null;
+        const stat = statCards[i] || null;
+        const r01 = brief ? (dir > 0 ? rect(brief) : at(brief)) : degen;
+        const r02 = stat ? (dir > 0 ? at(stat) : rect(stat)) : degen;
+        pairs.push({
+          a: r01,
+          b: r02,
+          f01: brief ? { el: brief, r: r01 } : null,
+          f02: stat ? { el: stat, r: r02 } : null,
+        });
+      }
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+      const wash = document.createElement("div");
+      wash.className = "sl-flow__wash";
+      const pageBg = getComputedStyle(document.querySelector(".sl-page") || document.body).backgroundColor;
+      wash.style.background = pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa";
+      fly.appendChild(wash);
+
+      /* 02 的底色（淡蓝渐变 + 右上角那圈线稿）：方向向下的那一次要它，
+         这样跳页前屏幕上的底已经和 02 一模一样，线稿不会在跳的那一帧冒出来。
+         方向向上不需要：那时底下那层底色是全不透明的，02 的底本来就被盖住。 */
+      let bgLayer = null;
+      if (dir > 0) {
+        const cs = getComputedStyle(to);
+        bgLayer = document.createElement("div");
+        bgLayer.style.cssText =
+          "position:absolute;left:0;top:0;width:100%;height:" + to.offsetHeight + "px;opacity:0;" +
+          "background-image:" + cs.backgroundImage + ";background-position:" + cs.backgroundPosition +
+          ";background-size:" + cs.backgroundSize + ";background-repeat:" + cs.backgroundRepeat +
+          ";background-color:" + cs.backgroundColor + ";";
+        fly.appendChild(bgLayer);
+      }
+
+      /* 两套标题都做成飞行层里的幽灵：底下那层底色不透明，
+         真标题露不出来，所以 01 的标题也得由这一层自己负责，
+         否则转场一开始标题就整块消失了。 */
+      const place = (el, r, extra) => {
+        const c = el.cloneNode(true);
+        const nowrap = el.matches(".sl-eyebrow");
+        c.style.cssText =
+          "position:absolute;left:" + r.l.toFixed(1) + "px;top:" + r.t.toFixed(1) + "px;margin:0;" +
+          (nowrap ? "width:max-content;white-space:nowrap;" : "width:" + r.w.toFixed(1) + "px;") +
+          "will-change:opacity,transform;" + extra;
+        fly.appendChild(c);
+        return c;
+      };
+      const g01 = h01.map((el) => place(el, dir > 0 ? rect(el) : at(el), ""));
+      const g02 = h02.map((el) => place(el, dir > 0 ? at(el) : rect(el), "opacity:0;"));
+
+      /* 卡片：一个白框负责几何，里面叠两层固定尺寸的内容，靠 overflow 裁，
+         所以文字全程不重排（重排会露馅）。 */
+      const boxes = pairs.map((p) => {
+        const box = document.createElement("div");
+        box.className = "sl-flow__card";
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + p.a.w.toFixed(1) + "px;height:" + p.a.h.toFixed(1) +
+          "px;background:#fff;border:1px solid var(--sl-line);border-radius:16px;overflow:hidden;" +
+          "transform:translate3d(" + p.a.l.toFixed(1) + "px," + p.a.t.toFixed(1) + "px,0);" +
+          "will-change:transform,width,height;";
+        const face = (src, r, extra) => {
+          const c = src.cloneNode(true);
+          c.style.cssText =
+            "position:absolute;left:0;top:0;width:" + r.w.toFixed(1) + "px;height:" + r.h.toFixed(1) +
+            "px;background:transparent;border-color:transparent;transform-origin:0 0;" + extra;
+          box.appendChild(c);
+          return c;
+        };
+        const f01 = p.f01 ? face(p.f01.el, p.f01.r, "will-change:opacity,transform;") : null;
+        const f02 = p.f02 ? face(p.f02.el, p.f02.r, "opacity:0;will-change:opacity,transform;") : null;
+        fly.appendChild(box);
+        return { box, a: p.a, b: p.b, f01, f02, num: f02 ? f02.querySelector(".sl-stat__n") : null };
+      });
+
+      const extras = Array.from(dstWrap.children).filter(
+        (n) => !n.matches(".sl-brief, .sl-stats, .sl-eyebrow, .sl-h2, .sl-p")
+      );
+
+      srcCards.forEach((n) => { n.style.visibility = "hidden"; });
+      srcHead.forEach((n) => { n.style.visibility = "hidden"; });
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const eSm = (t) => t * t * (3 - 2 * t);
+      const rp = (v, a, b) => cl((v - a) / (b - a));
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      /* u：0 = 01 的样子，1 = 02 的样子。倒放就是把 u 从 1 走回 0，
+         所以每一拍都自动镜像，不用另写一套。 */
+      const frame = (u) => {
+        const hOut = eSm(rp(u, 0, 0.30));
+        g01.forEach((g) => {
+          g.style.opacity = String(1 - hOut);
+          g.style.transform = "translateY(" + (-10 * hOut).toFixed(1) + "px)";
+        });
+
+        g02.forEach((g, i) => {
+          const t = eSm(rp(u, 0.36 + i * 0.03, 0.66 + i * 0.03));
+          g.style.opacity = String(t);
+          g.style.transform = "translateY(" + (12 * (1 - t)).toFixed(1) + "px)";
+        });
+
+        const swap = eSm(rp(u, 0.50, 0.86));
+        wash.style.opacity = String(1 - swap);
+        if (bgLayer) bgLayer.style.opacity = String(swap);
+
+        boxes.forEach((b, i) => {
+          const p = eSm(rp(u, 0.12 + i * 0.035, 0.54 + i * 0.035));
+          const bw = lerp(b.a.w, b.b.w, p);
+          b.box.style.transform =
+            "translate3d(" + lerp(b.a.l, b.b.l, p).toFixed(1) + "px," + lerp(b.a.t, b.b.t, p).toFixed(1) + "px,0)";
+          b.box.style.width = bw.toFixed(1) + "px";
+          b.box.style.height = lerp(b.a.h, b.b.h, p).toFixed(1) + "px";
+          b.box.style.borderRadius = (16 - 2 * p).toFixed(2) + "px";
+          /* 收成一条线的那张（第 4 张的起止）别留一根白头发 */
+          b.box.style.opacity = bw < 3 ? "0" : "1";
+
+          if (b.f01) {
+            const a = eSm(rp(u, 0.06, 0.30));
+            b.f01.style.opacity = String(1 - a);
+            b.f01.style.transform = "scale(" + (1 - 0.34 * a).toFixed(3) + ")";
+          }
+          if (b.f02) {
+            const a = eSm(rp(u, 0.24, 0.56));
+            b.f02.style.opacity = String(a);
+            b.f02.style.transform = "scale(" + (0.74 + 0.26 * a).toFixed(3) + ")";
+            /* 只有第一个数数着往上跳；倒放时一直是 39，不倒着数 */
+            if (i === 0 && dir > 0 && b.num && b.num.firstChild) {
+              const c = eSm(rp(u, 0.38, 0.62));
+              b.num.firstChild.nodeValue = String(Math.round(39 * c));
+            }
+          }
+        });
+      };
+
+      morphing = true;
+      flowCtx = { fly, wash, srcCards, srcHead, extras, to };
+      frame(dir > 0 ? 0 : 1);
+
+      const T_JUMP = 1300;
+      const T_END = 1520;
+      const t0 = performance.now();
+      let jumped = false;
+
+      const tick = (ts) => {
+        if (!flowCtx) return;
+        const el = ts - t0;
+        const raw = Math.min(el / T_JUMP, 1);
+
+        frame(dir > 0 ? raw : 1 - raw);
+
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(topOf(to));
+          /* 锁短一点：动画本身还要 220ms 才收尾，锁太长会把用户接下来的那次滚轮吃掉 */
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          extras.forEach((n) => {
+            n.style.opacity = "0";
+            n.style.transition = "none";
+          });
+          requestAnimationFrame(() => {
+            if (!flowCtx) return;
+            extras.forEach((n, i) => {
+              n.style.transition = "opacity .32s cubic-bezier(.2,.8,.2,1) " + (i * 60) + "ms";
+              n.style.opacity = "1";
+            });
+          });
+        }
+
+        if (el >= T_JUMP) {
+          fly.style.opacity = String(cl(1 - (el - T_JUMP) / (T_END - T_JUMP)));
+        }
+
+        if (el < T_END) requestAnimationFrame(tick);
+        else flowClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
       if (morphing) return true;
 
@@ -1013,6 +1278,8 @@
         }
         const next = sections[idx + 1];
         if (!next) return false;
+        /* 01 → 02：交给卡片分裂转场 */
+        if (cur === sections[0]) return flowMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -1031,6 +1298,8 @@
       }
       const prev = idx > 0 ? sections[idx - 1] : hero;
       if (!prev) return false;
+      /* 02 → 01：同一段倒放 */
+      if (prev === sections[0]) return flowMorph(-1);
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -1119,7 +1388,7 @@
 
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", morphBail);
+    window.addEventListener("resize", () => { morphBail(); flowBail(); });
   }
 
   /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
