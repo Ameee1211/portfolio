@@ -2015,6 +2015,182 @@
       return true;
     };
 
+    /* ---------- 05 → 06：两张叠在一起的牌，把上面那张掀到后面去 ----------
+       用户 2026-11-05：05 当最上面那张、06 当下面那张，切换就是「把前面这张
+       放到后面那张的后面」；反向就是把后面那张再翻回前面来。
+       做法：两张各做成一张 100vw×100vh 的卡（里面放各自板块的克隆），
+       05 绕自己底边往回掀（rotateX 0 → -100°），掀过 90° 就翻到背面 ——
+       backface-visibility:hidden 让她在正好侧面那一帧消失，所以看不到背面、
+       也不用做透明度硬切；同一时间 06 从 0.93 张开到 1、圆角收到 0，
+       张开的那一侧正好接上真实板块，跳页看不出来。 */
+    let deckCtx = null;
+
+    const deckClear = () => {
+      const c = deckCtx;
+      if (!c) return;
+      deckCtx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const deckBail = () => {
+      if (!deckCtx) return;
+      const to = deckCtx.to;
+      deckClear();
+      jump(topOf(to));
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(topOf(to));
+    };
+
+    const deckMorph = (dir) => {
+      if (morphing || deckCtx) return true;
+
+      const s5 = sections[4];      // usage
+      const s6 = sections[5];      // prototype
+      if (!s5 || !s6) return false;
+
+      const to = dir > 0 ? s6 : s5;
+      /* 05 在某些尺寸下比一屏高（比如 1366 就有 840 > 768），
+         那用户滑到的是它的「段底」；卡里那块窗口也得从段底对齐，
+         否则转场第一帧会比真实画面矮一截。06 永远从它的顶边进。 */
+      const land5 = Math.max(topOf(s5), endOf(s5));
+      const targetY = dir > 0 ? topOf(s6) : land5;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow sl-deck";
+      const pageBg = getComputedStyle(document.body).backgroundColor;
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;" +
+        "background:" + (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa") + ";" +
+        "perspective:1700px;perspective-origin:50% 46%;";
+
+      /* 一张牌 = 视口大小的窗口 + 板块克隆（按板块自己的排版，超高部分裁掉，
+         和真实页面此刻看到的那一屏完全一致） */
+      const build = (sec, off) => {
+        const card = document.createElement("div");
+        card.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;border-radius:0;transform-origin:50% 50%;" +
+          "backface-visibility:hidden;will-change:transform,border-radius,box-shadow;";
+        const cs = getComputedStyle(sec);
+        card.style.background = cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)"
+          ? cs.backgroundColor : (pageBg || "#f7f6fa");
+
+        const inner = sec.cloneNode(true);
+        /* id 不能带过来（会跟真页面撞），iframe 也不能克隆（会把整个 XD 原型重新加载） */
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("iframe").forEach((f) => {
+          const ph = document.createElement("div");
+          ph.style.cssText = "width:100%;height:100%;background:#16243a;";
+          f.parentNode.replaceChild(ph, f);
+        });
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + off.toFixed(1) + "px;width:" + vw + "px;margin:0;";
+        card.appendChild(inner);
+
+        /* 压暗层：在后面那张偏暗，翻到前面来才亮 */
+        const shade = document.createElement("div");
+        shade.style.cssText =
+          "position:absolute;inset:0;background:#0b1420;opacity:0;pointer-events:none;will-change:opacity;";
+        card.appendChild(shade);
+
+        fly.appendChild(card);
+        return { card, shade };
+      };
+
+      const back = build(s6, 0);                                  // 后面那张（06）
+      const front = build(s5, -(land5 - topOf(s5)));               // 前面那张（05）
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (t) => t * t * (3 - 2 * t);
+
+      const T_JUMP = 1200;
+      const T_END = 1440;
+
+      /* u：0 = 05 在最上面，1 = 06 已经翻到最上面 */
+      const frame = (u) => {
+        /* ① 05 先收成一张卡（整屏 → 留一圈边） */
+        const e1 = es(cl(u / 0.26));
+        /* ② 掀到后面去：绕底边往回转，转过 90° 就是背面 */
+        const rot = 100 * es(cl((u - 0.26) / 0.58));
+        /* ③ 06 张开成整屏 */
+        const e2 = es(cl((u - 0.54) / 0.40));
+
+        const sA = 1 - 0.062 * e1;
+        /* 绕自己中间那条竖轴转进去：转到 90° 这张牌就垂直于屏幕、只剩一条边，
+           等于整张转进了屏幕后面；同时轻轻往下沉一点，像是在往下压 */
+        const tyA = 40 * es(cl((u - 0.26) / 0.58));
+        front.card.style.transform =
+          "translate3d(0," + tyA.toFixed(1) + "px,0) rotateY(" + rot.toFixed(2) +
+          "deg) scale(" + sA.toFixed(4) + ")";
+        front.card.style.borderRadius = (24 * e1).toFixed(1) + "px";
+        front.card.style.boxShadow = e1 > 0.01
+          ? "0 " + (10 * e1).toFixed(0) + "px " + (34 * e1).toFixed(0) +
+            "px rgba(11,20,32," + (0.22 * e1).toFixed(3) + ")"
+          : "none";
+        /* 保险：万一 backface-visibility 没生效，86°→96° 之间也一定是不可见的 */
+        front.card.style.opacity = String(1 - cl((Math.abs(rot) - 86) / 10));
+        front.shade.style.opacity = String(0.26 * es(cl((u - 0.26) / 0.36)));
+
+        /* 后面那张一开始比前面那张略大、并往右下让一点，边缘才露得出来
+           （两张一样大的话，后牌被前牌整个盖住，看不出是「两张牌」） */
+        const sB = 0.952 + 0.048 * e2;
+        const tyB = -vh * (1 - sB) / 2 + 22 * (1 - e2);
+        const txB = 20 * (1 - e2);
+        back.card.style.transform =
+          "translate3d(" + txB.toFixed(1) + "px," + tyB.toFixed(1) + "px,0) scale(" + sB.toFixed(4) + ")";
+        back.card.style.borderRadius = (26 * (1 - e2)).toFixed(1) + "px";
+        back.card.style.boxShadow = e2 < 0.99
+          ? "0 " + (12 * (1 - e2)).toFixed(0) + "px " + (40 * (1 - e2)).toFixed(0) +
+            "px rgba(11,20,32," + (0.18 * (1 - e2)).toFixed(3) + ")"
+          : "none";
+        back.shade.style.opacity = String(0.30 * (1 - e2));
+      };
+
+      morphing = true;
+      deckCtx = { fly, to };
+      frame(dir > 0 ? 0 : 1);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!deckCtx) return;
+        const t = ts - t0;
+        const raw = Math.min(t / T_JUMP, 1);
+        frame(dir > 0 ? raw : 1 - raw);
+
+        if (!indexMoved && raw >= 0.66) {
+          indexMoved = true;
+          slIndexHold = dir > 0 ? 5 : 4;
+          if (slIndexSync) slIndexSync();
+        }
+
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(targetY);
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          lockTo = clampY(targetY);
+        }
+        if (t >= T_JUMP) {
+          fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        }
+        if (t < T_END) requestAnimationFrame(tick);
+        else deckClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
       if (morphing) return true;
 
@@ -2220,6 +2396,8 @@
         if (cur === sections[2]) return foldMorph(1);
         /* 04 → 05：交给「换画 + 逐个提起」转场 */
         if (cur === sections[3]) return stepMorph(1);
+        /* 05 → 06：交给「翻牌」转场 */
+        if (cur === sections[4]) return deckMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -2246,6 +2424,8 @@
       if (cur === sections[3]) return foldMorph(-1);
       /* 05 → 04：同一段换画转场的反向（单独排过顺序） */
       if (cur === sections[4]) return stepMorph(-1);
+      /* 06 → 05：把后面那张再翻回前面 */
+      if (cur === sections[5]) return deckMorph(-1);
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -2335,7 +2515,7 @@
 
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); foldBail(); stepBail(); });
+    window.addEventListener("resize", () => { morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); });
   }
 
   /* ---------- 首屏：让 1536×934 的舞台铺满视口 ---------- */
