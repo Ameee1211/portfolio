@@ -414,17 +414,18 @@
       return true;
     };
 
-    /* ---------- 01 ↔ 02：圆扩背景 + 图片框拉长 + 文字从右淡入（用户 2026-11-06） ----------
-       · 背景：02 的淡青渐变从**屏幕正中央**一个圆扩出来铺满；反向缩回中心一点
-       · 两个图片框：同步从 01 的 figure（513×438）直接拉长成 02 的 st-step（516×536），
-         里面的图直接换成 02 的图（不做飞入、不做交叉淡化）
-       · 其余文字（标题 / 正文 / Step 说明）：从右侧 26px 淡入
-       两屏的两张图位置几乎重合（横向只差 1~2px），所以框只做「拉长 + 换图」就够了。
+    /* ---------- 01 ↔ 02：02 整页被一个圆揭出来，慢慢盖住 01（用户 2026-11-06 改版） ----------
+       ★ 上一版把「背景圆」和两个图片框拆开做（框拉长、换图、文字单独淡入），
+         用户觉得效果不好，全部推翻。这一版只有一件事：
+           底层 = 01 整页，静止不动
+           上层 = 02 整页，**也静止不动**，只被 clip-path 的圆形窗口裁着
+         圆从屏幕正中央一个点扩到铺满 → 02 露出的范围越来越大，直到整屏都是 02。
+         反向就是同一个圆缩回去 → 01 从四周重新显现。
+       除了圆的半径，画面里没有任何元素在动、缩放、淡入或位移。
 
-       ★ 坐标系：飞行层是 fixed，01 和 02 的内容都按「自己板块顶对齐视口顶」摆放，
-         所以量元素时用 (文档 top - 该板块顶) 换算，不能直接用同一个 scrollY 的 rect。
-       ★ 02 的正文比 01 多一行，把卡片往下顶了 33px（368 → 401），这个跟着一起过渡，
-         否则落位那一帧会跳。 */
+       ★ 坐标系：飞行层是 fixed，01 / 02 各按「自己板块顶对齐视口顶」摆放，
+         所以量位置要用 (文档 top - 该板块顶)。转场开始时先 jump 到起点板块顶，
+         否则触发时停在 01 段底（比顶多 63px）会对不上。 */
     let circleCtx = null;
 
     const circleClear = () => {
@@ -453,25 +454,11 @@
       const land1 = Math.ceil(topOf(s1));
       const land2 = Math.ceil(topOf(s2));
       const toY = dir > 0 ? land2 : land1;
-      // 触发时可能停在 01 段底（比顶多 63px）；先对齐到起点板块顶，飞行层才接得住
       jump(dir > 0 ? land1 : land2);
 
       const vh = document.documentElement.clientHeight;
       const cw = document.documentElement.clientWidth;
       const vw = Math.min(cw, s1.offsetWidth || cw, s2.offsetWidth || cw);
-
-      const DR = (el, land) => {
-        const r = el.getBoundingClientRect();
-        return { l: r.left, t: r.top + window.scrollY - land, w: r.width, h: r.height };
-      };
-      const figs = [...s1.querySelectorAll(".st-shots figure")];
-      const steps = [...s2.querySelectorAll(".st-step")];
-      if (figs.length < 2 || steps.length < 2) return false;
-      const A = figs.map((f) => DR(f, land1));       // 01 顶时的视口坐标
-      const B = steps.map((s) => DR(s, land2));      // 02 顶时的视口坐标
-      const srcA = figs.map((f) => f.querySelector("img").getAttribute("src"));
-      const srcB = steps.map((s) => s.querySelector("img").getAttribute("src"));
-      srcA.concat(srcB).forEach((u) => { const im = new Image(); im.src = u; });
 
       const bodyBg = (() => {
         const c = getComputedStyle(document.body).backgroundColor;
@@ -483,52 +470,31 @@
       fly.style.cssText =
         "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;background:" + bodyBg + ";";
 
-      /* ① 背景：淡青渐变圆，圆心固定在屏幕正中央 */
-      const circle = document.createElement("div");
-      circle.style.cssText =
-        "position:absolute;inset:0;background:linear-gradient(180deg,#eefafa 0%,#fbfdfd 100%);" +
-        "will-change:clip-path;";
-      fly.appendChild(circle);
-
+      /* 一整页克隆，静止摆放。02 的 section 自带 st-sec--sky 渐变背景，
+         所以圆里露出来的就是完整的一屏 02（背景 + 标题 + 两张图），不用另铺底色。 */
       const layer = (sec, land) => {
         const box = document.createElement("div");
         box.style.cssText =
-          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
-          "overflow:hidden;will-change:transform,opacity;";
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;overflow:hidden;";
         const inner = sec.cloneNode(true);
         inner.removeAttribute("id");
         inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
         inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
         inner.style.cssText =
           "position:absolute;left:0;top:" + (topOf(sec) - land).toFixed(1) + "px;" +
-          "width:" + vw + "px;margin:0;background:transparent;";
+          "width:" + vw + "px;margin:0;";
         box.appendChild(inner);
         fly.appendChild(box);
-        return { box, inner };
+        return box;
       };
 
-      /* ② 01 的文字（两张图交给 cards 层，这里只隐藏 img，图注留在原地淡出） */
-      const oldL = layer(s1, land1);
-      oldL.inner.querySelectorAll(".st-shots img").forEach((n) => { n.style.visibility = "hidden"; });
+      layer(s1, land1);                       // 底层：01，始终不动
+      const reveal = layer(s2, land2);        // 上层：02，只被圆裁着
 
-      /* ③ 02 的文字（卡片框交给 cards 层） */
-      const newL = layer(s2, land2);
-      newL.inner.querySelectorAll(".st-steps").forEach((n) => { n.style.visibility = "hidden"; });
-
-      /* ④ 两个图片框：拿 02 的 st-step 当终点形态，起点临时改成 01 figure 的样子 */
-      const cards = steps.map((st, i) => {
-        const c = st.cloneNode(true);
-        c.removeAttribute("id");
-        c.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
-        const im = c.querySelector(".st-step__img img");
-        if (im) im.loading = "eager";
-        const bd = c.querySelector(".st-step__body");
-        c.style.cssText =
-          "position:absolute;overflow:hidden;display:flex;flex-direction:column;" +
-          "background:transparent;border:none;border-radius:0;" +
-          "will-change:left,top,width,height;";
-        fly.appendChild(c);
-        return { el: c, im: im, body: bd, isB: null };
+      // 02 的图在 01 上是 lazy 的，先要过来，免得圆扩开那一瞬间图还是空的
+      [...s2.querySelectorAll("img")].forEach((im) => {
+        const pre = new Image();
+        pre.src = im.getAttribute("src") || "";
       });
 
       document.body.appendChild(fly);
@@ -539,44 +505,8 @@
       const T = 1500;
 
       const frame = (p) => {
-        /* 背景圆：从中心一点扩到铺满；反向就是同一个圆缩回来 */
         const R = R_MAX * es(cl(p));
-        circle.style.clipPath = "circle(" + R.toFixed(1) + "px at 50% 50%)";
-
-        /* 文字：01 先退干净，02 再进 —— 两段不能重叠，否则两套标题半透明叠在一起，
-           字会全糊掉。中间留 0.08（约 120ms）的空档，此时圆和卡片还在动，不觉得空。 */
-        oldL.box.style.opacity = String(1 - es(cl((p - 0.02) / 0.14)));
-        const tIn = es(cl((p - 0.20) / 0.44));
-        newL.box.style.opacity = String(tIn);
-        newL.box.style.transform = "translateX(" + (26 * (1 - tIn)).toFixed(1) + "px)";
-
-        /* 两个框同步拉长；图片在过半那一帧直接换，不做渐变 */
-        const grow = es(cl((p - 0.06) / 0.82));
-        /* 框里那段 Step 说明要跟着「拉长」一起淡入，不能等框长完了才出现，
-           否则中间会有一段卡片下半部空白。 */
-        const bodyIn = es(cl((p - 0.12) / 0.50));
-        cards.forEach((c, i) => {
-          const a = A[i], b = B[i];
-          c.el.style.left = (a.l + (b.l - a.l) * grow).toFixed(1) + "px";
-          c.el.style.top = (a.t + (b.t - a.t) * grow).toFixed(1) + "px";
-          c.el.style.width = (a.w + (b.w - a.w) * grow).toFixed(1) + "px";
-          c.el.style.height = (a.h + (b.h - a.h) * grow).toFixed(1) + "px";
-          c.el.style.background = grow > 0.02 ? "#fff" : "transparent";
-          c.el.style.border = grow > 0.02 ? "1px solid rgba(16,34,43,0.1)" : "none";
-          c.el.style.borderRadius = (16 * grow).toFixed(1) + "px";
-          if (c.body) {
-            c.body.style.opacity = String(bodyIn);
-            c.body.style.transform = "translateX(" + (22 * (1 - bodyIn)).toFixed(1) + "px)";
-          }
-          /* 「直接变成这个图片」：正反两个方向都按 p 决定当前该显示哪张 */
-          const wantB = p >= 0.40;
-          if (c.isB !== wantB && c.im) {
-            c.isB = wantB;
-            c.im.src = wantB ? srcB[i] : srcA[i];
-            c.im.style.objectFit = wantB ? "contain" : "cover";
-            c.im.style.padding = wantB ? "11px 13px" : "0";
-          }
-        });
+        reveal.style.clipPath = "circle(" + R.toFixed(1) + "px at 50% 50%)";
       };
 
       morphing = true;
