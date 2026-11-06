@@ -2951,6 +2951,135 @@
       return true;
     };
 
+    /* ---------- 09 → 10：五行逐条落位（用户 2026-11-06 选 A） ----------
+       09 整页向上退，10 的页面从下方接上来，然后时间线的前三行依次从右下角落位
+       —— 一行一行来，正好是「Five rounds」这句话的样子。
+       反向（10 → 09）不走这里，用普通的整页上移（step 里没有对应分支，自然落到 go）。
+       ★ 视口只有 810 高，10 的五行走位是 370/510/650/790/948，所以前三行在屏内、
+         后两行在屏外 —— 只让前三行逐条出现，后两行滚下去时本来就在那儿。 */
+    let timeCtx = null;
+
+    const timeClear = () => {
+      const c = timeCtx;
+      if (!c) return;
+      timeCtx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const timeBail = () => {
+      if (!timeCtx) return;
+      const y = timeCtx.targetY;
+      timeClear();
+      jump(y);
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(y);
+    };
+
+    const timeMorph = (dir) => {
+      if (morphing || timeCtx) return true;
+
+      const s9 = sections[8];    // physical
+      const s10 = sections[9];   // iterations
+      if (!s9 || !s10) return false;
+
+      const vh = document.documentElement.clientHeight;
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s9.offsetWidth || cw, s10.offsetWidth || cw);
+      const targetY = Math.ceil(topOf(s10));
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+      const pageBg = getComputedStyle(document.body).backgroundColor;
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;background:" +
+        (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa") + ";";
+
+      const layer = (sec, top, bg) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;" + (bg ? "background:" + bg + ";" : "");
+        const inner = sec.cloneNode(true);
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + top.toFixed(1) + "px;width:" + vw + "px;margin:0;";
+        box.appendChild(inner);
+        fly.appendChild(box);
+        return { box, inner };
+      };
+
+      const oldL = layer(s9, 0);
+      const newL = layer(s10, 0);
+
+      /* 五行全都参与错峰。屏内只看得到前三行，但第四行在视口底边会露一条，
+         它要是不参与，那一小条会从第一帧就杵在那儿，很破。 */
+      const rows = [...newL.inner.querySelectorAll(".sl-time__row")].slice(0, 5);
+      rows.forEach((el) => { el.style.willChange = "transform, opacity"; });
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+
+      const T_JUMP = 1080;
+      const T_END = 1200;
+
+      const frame = (u) => {
+        /* ① 09 整页向上让开 */
+        const k1 = es(cl(u / 0.24));
+        oldL.box.style.transform = "translate3d(0," + (-58 * k1).toFixed(1) + "px,0)";
+        oldL.box.style.opacity = String(1 - 0.72 * k1);
+        /* ② 10 从下方接上来 */
+        const k2 = es(cl((u - 0.05) / 0.34));
+        newL.box.style.transform = "translate3d(0," + (92 * (1 - k2)).toFixed(1) + "px,0)";
+        /* ③ 三行依次从右下方落位，每行错开 0.14 */
+        rows.forEach((el, i) => {
+          const p = es(cl((u - (0.28 + i * 0.11)) / 0.22));
+          el.style.opacity = String(p);
+          el.style.transform =
+            "translate3d(" + (28 * (1 - p)).toFixed(1) + "px," + (32 * (1 - p)).toFixed(1) + "px,0)";
+        });
+      };
+
+      morphing = true; morphStartedAt = performance.now();
+      timeCtx = { fly, targetY };
+      frame(0);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!timeCtx) return;
+        const t = ts - t0;
+        const raw = Math.min(t / T_JUMP, 1);
+        frame(raw);
+
+        if (!indexMoved && raw >= 0.62) {
+          indexMoved = true;
+          slIndexHold = 9;
+          if (slIndexSync) slIndexSync();
+        }
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(targetY);
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          lockTo = clampY(targetY);
+        }
+        if (t >= T_JUMP) fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        if (t < T_END) requestAnimationFrame(tick);
+        else timeClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
       if (morphing) return true;
 
@@ -3191,6 +3320,8 @@
         if (cur === sections[6]) return liftMorph(1);
         /* 08 → 09：街景缩小旋转，落进照片格 */
         if (cur === sections[7]) return sceneMorph(1);
+        /* 09 → 10：时间线三行逐条落位 */
+        if (cur === sections[8]) return timeMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -3267,7 +3398,7 @@
     /* 转场期间滚轮一律吞掉。但如果动画已经跑了 0.7 秒、用户还在往下拨，
        说明他等不及了 —— 直接快进到终点，别让人白滚十几下。 */
     const skipMorph = () => {
-      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail(); liftBail(); sceneBail();
+      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail(); liftBail(); sceneBail(); timeBail();
     };
 
     const onWheel = (e) => {
