@@ -2050,7 +2050,7 @@ function initHomeScenes() {
   window.addEventListener("wheel", onDeckWheel, { passive: false });
 
   /* ——— 一手势一推进（About 内部的内容节点）———
-     ★ 用户 2026-11-07 报：About 里「Explore More 按钮出现」和「切到 Projects」
+     ★ 用户报：About 里「Explore More 按钮出现」和「切到 Projects」
        会被一次猛滑连着做完，中间那一屏（About 内容已经全显示、按钮刚出来）
        根本停不住，只有把滚轮拨得极轻才会停在那里。
      首页整条是一条「滚动位置当时间轴」的长轨道（6.6 屏高），滚多少画面走多少，
