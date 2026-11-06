@@ -335,7 +335,7 @@
 
       const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
       const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
-      const T = 1120;
+      const T = 1500;
 
       const frame = (p) => {
         const lift = es(cl(p / 0.22));              // 抬起
@@ -368,10 +368,9 @@
         lapClone.style.transform = "translate(-50%,-50%) scale(" + sc.toFixed(4) + ")";
         lapClone.style.opacity = String(1 - swapOut);
         card.style.borderRadius = (7 * (1 - move)).toFixed(1) + "px";
-        card.style.boxShadow =
-          "0 " + (30 * (1 - move) + 10).toFixed(0) + "px " +
-          (64 * (1 - move) + 28).toFixed(0) + "px rgba(4,10,12," +
-          (0.5 * (1 - move) + 0.16).toFixed(2) + ")";
+        /* 不放投影（用户 2026-11-06 要求）：抬起来时是靠圆角和位移说明它飞起来了，
+           加投影反而像「贴上去的一块板」，和首屏那种平的光照不合。 */
+        card.style.boxShadow = "none";
         card.style.opacity = String(cl(p / 0.08) * (1 - fade));
         shot.style.opacity = String(swapIn);
 
