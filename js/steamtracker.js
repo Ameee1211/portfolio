@@ -70,7 +70,11 @@
       sections.forEach((sec, i) => {
         if (sec.offsetTop <= probe) active = i;
       });
-      items.forEach((it, i) => it.classList.toggle("is-active", i === active));
+      items.forEach((it, i) => {
+        it.classList.toggle("is-active", i === active);
+        // 已经走过的段落用淡青描边，和「当前」的实心块区分开
+        it.classList.toggle("is-past", active >= 0 && i < active);
+      });
       // 深色板块（06 / 08）上索引必须反白，否则深蓝的字在深底上根本看不见
       const dark = active >= 0 && sections[active].classList.contains("st-sec--ink");
       rail.classList.toggle("is-light", !!dark);

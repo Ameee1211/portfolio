@@ -49,27 +49,37 @@
 }
 
 /* 段落编号 + 小标题 */
+/* 板块编号：和左侧索引用同一套方角块，只是放大到 30×21。
+   两处共用一套尺寸，一眼能认成同一套编号系统。 */
 .st-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--st-teal-deep);
   margin-bottom: 20px;
 }
-.st-eyebrow::before {
-  content: "";
+.st-eyebrow__no {
+  box-sizing: border-box;
   width: 30px;
-  height: 2px;
-  background: var(--st-teal);
-  border-radius: 2px;
+  height: 21px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
+  border-radius: 2px;
+  background: var(--st-teal-deep);
+  color: #ffffff;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 .st-sec--ink .st-eyebrow { color: #7fe0e0; }
-.st-sec--ink .st-eyebrow::before { background: #7fe0e0; }
+.st-sec--ink .st-eyebrow__no { background: #7fe0e0; color: #0b3a3a; }
 
 .st-h2 {
   font-size: clamp(27px, 3.1vw, 40px);
@@ -614,14 +624,25 @@
   color: var(--muted);
   cursor: pointer;
 }
+/* 编号是一个方角块，不再是纯文字：未读灰描边 → 已读淡青描边 → 当前实心青。
+   等宽数字保证 01..07 逐位对齐，滚动时整列不会左右抖。 */
 .st-index__num {
-  width: 14px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-align: right;
-  opacity: 0.6;
-  transition: opacity 0.3s ease, color 0.3s ease;
+  box-sizing: border-box;
+  width: 22px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: 1px solid #c4d2d7;
+  border-radius: 2px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #a8b4bb;
+  background: transparent;
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
 .st-index__dot {
   width: 6px;
@@ -658,7 +679,6 @@
   }
   .st-index__item { gap: 8px; }
   .st-index__dot { display: none; }
-  .st-index__num { width: 14px; opacity: 0.55; }
   .st-index__label {
     position: static;
     padding: 0;
@@ -666,43 +686,60 @@
     box-shadow: none;
     opacity: 1;
     transform: none;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    color: rgba(51, 61, 109, 0.62);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    color: #9aa6ad;
     transition: color 0.3s ease;
   }
-  .st-index__item.is-active .st-index__label { color: var(--navy); }
-  .st-index__item.is-active .st-index__num { color: var(--purple); opacity: 1; }
-  .st-index__item:hover .st-index__label { color: var(--purple); }
-  .st-index__item::before {
-    content: "";
-    position: absolute;
-    left: -11px;
-    top: 50%;
-    width: 2px;
-    height: 11px;
-    margin-top: -5.5px;
-    border-radius: 2px;
-    background: var(--purple);
-    opacity: 0;
-    transform: scaleY(0.3);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+  .st-index__item.is-active .st-index__label { color: var(--st-ink); }
+  .st-index__item:hover .st-index__label { color: var(--st-teal-deep); }
+  /* 当前：实心青 + 白字 */
+  .st-index__item.is-active .st-index__num {
+    background: var(--st-teal-deep);
+    border-color: var(--st-teal-deep);
+    color: #ffffff;
   }
-  .st-index__item.is-active::before { opacity: 1; transform: scaleY(1); }
+  /* 已读：淡青描边，表示「走过这一段」 */
+  .st-index__item.is-past .st-index__num {
+    border-color: #b9d3d3;
+    color: #7fb3b3;
+  }
 }
 
 /* 深色板块（06 / 08）时整条索引反白 */
-.st-index.is-light .st-index__num { color: rgba(226, 238, 250, 0.78); opacity: 0.85; }
+.st-index.is-light .st-index__num {
+  color: rgba(226, 238, 250, 0.8);
+  border-color: rgba(226, 238, 250, 0.34);
+  background: transparent;
+}
 .st-index.is-light .st-index__label {
   color: rgba(226, 238, 250, 0.62);
   background: none;
   box-shadow: none;
 }
 .st-index.is-light .st-index__item.is-active .st-index__label { color: #ffffff; }
-.st-index.is-light .st-index__item.is-active .st-index__num { color: #7fe0e0; opacity: 1; }
+.st-index.is-light .st-index__item.is-past .st-index__num {
+  border-color: rgba(127, 224, 224, 0.4);
+  color: rgba(127, 224, 224, 0.75);
+}
+.st-index.is-light .st-index__item.is-active .st-index__num {
+  color: #0b3a3a;
+  background: #7fe0e0;
+  border-color: #7fe0e0;
+}
 .st-index.is-light .st-index__item:hover .st-index__label { color: #7fe0e0; }
 .st-index.is-light .st-index__item::before { background: #7fe0e0; }
 .st-index.is-light .st-index__dot { background: rgba(226, 238, 250, 0.45); }
+
+/* 1280 这类窄一点的桌面：编号块比原来的纯数字宽了 8px，
+   标签收小一档，索引栏总宽回落到 ~140，和正文之间才留得住空隙 */
+@media (min-width: 1180px) and (max-width: 1365px) {
+  .st-index__label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+}
 
 @media (max-width: 1179px) {
   .st-index { display: none; }
