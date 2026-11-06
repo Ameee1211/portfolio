@@ -1772,8 +1772,11 @@ function initHomeScenes() {
     if (hero) hero.style.opacity = p1 > 0.999 ? "0" : "";
 
     // —— About 内部：滑过一条线就放进一块，动画自己慢慢播完 ——
+    // 倒放回迷宫期间例外：四块内容全都保持「已进场」，整页一起合上，
+    // 而不是滑一下缩回去一块。等合完（playTo 结束）才恢复常态。
     STEPS().forEach(({ el, at }) => {
       if (!el) return;
+      if (homeRewind) { el.classList.add("is-in"); return; }
       if (t >= at - 0.02) el.classList.add("is-in");
       else if (t < at - 0.12) el.classList.remove("is-in");
     });
@@ -1892,6 +1895,9 @@ function initHomeScenes() {
   let playing = false;
   let playRaf = 0;
   let lastY = window.scrollY;
+  /* 正在「整段倒放回字母迷宫」：这段时间 About 的四块内容一律保持显示，
+     不能跟着滚动位置一个个缩回去（用户 2026-11-06 要求）。 */
+  let homeRewind = false;
 
 
   // 播放曲线：起步就有速度（不再"等它缓过来"），结尾仍然收得住。
@@ -1900,7 +1906,7 @@ function initHomeScenes() {
   const easePlay = (k) => 1 - Math.pow(1 - k, 1.6);
 
   // 从当前位置缓动滚到 toY
-  const playTo = (toY) => {
+  const playTo = (toY, rewind) => {
     if (window.__hsNoAuto) return;   // 调试用：关掉自动播放，便于逐点检查
     const root = document.documentElement;
     const prevBehavior = root.style.scrollBehavior;
@@ -1930,6 +1936,9 @@ function initHomeScenes() {
         // 播完就等于"用户刚滚到这里"，下一次滚动可以从这里接着判断方向
         lastY = window.scrollY;
         prevT = window.scrollY / (window.innerHeight || 1);
+        // 倒放结束：这时已经回到迷宫、About 被两片底色完全盖住，
+        // 再把四块内容的状态交回时间轴（不会看到它们消失）
+        if (rewind) { homeRewind = false; apply(); }
       }
     };
     playRaf = requestAnimationFrame(tick);
@@ -1964,6 +1973,26 @@ function initHomeScenes() {
     readShadows();    // 悬停时真卡阴影更大，重新接一次
     measureEnd();
     playTo(TL.morphA * vh);
+  };
+
+  /* 从「About 全部显示」一屏直接倒放回字母迷宫（用户 2026-11-06 要求）：
+     不是让四个内容块一个个往回缩，而是两片底色合拢、上下两半字母合回去 ——
+     也就是 0.12~1.1 那段「裂开」的倒放。
+     ★ 2.75（About 全显示）到 1.1 之间 p1 一直是 1，画面完全没变化，
+       所以先把位置对到 1.1 再倒放，中间不会有 1.6 屏的空转停顿。 */
+  const playHome = () => {
+    wAcc = 0; wLock = 0;
+    const vh = window.innerHeight || 1;
+    const startY = Math.min(window.scrollY, TL.splitB * vh);
+    homeRewind = true;      // 先立起来，跳位那一帧元素才不会被收回
+    if (startY !== window.scrollY) {
+      const root = document.documentElement;
+      const b = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      window.scrollTo(0, startY);
+      root.style.scrollBehavior = b;
+    }
+    playTo(0, true);
   };
 
   const onScroll = () => {
@@ -2146,6 +2175,15 @@ function initHomeScenes() {
       e.preventDefault();
       startHold(TL.btn * vh, 1, now);
       playForward();
+      return;
+    }
+
+    /* ②′ 同一屏往上滑 = 直接倒放回字母迷宫（整页合上），
+       不是让四块内容一个个往回缩。 */
+    if (dir < 0 && t0 >= TL.btn - 0.02) {
+      e.preventDefault();
+      clearHold();
+      playHome();
       return;
     }
 
