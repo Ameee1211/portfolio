@@ -497,6 +497,18 @@
         pre.src = im.getAttribute("src") || "";
       });
 
+      /* 金色圆环：clip-path 裁出来的圆没有边可描，所以另起一层跟着半径一起长大。
+         border-box 让描边往内画，外径正好等于圆的直径，和裁剪边界严丝合缝。
+         外面那层很淡的光晕就是「柔边」，让窗口在浅色底上也能看清。 */
+      const ring = document.createElement("div");
+      ring.style.cssText =
+        "position:absolute;left:50%;top:50%;border-radius:50%;pointer-events:none;" +
+        "box-sizing:border-box;transform:translate(-50%,-50%);" +
+        "border:2px solid rgba(198,150,62,0.92);" +
+        "box-shadow:0 0 0 5px rgba(226,185,105,0.13), 0 0 22px 6px rgba(198,150,62,0.16);" +
+        "will-change:width,height;";
+      fly.appendChild(ring);
+
       document.body.appendChild(fly);
 
       const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -507,6 +519,11 @@
       const frame = (p) => {
         const R = R_MAX * es(cl(p));
         reveal.style.clipPath = "circle(" + R.toFixed(1) + "px at 50% 50%)";
+        const d = (2 * R).toFixed(1) + "px";
+        ring.style.width = d;
+        ring.style.height = d;
+        // 半径接近 0 时不要留一个孤零零的小金点；铺满后环已在屏幕外，自然看不见
+        ring.style.opacity = R < 3 || R >= R_MAX - 1 ? "0" : "1";
       };
 
       morphing = true;
