@@ -96,7 +96,14 @@
         const el = document.getElementById(it.dataset.target);
         if (!el) return;
         e.preventDefault();
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        /* ★ 用精确坐标滚，不用 scrollIntoView：全站 section[id]{scroll-margin-top:92px}
+           会把它顶在「板块顶 −92px」，顶部露出上一块；分页器 indexAt() 用
+           scrollY + navH + 4 判定，就会判成上一板块，再下滑误播一次
+           「上一板块 → 本板块」的转场（用户 2026-11-07 报的 bug）。
+           仍然是普通平滑位移，不放转场、不瞬移。 */
+        const target = el.getBoundingClientRect().top + window.scrollY;
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        window.scrollTo({ top: Math.max(0, Math.min(target, max)), behavior: "smooth" });
         history.replaceState(null, "", "#" + it.dataset.target);
       });
     });
@@ -451,10 +458,16 @@
       const s2 = sections[1];    // flow
       if (!s1 || !s2) return false;
 
-      const land1 = Math.ceil(topOf(s1));
-      const land2 = Math.ceil(topOf(s2));
-      const toY = dir > 0 ? land2 : land1;
-      jump(dir > 0 ? land1 : land2);
+      /* ★ 不 jump：01 在小屏笔记本上高 963 > 视口 768，触发时用户停在 01 段底；
+         旧版先 jump(land1) 会把页面瞬间拉回 01 顶部才开始播动画（用户 2026-11-07 报的 bug）。
+         现在跟 04↔05 / 05↔06 用同一套坐标口径：
+           yA = 01 段底视图（正向＝触发当下视口，反向＝落位目标）
+           yB = 02 顶部视图
+         转场期间完全不动 scrollY，结束才 jump(toY)。正向从 01 段底起手，
+         反向落回 01 段底（不再是 01 顶部），和滚动铁律一致。 */
+      const yB = Math.ceil(topOf(s2));
+      const yA = dir > 0 ? window.scrollY : endOf(s1);
+      const toY = dir > 0 ? yB : yA;
 
       const vh = document.documentElement.clientHeight;
       const cw = document.documentElement.clientWidth;
@@ -488,8 +501,8 @@
         return box;
       };
 
-      layer(s1, land1);                       // 底层：01，始终不动
-      const reveal = layer(s2, land2);        // 上层：02，只被圆裁着
+      layer(s1, yA);                          // 底层：01（段底视图），始终不动
+      const reveal = layer(s2, yB);          // 上层：02（顶部视图），只被圆裁着
 
       // 02 的图在 01 上是 lazy 的，先要过来，免得圆扩开那一瞬间图还是空的
       [...s2.querySelectorAll("img")].forEach((im) => {
@@ -497,18 +510,8 @@
         pre.src = im.getAttribute("src") || "";
       });
 
-      /* 金色圆环：clip-path 裁出来的圆没有边可描，所以另起一层跟着半径一起长大。
-         border-box 让描边往内画，外径正好等于圆的直径，和裁剪边界严丝合缝。
-         外面那层很淡的光晕就是「柔边」，让窗口在浅色底上也能看清。 */
-      const ring = document.createElement("div");
-      ring.style.cssText =
-        "position:absolute;left:50%;top:50%;border-radius:50%;pointer-events:none;" +
-        "box-sizing:border-box;transform:translate(-50%,-50%);" +
-        "border:2px solid rgba(198,150,62,0.92);" +
-        "box-shadow:0 0 0 5px rgba(226,185,105,0.13), 0 0 22px 6px rgba(198,150,62,0.16);" +
-        "will-change:width,height;";
-      fly.appendChild(ring);
-
+      /* ★ 金色圆环整层删掉（用户 2026-11-07 不要边框了）：
+         圆边就是 clip-path 的硬边，不加描边、不加柔光。 */
       document.body.appendChild(fly);
 
       const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -519,11 +522,6 @@
       const frame = (p) => {
         const R = R_MAX * es(cl(p));
         reveal.style.clipPath = "circle(" + R.toFixed(1) + "px at 50% 50%)";
-        const d = (2 * R).toFixed(1) + "px";
-        ring.style.width = d;
-        ring.style.height = d;
-        // 半径接近 0 时不要留一个孤零零的小金点；铺满后环已在屏幕外，自然看不见
-        ring.style.opacity = R < 3 || R >= R_MAX - 1 ? "0" : "1";
       };
 
       morphing = true;
