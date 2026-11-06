@@ -851,14 +851,15 @@
     let sliding = false;
     let slideRaf = 0;
 
-    function slSlideTo(target) {
+    function slSlideTo(target, wantDur) {
       const to = clampY(target);
       const from = window.scrollY;
       const dist = to - from;
       if (slideRaf) cancelAnimationFrame(slideRaf);
       if (Math.abs(dist) < 3) { sliding = false; return; }
-      /* 距离越远时间越长，但封顶 780ms —— 跨三个板块飘太久反而不像「翻页」 */
-      const dur = Math.min(780, 340 + Math.abs(dist) * 0.16);
+      /* 不传时长就用按距离算的默认值（导航点击用）；翻页会传一个更长的，
+         让「移动」这件事看得清楚。 */
+      const dur = wantDur || Math.min(780, 340 + Math.abs(dist) * 0.16);
       const t0 = performance.now();
       const root = document.documentElement;
       const prevSB = root.style.scrollBehavior;
@@ -930,8 +931,10 @@
       lockUntil = performance.now() + LOCK_MS;
       lockDir = dir;
       lockTo = target;
-      markProg(LOCK_MS + 340);     // 平滑滚动这段时间别被轨道拦下来
-      window.scrollTo({ top: target, behavior: "smooth" });
+      markProg(LOCK_MS + 340);     // 这段位移期间别被轨道拦下来
+      /* 不用浏览器自带的 smooth：它对 800px 只给 0.5 秒，看起来像「唰一下就过去了」。
+         自己走 0.9 秒，和 07↔06 那种整屏对移的时长接近，位移能看清楚。 */
+      slSlideTo(target, 900);
     };
 
     const jump = (top) => {
