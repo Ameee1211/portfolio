@@ -2785,9 +2785,14 @@
       const fly = document.createElement("div");
       fly.className = "sl-flow";
       const pageBg = getComputedStyle(document.body).backgroundColor;
+      /* 底色要跟着方向走：正向底下是 08（深色），反向底下还是 09（浅色）。
+         写死深色的话，反向一开场整屏就先「啪」一下变深，然后 08 才落下来。 */
+      const flyBg = dir > 0
+        ? "#101c2e"
+        : (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa");
       fly.style.cssText =
         "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;" +
-        "background:#101c2e;" +
+        "background:" + flyBg + ";" +
         "perspective:" + Math.max(1400, vw * 1.2).toFixed(0) + "px;perspective-origin:50% 46%;";
 
       /* 背景的走向两个方向不一样（用户 2026-11-06 指出的）：
@@ -2800,6 +2805,24 @@
       const bgBg = isDown
         ? (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa")
         : "#101c2e";
+
+      /* 反向：底下这一层 09 必须原样停在原地。
+         只铺底色的话，08 还没下来画面就已经变深了 —— 用户要的是「整页从上往下平移」，
+         下面那页得一直在，08 压上去才像平移。 */
+      if (!isDown) {
+        const base = document.createElement("div");
+        base.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;background:" + (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa") + ";";
+        const baseInner = s9.cloneNode(true);
+        baseInner.removeAttribute("id");
+        baseInner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        baseInner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        baseInner.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;margin:0;";
+        base.appendChild(baseInner);
+        fly.appendChild(base);
+      }
 
       const bg = document.createElement("div");
       bg.style.cssText =
@@ -2880,8 +2903,9 @@
           ? "0 " + (26 * lift).toFixed(0) + "px " + (70 * lift).toFixed(0) +
             "px rgba(4,8,16," + (0.42 * lift * (1 - ck)).toFixed(3) + ")"
           : "none";
-        /* 顶栏按钮 / 底部说明在 0.2~0.5 之间淡掉 */
-        const fade = 1 - cl((u - 0.2) / 0.3);
+        /* 顶栏按钮 / 底部说明：正向飞到一半淡掉（最后要变成没 UI 的照片）；
+           反向是从照片出发的，一开场就该没有 UI，放大过程中再长出来 */
+        const fade = dir > 0 ? 1 - cl((u - 0.2) / 0.3) : cl((u - 0.45) / 0.4);
         if (chrome.length) chrome.forEach((n) => { n.style.opacity = String(fade); });
         /* ④ 3D 场景自己也跟着转一点，让它看起来是「一个立体物件在转」而不是一张纸在转 */
         if (world) world.rotation.y = baseRot + swing * (dir > 0 ? 0.30 : -0.30);
