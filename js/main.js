@@ -2049,6 +2049,92 @@ function initHomeScenes() {
   };
   window.addEventListener("wheel", onDeckWheel, { passive: false });
 
+  /* ——— 一手势一推进（About 内部的内容节点）———
+     ★ 用户 2026-11-07 报：About 里「Explore More 按钮出现」和「切到 Projects」
+       会被一次猛滑连着做完，中间那一屏（About 内容已经全显示、按钮刚出来）
+       根本停不住，只有把滚轮拨得极轻才会停在那里。
+     首页整条是一条「滚动位置当时间轴」的长轨道（6.6 屏高），滚多少画面走多少，
+     没有天然的分段，所以只能靠滚轮闸门来补：
+       一串连续滚轮最多推进到**下一个内容节点**，到点后同一串剩下的格全部吞掉，
+       必须停手再滑一次才继续。
+     反向的节点比正向早 0.14 屏 —— 因为退场判定用的是 t < at - 0.12，
+     停在 at 上反而退不掉，会卡在「滑了但按钮还在」。 */
+  const STOPS = [
+    { at: TL.info, rev: TL.info - 0.14 },
+    { at: TL.intro, rev: TL.intro - 0.14 },
+    { at: TL.skills, rev: TL.skills - 0.14 },
+    { at: TL.btn, rev: TL.btn - 0.14 },
+  ];
+  const STEP_GAP = 250;     // 一格间隔超过它就算手停了，下面算新手势
+  let stLastAt = 0;
+  let stSpent = 0;          // 这一串已经推进过了（存时间戳，0 = 没推进过）
+  let stSpentDir = 0;
+
+  // 落到节点上：time轴是纯几何的，不能带平滑滚动，否则会从节点上飘过去
+  const parkAt = (y) => {
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, Math.round(y));
+    root.style.scrollBehavior = prev;
+  };
+
+  const onStepWheel = (e) => {
+    if (playing) return;                  // 自动播放中：blockInput 已经在吞
+    if (e.ctrlKey) return;
+    const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    if (!d) return;
+
+    const now = performance.now();
+    const gap = stLastAt ? now - stLastAt : 1e9;
+    stLastAt = now;
+    if (gap > STEP_GAP) stSpent = 0;      // 停手够久 = 新手势
+
+    const vh = window.innerHeight || 1;
+    const y = window.scrollY;
+    const t0 = y / vh;
+    // 已经进了翻牌转场（≈3.07 屏）：交给 onScroll 里的 playForward，这里不碰
+    if (y >= (TL.morphA - 0.03) * vh) return;
+
+    const dir = d > 0 ? 1 : -1;
+    if (stSpent) {
+      if (dir !== stSpentDir) stSpent = 0;        // 同一串里中途反向：放行
+      else { e.preventDefault(); return; }        // 同一串剩下的格：吞掉
+    }
+
+    /* 已经站在「按钮屏」上，再往下滑一格的意图就是进转场。
+       否则还得再攒 0.35 屏（约三格）才有反应，用户会觉得「滑了没动」 */
+    if (dir > 0 && t0 >= TL.btn - 0.02) {
+      e.preventDefault();
+      stSpent = now; stSpentDir = 1;
+      playForward();
+      return;
+    }
+
+    /* 这一格会跨过哪个节点？跨过就截停在节点上，并吃掉这一串剩下的格。
+       ★ 判据必须按**像素**算、并且留 6px 容差：落位后实际位置和节点常常差
+         零点几像素（浏览器高精度滚动、滚轮自带的平滑动画都会造成），用 0.001 屏
+         （≈0.8px）当容差的话，同一格会被反复判成「跨过同一个节点」，每格都重新
+         截停又被覆盖，结果就是彻底滚不动 —— 1366×768 上就是死在这。 */
+    const y1 = y + d;
+    const TOL = 6;
+    let hitY = null;
+    STOPS.forEach((n) => {
+      const line = (dir > 0 ? n.at : n.rev) * vh;
+      const crossed = dir > 0
+        ? line > y + TOL && line <= y1
+        : line < y - TOL && line >= y1;
+      if (!crossed) return;
+      if (hitY === null || (dir > 0 ? line < hitY : line > hitY)) hitY = line;
+    });
+    if (hitY === null) return;            // 没跨节点：正常滚，保留原来的连贯手感
+
+    e.preventDefault();
+    stSpent = now; stSpentDir = dir;
+    parkAt(hitY);
+  };
+  window.addEventListener("wheel", onStepWheel, { passive: false });
+
   // 顶部那行小字：轻量出口，点它倒放回 About me
   if (els.pback) {
     els.pback.addEventListener("click", (e) => {
