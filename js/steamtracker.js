@@ -176,6 +176,245 @@
   let edgeHoldDir = 0;
   let edgeHoldTicks = 0;
 
+    /* ---------- 首屏 ↔ 01：笔电屏幕被抬起来，落进 01 的左图 ----------
+       首屏的笔电屏幕是 HTML 画的（不是图片），所以直接把它搬进飞行层：
+       抬起来 → 放大 → 落进 01 那张落地页截图的位置 → 交叉淡出成真图。
+       同时深色的书桌场景淡出、浅色的 01 页面从下方升上来。
+       反向（01 → 首屏）就是同一段倒着播。
+       ★ 手机屏幕没有搬：它是竖的（110×233），01 右图是横的（513×385），
+         硬搬会变形或者放大到糊，所以让它随深色场景一起淡出。 */
+    let morphing = false;
+    let morphCtx = null;
+
+    const morphClear = () => {
+      const c = morphCtx;
+      if (!c) return;
+      morphCtx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+      // 镜头动画恢复
+      if (c.world) c.world.style.animationPlayState = "";
+    };
+
+    const morphBail = () => {
+      if (!morphCtx) return;
+      const y = morphCtx.toY;
+      morphClear();
+      jump(y);
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(y);
+    };
+
+    const morphHero = (dir) => {
+      if (morphing) return true;
+      const o1 = sections[0];
+      const lap = hero ? hero.querySelector(".st-screen--lap") : null;
+      if (!hero || !o1 || !lap) return false;
+
+      const img1 = o1.querySelector(".st-shots figure:nth-child(1) img");
+      if (!img1) return false;
+
+      // 首屏没有段内滚动，先把位置对齐到 0，几何才对得上
+      if (dir > 0 && window.scrollY > 4) jump(0);
+      else if (dir > 0) jump(0);
+
+      const vh = document.documentElement.clientHeight;
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, hero.offsetWidth || cw);
+      const landY = Math.ceil(topOf(o1));
+      const toY = dir > 0 ? landY : 0;
+
+      // 起点：首屏对齐（scrollY = 0）时笔电屏幕在视口里的位置
+      const lr = lap.getBoundingClientRect();
+      const from = { l: lr.left, t: lr.top + window.scrollY, w: lr.width, h: lr.height };
+      // 终点：01 左图在「跳到 01 顶部」时的视口位置
+      const ir = img1.getBoundingClientRect();
+      const to = { l: ir.left, t: ir.top + window.scrollY - landY, w: ir.width, h: ir.height };
+      if (from.w < 4 || to.w < 4) return false;
+
+      // 落地前把图先拉过来，否则跳页那一帧会空一下
+      img1.loading = "eager";
+      const pre = new Image();
+      pre.src = img1.getAttribute("src") || "";
+
+      /* ★ 首屏的桌面场景有一条 14 秒循环的「镜头推近」动画（scale 1 ↔ 1.42）。
+         转场期间必须把它冻在当前帧：否则起飞位置和克隆背景会对不上，
+         回来时会看到笔电屏幕莫名变大、偏左。 */
+      const worldEl = hero.querySelector(".st-hero__world");
+      if (worldEl) worldEl.style.animationPlayState = "paused";
+      const worldTf = worldEl ? getComputedStyle(worldEl).transform : "";
+
+      const pageBg = (() => {
+        const c = getComputedStyle(document.body).backgroundColor;
+        return c && c !== "rgba(0, 0, 0, 0)" ? c : "#f7f6fa";
+      })();
+
+      const fly = document.createElement("div");
+      fly.className = "st-flow";
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;" +
+        "background:" + pageBg + ";perspective:1600px;perspective-origin:50% 50%;";
+
+      /* ① 01 的整页克隆（从下方升上来，最后一帧和真实页面完全重合） */
+      const bg = document.createElement("div");
+      bg.style.cssText =
+        "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+        "overflow:hidden;background:" + pageBg + ";will-change:transform;";
+      const bgInner = o1.cloneNode(true);
+      bgInner.removeAttribute("id");
+      bgInner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      bgInner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+      /* 左图保持正常显示：飞行卡片就压在它正上方，看不出双份；
+         等卡片淡出时下面正好是同一张图，接得住，不会露出空白。 */
+      bgInner.style.cssText = "position:absolute;left:0;top:0;width:" + vw + "px;margin:0;";
+      bg.appendChild(bgInner);
+      fly.appendChild(bg);
+
+      /* ② 首屏（书桌场景 + 文案），整体淡出 */
+      const deep = document.createElement("div");
+      deep.style.cssText =
+        "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+        "overflow:hidden;transform-origin:50% 46%;will-change:transform,opacity;";
+      const deepInner = hero.cloneNode(true);
+      deepInner.removeAttribute("id");
+      deepInner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      /* 克隆会把入场动画从头播一遍 —— 标题还在 delay 里是透明的，画面会缺一块。
+         所以把所有动画停在最终态；文案再额外确认一次透明度。 */
+      deepInner.querySelectorAll("*").forEach((n) => {
+        n.style.animation = "none";
+        n.style.transition = "none";
+      });
+      deepInner.querySelectorAll(".st-hero__copy > *").forEach((n) => {
+        n.style.opacity = "1";
+        n.style.transform = "none";
+      });
+      const deepWorld = deepInner.querySelector(".st-hero__world");
+      if (deepWorld) {
+        deepWorld.style.animation = "none";
+        if (worldTf && worldTf !== "none") deepWorld.style.transform = worldTf;
+      }
+      deepInner.style.cssText =
+        "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;margin:0;";
+      deep.appendChild(deepInner);
+      fly.appendChild(deep);
+
+      /* ③ 飞的那块：笔电屏幕里的界面（克隆，动画停掉，免得闪） */
+      const card = document.createElement("div");
+      card.style.cssText =
+        "position:absolute;left:" + from.l + "px;top:" + from.t + "px;" +
+        "width:" + from.w + "px;height:" + from.h + "px;overflow:hidden;background:#fff;" +
+        "transform-origin:50% 50%;will-change:transform,box-shadow,opacity;";
+      const lapClone = lap.cloneNode(true);
+      lapClone.removeAttribute("id");
+      lapClone.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      lapClone.querySelectorAll("*").forEach((n) => {
+        n.style.animation = "none";
+        n.style.transition = "none";
+      });
+      /* 界面按它自己的原始尺寸摆进来，再整体等比缩放铺满卡片（cover）：
+         直接写 100%×100% 会因为内部是固定高度的 flex，底部拉出一片空白。 */
+      const lw = lap.offsetWidth || 360;
+      const lh = lap.offsetHeight || 236;
+      lapClone.style.cssText =
+        "position:absolute;left:50%;top:50%;width:" + lw + "px;height:" + lh + "px;" +
+        "margin:0;transform-origin:50% 50%;transform:translate(-50%,-50%) scale(1);";
+      card.appendChild(lapClone);
+      /* 再叠一层真图：这段的后半程让界面「变成」那张截图。
+         笔电屏里是表单 + 卡片，01 左图是落地页截图，两者内容本来就不同，
+         直接整卡淡出会看到两个东西在叠；在卡片内部换掉就顺得多。 */
+      const shot = document.createElement("img");
+      shot.src = img1.getAttribute("src") || "";
+      shot.alt = "";
+      shot.style.cssText =
+        "position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;" +
+        "display:block;opacity:0;will-change:opacity;";
+      card.appendChild(shot);
+      fly.appendChild(card);
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1120;
+
+      const frame = (p) => {
+        const lift = es(cl(p / 0.22));              // 抬起
+        const move = es(cl((p - 0.06) / 0.52));     // 飞过去
+        const rise = es(cl((p - 0.14) / 0.58));     // 浅色页升上来
+        /* 卡片内部：界面 → 截图的替换。
+           ★ 必须是「先退一层、再进一层」，两段**不能重叠**：
+             重叠的话回退时两层同时半透明，卡片就透出下面的图，看着像鬼影。
+             中间留 0.02 的纯白，约 20ms，肉眼看不到。 */
+        const swapOut = es(cl((p - 0.54) / 0.10));   // 界面退
+        const swapIn = es(cl((p - 0.66) / 0.14));    // 截图进
+        // 整卡的收尾淡出，只留很薄的一段，交给真实图片接手
+        const fade = es(cl((p - 0.92) / 0.08));
+
+        const l = from.l + (to.l - from.l) * move;
+        const t = from.t + (to.t - from.t) * move;
+        const w = from.w + (to.w - from.w) * move;
+        const h = from.h + (to.h - from.h) * move;
+
+        /* 不做旋转：原屏幕在场景里是斜的（约 5°），但飞行卡片是正面的，
+           一转就和底图错开。改成「淡入 + 上抬 9px」，第一帧和首屏完全一致。 */
+        const lift2 = lift * (1 - move);
+        card.style.left = l.toFixed(1) + "px";
+        card.style.top = (t - 9 * lift2).toFixed(1) + "px";
+        card.style.width = w.toFixed(1) + "px";
+        card.style.height = h.toFixed(1) + "px";
+        card.style.transform = "none";
+        // 界面等比铺满卡片（cover），多出来的部分由卡片自己的 overflow 裁掉
+        const sc = Math.max(w / lw, h / lh);
+        lapClone.style.transform = "translate(-50%,-50%) scale(" + sc.toFixed(4) + ")";
+        lapClone.style.opacity = String(1 - swapOut);
+        card.style.borderRadius = (7 * (1 - move)).toFixed(1) + "px";
+        card.style.boxShadow =
+          "0 " + (30 * (1 - move) + 10).toFixed(0) + "px " +
+          (64 * (1 - move) + 28).toFixed(0) + "px rgba(4,10,12," +
+          (0.5 * (1 - move) + 0.16).toFixed(2) + ")";
+        card.style.opacity = String(cl(p / 0.08) * (1 - fade));
+        shot.style.opacity = String(swapIn);
+
+        // 深色场景淡出、轻微后退
+        const out = es(cl(p / 0.44));
+        deep.style.opacity = String(1 - out);
+        deep.style.transform = "scale(" + (1 + 0.04 * out).toFixed(4) + ")";
+
+        // 浅色页从下方升上来
+        bg.style.transform = "translate3d(0," + (vh * (1 - rise)).toFixed(1) + "px,0)";
+      };
+
+      morphing = true;
+      morphCtx = { fly, toY, world: worldEl };
+      frame(dir > 0 ? 0 : 1);
+
+      const t0 = performance.now();
+      let landed = false;
+
+      const tick = (now) => {
+        if (!morphCtx) return;
+        const k = Math.min(1, (now - t0) / T);
+        const p = dir > 0 ? k : 1 - k;
+        frame(p);
+
+        if (!landed && k >= 1) {
+          landed = true;
+          jump(toY);
+          morphClear();
+          lockUntil = performance.now() + 360;
+          lockDir = dir;
+          lockTo = clampY(toY);
+          // 交接后把首屏那份克隆留下的 visibility 清掉
+          const realLap = hero.querySelector(".st-screen--lap");
+          if (realLap) realLap.style.visibility = "";
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
       const y = window.scrollY;
@@ -201,6 +440,8 @@
         const next = sections[idx + 1];
         if (!next) return false;
         flipGid = gid;
+        // 首屏 → 01：笔电屏幕被抬起来落进左图
+        if (!cur && next === sections[0] && morphHero(1)) return true;
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -222,6 +463,8 @@
       const prev = idx > 0 ? sections[idx - 1] : hero;
       if (!prev) return false;
       flipGid = gid;
+      // 01 → 首屏：同一段倒放
+      if (cur === sections[0] && prev === hero && morphHero(-1)) return true;
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -240,6 +483,7 @@
     };
 
     const onWheel = (e) => {
+      if (morphing) { e.preventDefault(); return; }
       if (e.ctrlKey) return;
       if (e.target instanceof Element && inScroller(e.target)) return;
 
