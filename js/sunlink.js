@@ -216,7 +216,9 @@
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     /* --- 渲染器 --- */
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    /* preserveDrawingBuffer：07↔08 转场要把街景画面拍成静态图当牌面用，
+       否则 canvas 克隆到飞行层里是一块空白。这个场景是静态模型，代价可以接受。 */
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
@@ -912,6 +914,9 @@
     };
 
     const go = (top, dir) => {
+      /* 翻页前重量一次：3D 区块 / 字体是延迟撑开的，板块高度会在加载后变化，
+         拿旧高度当边界会把落点硬拽回去（08→07、09→08 就卡在这上面）。 */
+      measureRail();
       const target = clampY(top);
       lockUntil = performance.now() + LOCK_MS;
       lockDir = dir;
@@ -991,8 +996,16 @@
         if (f1 !== -9) railIdx = f1;
         return;
       }
-      const b = railEnds(railIdx);
+      let b = railEnds(railIdx);
       if (!b) { const f2 = fitRail(y); if (f2 !== -9) railIdx = f2; return; }
+      /* 越界先别急着拽回来：可能只是这一屏的高度在加载后变了。
+         重量一次再判断，避免拿旧边界把人反复拽回板块顶部。 */
+      if (y > b.end || y < b.top) {
+        measureRail();
+        b = railEnds(railIdx);
+        if (!b) return;
+        if (y >= b.top && y <= b.end) return;
+      }
       /* 越出本板块区间就拉回。这里故意「不认账」——
          只要落在别的板块区间里就接受，那惯性滚过去就成了一次翻页，
          用户要的「必须停手再滑」就白做了。换板块只能走 go / 转场 / 导航。 */
@@ -2518,6 +2531,170 @@
       return true;
     };
 
+    /* ---------- 07 ↔ 08：拎起一张牌，翻到另一张的后面（用户 2026-11-06） ----------
+       两张横着的扑克牌叠在一起：正向前牌（07）被拎起、微微倾斜，翻到后面那张（08）
+       的后面再落下，08 铺开成整屏；反向则是后面那张（08）被拎起来，落到前面那张（07）
+       的前面，然后 07 从后面铺开。
+       两个方向是同一套帧，只把「谁是主角」对调 —— 所以反向不是把动画倒着播，
+       而是一模一样的「拎起 → 倾斜 → 换位 → 落下」。 */
+    let liftCtx = null;
+
+    const liftClear = () => {
+      const c = liftCtx;
+      if (!c) return;
+      liftCtx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const liftBail = () => {
+      if (!liftCtx) return;
+      const y = liftCtx.targetY;
+      liftClear();
+      jump(y);
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(y);
+    };
+
+    const liftMorph = (dir) => {
+      if (morphing || liftCtx) return true;
+
+      const s7 = sections[6];   // circuit
+      const s8 = sections[7];   // model
+      if (!s7 || !s8) return false;
+
+      const land7 = Math.max(topOf(s7), endOf(s7));   // 07 比一屏高，从段底进
+      const land8 = Math.ceil(topOf(s8));             // 08 从顶边进
+      const to = dir > 0 ? s8 : s7;
+      const targetY = dir > 0 ? land8 : land7;
+
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s7.offsetWidth || cw, s8.offsetWidth || cw);
+      const vh = document.documentElement.clientHeight;
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+      const pageBg = getComputedStyle(document.body).backgroundColor;
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;" +
+        "background:" + (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa") + ";" +
+        "perspective:1800px;perspective-origin:50% 50%;";
+
+      const build = (sec, off) => {
+        const card = document.createElement("div");
+        card.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;border-radius:0;transform-origin:50% 50%;" +
+          "backface-visibility:hidden;will-change:transform,border-radius,box-shadow,opacity;";
+        const cs = getComputedStyle(sec);
+        card.style.background = cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)"
+          ? cs.backgroundColor : (pageBg || "#f7f6fa");
+
+        const inner = sec.cloneNode(true);
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("iframe").forEach((f) => {
+          const ph = document.createElement("div");
+          ph.style.cssText = "width:100%;height:100%;background:#16243a;";
+          f.parentNode.replaceChild(ph, f);
+        });
+        /* WebGL 画面克隆出来是空白的：把当前这一帧拍成静态图贴进去当牌面 */
+        inner.querySelectorAll("canvas").forEach((cv) => {
+          const img = document.createElement("img");
+          try { img.src = cv.toDataURL("image/png"); } catch (err) { /* 拿不到就留空 */ }
+          img.style.cssText = "width:100%;height:100%;display:block;";
+          cv.parentNode.replaceChild(img, cv);
+        });
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + off.toFixed(1) + "px;width:" + vw + "px;margin:0;";
+        card.appendChild(inner);
+        fly.appendChild(card);
+        return card;
+      };
+
+      /* mover = 被拎起来的那张；anchor = 留在原地、最后铺满屏幕的那张 */
+      const mover = build(dir > 0 ? s7 : s8, dir > 0 ? -(land7 - topOf(s7)) : 0);
+      const anchor = build(dir > 0 ? s8 : s7, dir > 0 ? 0 : -(land7 - topOf(s7)));
+      mover.style.zIndex = "3";
+      anchor.style.zIndex = "2";
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+
+      const T_JUMP = 1080;
+      const T_END = 1240;
+
+      const frame = (u) => {
+        const k1 = es(cl(u / 0.15));                 // ① 两张收成「牌」
+        const k2 = es(cl((u - 0.13) / 0.30));        // ② 主角被拎起、倾斜
+        const k3 = es(cl((u - 0.42) / 0.30));        // ③ 翻到另一张后面、落下
+        const k4 = es(cl((u - 0.72) / 0.28));        // ④ 留下的那张铺满屏幕
+
+        const sM = 1 - 0.062 * k1 + 0.022 * k2 - 0.072 * k3;
+        const tyM = -34 * k2 + 34 * k3;
+        const rotZ = -1.7 * k2 + 1.7 * k3;
+        const rotX = -7 * k2 + 7 * k3;
+        const tzM = -230 * k3;
+        mover.style.transform =
+          "translate3d(0," + tyM.toFixed(1) + "px," + tzM.toFixed(1) + "px) " +
+          "rotateX(" + rotX.toFixed(2) + "deg) rotateZ(" + rotZ.toFixed(2) + "deg) " +
+          "scale(" + sM.toFixed(4) + ")";
+        mover.style.borderRadius = (22 * k1).toFixed(1) + "px";
+        mover.style.boxShadow = k1 > 0.01
+          ? "0 " + (18 * k1).toFixed(0) + "px " + (54 * k1).toFixed(0) +
+            "px rgba(6,12,22," + (0.34 * k1).toFixed(3) + ")"
+          : "none";
+        mover.style.opacity = String(1 - k4);
+
+        const sA = 0.918 + 0.034 * k2 + 0.048 * k4;
+        const tzA = -110 + 60 * k3 + 50 * k4;
+        anchor.style.transform =
+          "translate3d(0,0," + tzA.toFixed(1) + "px) scale(" + sA.toFixed(4) + ")";
+        anchor.style.borderRadius = (22 * (1 - k4)).toFixed(1) + "px";
+        anchor.style.boxShadow = k4 < 0.99
+          ? "0 " + (16 * (1 - k4)).toFixed(0) + "px " + (50 * (1 - k4)).toFixed(0) +
+            "px rgba(6,12,22," + (0.30 * (1 - k4)).toFixed(3) + ")"
+          : "none";
+      };
+
+      morphing = true; morphStartedAt = performance.now();
+      liftCtx = { fly, to, targetY };
+      frame(0);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!liftCtx) return;
+        const t = ts - t0;
+        const raw = Math.min(t / T_JUMP, 1);
+        frame(raw);
+
+        if (!indexMoved && raw >= 0.68) {
+          indexMoved = true;
+          slIndexHold = dir > 0 ? 7 : 6;
+          if (slIndexSync) slIndexSync();
+        }
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(targetY);
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          lockTo = clampY(targetY);
+        }
+        if (t >= T_JUMP) fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        if (t < T_END) requestAnimationFrame(tick);
+        else liftClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
       if (morphing) return true;
 
@@ -2754,6 +2931,8 @@
         if (cur === sections[4]) return deckMorph(1);
         /* 06 → 07：整屏平移 */
         if (cur === sections[5]) return panMorph(1);
+        /* 07 → 08：拎起一张牌翻到后面 */
+        if (cur === sections[6]) return liftMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -2801,6 +2980,8 @@
       if (cur === sections[5]) return deckMorph(-1);
       /* 07 → 06：整屏平移回去 */
       if (cur === sections[6]) return panMorph(-1);
+      /* 08 → 07：后面那张被拎到前面 */
+      if (cur === sections[7]) return liftMorph(-1);
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -2826,7 +3007,7 @@
     /* 转场期间滚轮一律吞掉。但如果动画已经跑了 0.7 秒、用户还在往下拨，
        说明他等不及了 —— 直接快进到终点，别让人白滚十几下。 */
     const skipMorph = () => {
-      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail();
+      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail(); liftBail();
     };
 
     const onWheel = (e) => {
