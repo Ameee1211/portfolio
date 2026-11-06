@@ -588,6 +588,56 @@ function abArcPath(cx, cy, r, a0, a1, rot, n) {
   return d;
 }
 
+/* ------------------------------------------------------------
+   把一根圆弧按「弧长」摊平成直线（或反过来摊成圆弧）
+   ------------------------------------------------------------
+   用户 2026-11-06：02↔03 那个 C 变直线的时候会「扭一下、像编织」。
+   原因是原来拿「圆周上第 i 个采样点」直接直线插值到「竖线上第 i 个点」——
+   环是转过 540° 的，开口在右下，于是底部的点要飞到线顶端、右下的点要飞到线底端，
+   中间各点各走各的路，曲线必然在途中卷起来自交。
+
+   这里改成**几何变形**：每一帧曲线始终是一条圆弧（曲率从 1/R 连续降到 0、弧长连续变），
+   所以任何时刻都是一条不自交的简单曲线 —— 视觉上就是「弯的直接变直」。
+
+   状态 S = { x, y, t, k, l }：
+     x,y  曲线的中点
+     t    中点处的切向角（弧度）
+     k    曲率（1/半径；0 = 直线）
+     l    弧长
+   按弧长 s 取点（s 从 -l/2 到 +l/2）：
+     P(s) = M + (sin(s·k)/k)·T + ((1-cos(s·k))/k)·N
+   N = T 旋转 +90°（指向曲率中心）。k→0 时取极限 P(s) = M + s·T，避开除零。
+   ------------------------------------------------------------ */
+function abArcDeform(pathEl, A, B, p, n) {
+  const k = A.k + (B.k - A.k) * p;
+  const l = A.l + (B.l - A.l) * p;
+  const mx = A.x + (B.x - A.x) * p;
+  const my = A.y + (B.y - A.y) * p;
+  // 切向走最短的那一边，避免绕远路多转一圈
+  let dt = B.t - A.t;
+  while (dt > Math.PI) dt -= Math.PI * 2;
+  while (dt < -Math.PI) dt += Math.PI * 2;
+  const tn = A.t + dt * p;
+  const tx = Math.cos(tn), ty = Math.sin(tn);
+  const nx = -Math.sin(tn), ny = Math.cos(tn);
+  let d = "";
+  for (let s = 0; s < n; s++) {
+    const arc = (s / (n - 1) - 0.5) * l;
+    let ox, oy;
+    if (Math.abs(k) < 1e-4) {
+      ox = arc; oy = 0;
+    } else {
+      const th = arc * k;
+      ox = Math.sin(th) / k;
+      oy = (1 - Math.cos(th)) / k;
+    }
+    const px = mx + ox * tx + oy * nx;
+    const py = my + ox * ty + oy * ny;
+    d += (s ? "L" : "M") + px.toFixed(1) + " " + py.toFixed(1);
+  }
+  pathEl.setAttribute("d", d);
+}
+
 /* ============================================================
    01 → 02：正文三处高亮条聚成有缺口的圆，转成 GPA 环
    ------------------------------------------------------------
@@ -991,6 +1041,24 @@ function abInitEduExp() {
     const cx0 = window.innerWidth / 2;
     const cy0 = window.innerHeight / 2;
 
+    /* 变形两端的状态（见 abArcDeform）：屏幕中央那条 C ↔ 03 的竖线。
+       C 的中点角带上 SPIN —— 阶段 A 转完就是这个朝向，接着摊平才接得上。 */
+    const aMid = ((A0 + (A1 - A0) / 2 + SPIN) * Math.PI) / 180;
+    const ARC = {
+      x: cx0 + R_MID * Math.cos(aMid),
+      y: cy0 + R_MID * Math.sin(aMid),
+      t: aMid + Math.PI / 2,
+      k: 1 / R_MID,
+      l: (R_MID * Math.abs(A1 - A0) * Math.PI) / 180,
+    };
+    const LIN = {
+      x: dst.x,
+      y: dst.top + dst.h / 2,
+      t: Math.PI / 2,
+      k: 0,
+      l: dst.h,
+    };
+
     busy = true;
     gpa.dataset.peHidden = "1";
     gpa.style.opacity = "0";
@@ -1038,18 +1106,8 @@ function abInitEduExp() {
 
       const q = Math.min(1, (el - T_A) / T_B);
       const p = easeInOut(q);
-      const rot = SPIN;
-      let d = "";
-      for (let s = 0; s < SAMPLES; s++) {
-        const u = s / (SAMPLES - 1);
-        const ang = ((A0 + (A1 - A0) * u + rot) * Math.PI) / 180;
-        const ax = cx0 + R_MID * Math.cos(ang);
-        const ay = cy0 + R_MID * Math.sin(ang);
-        const bx = dst.x;
-        const by = dst.top + dst.h * u;
-        d += (s ? "L" : "M") + lerp(ax, bx, p).toFixed(1) + " " + lerp(ay, by, p).toFixed(1);
-      }
-      path.setAttribute("d", d);
+      // C 的两端直接被拉开、弯的变直（不再逐点飞向竖线，所以不会卷起来）
+      abArcDeform(path, ARC, LIN, p, SAMPLES);
       path.setAttribute("stroke-width", lerp(gW, 2, p).toFixed(1));
       s0.setAttribute("stop-color", mix(BLUE, LINE0, p));
       s1.setAttribute("stop-color", mix(PURPLE, LINE1, p));
@@ -1098,6 +1156,23 @@ function abInitEduExp() {
     const cx0 = window.innerWidth / 2;
     const cy0 = window.innerHeight / 2;
 
+    // 反向：竖线先「弯回去」变成 C，再转着缩回 GPA（顺序和正向正好相反）
+    const aMid = ((A0 + (A1 - A0) / 2 + SPIN) * Math.PI) / 180;
+    const ARC = {
+      x: cx0 + R_MID * Math.cos(aMid),
+      y: cy0 + R_MID * Math.sin(aMid),
+      t: aMid + Math.PI / 2,
+      k: 1 / R_MID,
+      l: (R_MID * Math.abs(A1 - A0) * Math.PI) / 180,
+    };
+    const LIN = {
+      x: src.x,
+      y: src.top + src.h / 2,
+      t: Math.PI / 2,
+      k: 0,
+      l: src.h,
+    };
+
     busy = true;
     gpa.dataset.peHidden = "1";
     gpa.style.opacity = "0";
@@ -1130,18 +1205,8 @@ function abInitEduExp() {
 
       if (el < T_A) {
         const p = easeInOut(el / T_A);
-        const rot = SPIN;
-        let d = "";
-        for (let s = 0; s < SAMPLES; s++) {
-          const u = s / (SAMPLES - 1);
-          const bx = src.x;
-          const by = src.top + src.h * u;
-          const ang = ((A0 + (A1 - A0) * u + rot) * Math.PI) / 180;
-          const ax = cx0 + R_MID * Math.cos(ang);
-          const ay = cy0 + R_MID * Math.sin(ang);
-          d += (s ? "L" : "M") + lerp(bx, ax, p).toFixed(1) + " " + lerp(by, ay, p).toFixed(1);
-        }
-        path.setAttribute("d", d);
+        // 竖线直接弯回成 C（和正向摊平同一套几何，方向反过来）
+        abArcDeform(path, LIN, ARC, p, SAMPLES);
         path.setAttribute("stroke-width", lerp(2, gW, p).toFixed(1));
         s0.setAttribute("stop-color", mix(LINE0, BLUE, p));
         s1.setAttribute("stop-color", mix(LINE1, PURPLE, p));
