@@ -700,6 +700,183 @@
       return true;
     };
 
+    /* ---------- 04 → 05：拖窄窗口，断点重排（用户 2026-11-07 选 A） ----------
+       把 04 的两张设计稿当成两个浏览器窗口：左边被拉宽展开成 Desktop 界面，
+       右边被压窄；窄过 1024 时停一下，那一瞬间右窗的内容从并排重排成单列。
+       背景白 → 淡青，标题正文从右侧淡入。**不加 1024 刻度线**（用户明确不要）。
+
+       ★ 只做正向。反向 05 → 04 用户指定普通整页上移，step 里不接这个分支。
+       ★ 04 高 1920，触发时停在段底（比顶多 1020px），所以两个窗口框按
+         「触发当下视口」起手、按「落位后视口」收尾，各自无缝。
+       ★ 断点停顿：进度 0.48~0.60 之间尺寸冻结 0.12×1500≈180ms，
+         右窗的换图正好放在停顿中间，看起来就是「重排发生了」。 */
+    let winCtx = null;
+
+    const winClear = () => {
+      const c = winCtx;
+      if (!c) return;
+      winCtx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+    };
+
+    const winBail = () => {
+      if (!winCtx) return;
+      const y = winCtx.toY;
+      winClear();
+      jump(y);
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(y);
+    };
+
+    const winMorph = () => {
+      if (morphing || winCtx) return true;
+      const s4 = sections[3];    // mockups
+      const s5 = sections[4];    // responsive
+      if (!s4 || !s5) return false;
+
+      const toY = Math.ceil(topOf(s5));
+      const nowY = window.scrollY;
+      const vh = document.documentElement.clientHeight;
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s4.offsetWidth || cw, s5.offsetWidth || cw);
+
+      const imgsA = [...s4.querySelectorAll(".st-mocks figure img")];
+      const imgsB = [...s5.querySelectorAll(".st-widths figure img")];
+      if (imgsA.length < 2 || imgsB.length < 2) return false;
+
+      // 文档坐标 → 指定 scrollY 下的视口坐标
+      const R = (el, base) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top + window.scrollY - base, w: r.width, h: r.height };
+      };
+      const B = imgsB.map((im) => R(im, toY));    // 落位后，05 顶部那两个图位
+      const srcA = imgsA.map((im) => im.getAttribute("src") || "");
+      const srcB = imgsB.map((im) => im.getAttribute("src") || "");
+      srcA.concat(srcB).forEach((u) => { const im = new Image(); im.src = u; });
+
+      /* ★ 两个窗口固定待在 05 的图区（屏幕下半），只做「左拉宽 / 右压窄」，
+         不再从 04 段底的位置一路扫下来 —— 那样会横穿并盖住 05 的标题和正文。
+         起点两个等宽，位置就用终点各自的 left / top，所以全程几乎不移动。 */
+      const START_W = Math.min(380, vw * 0.27);
+      const S = B.map((b) => ({ l: b.l, t: b.t, w: START_W, h: b.h }));
+
+      const fly = document.createElement("div");
+      fly.className = "st-flow";
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;background:#f7f6fa;";
+
+      /* ① 05 的淡青底，淡入盖掉白底 */
+      const bg = document.createElement("div");
+      bg.style.cssText =
+        "position:absolute;inset:0;background:linear-gradient(180deg,#eefafa 0%,#fbfdfd 100%);will-change:opacity;";
+      fly.appendChild(bg);
+
+      const layer = (sec, base, hideFigs) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;will-change:transform,opacity;";
+        const inner = sec.cloneNode(true);
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        // 05 那层的图由窗口框负责，这里只留占位，图注位置才不会动；
+        // 04 那层保留完整页面，第一帧才和真实页面完全一致。
+        if (hideFigs) {
+          inner.querySelectorAll("figure img").forEach((im) => { im.style.visibility = "hidden"; });
+        }
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + (topOf(sec) - base).toFixed(1) + "px;" +
+          "width:" + vw + "px;margin:0;background:transparent;";
+        box.appendChild(inner);
+        fly.appendChild(box);
+        return box;
+      };
+
+      /* ② 04 整页（含图，原地淡出）／ 05 的文字（从右侧淡入） */
+      const oldL = layer(s4, nowY, false);
+      const newL = layer(s5, toY, true);
+
+      /* ③ 两个窗口框：只装一张图，cover 裁切不拉伸 */
+      const windows = S.map((a, i) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;overflow:hidden;border-radius:10px;" +
+          "will-change:left,top,width,height;";
+        const im = document.createElement("img");
+        im.src = srcA[i];
+        im.alt = "";
+        im.style.cssText =
+          "width:100%;height:100%;object-fit:cover;object-position:left top;display:block;";
+        box.appendChild(im);
+        fly.appendChild(box);
+        return { box, im, isB: false };
+      });
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1500;
+
+      const frame = (p) => {
+        /* 拖宽度的进度：0.48~0.60 冻住，就是那个「断点」 */
+        const g = p < 0.48 ? (p / 0.48) * 0.52
+          : p < 0.60 ? 0.52
+          : 0.52 + ((p - 0.60) / 0.40) * 0.48;
+
+        bg.style.opacity = String(es(cl((p - 0.08) / 0.64)));
+        // 04 整页先退干净，两个窗口同时淡入接手；之后 05 文字再从右侧进来
+        oldL.style.opacity = String(1 - es(cl((p - 0.02) / 0.20)));
+        const appear = es(cl(p / 0.18));
+        const tIn = es(cl((p - 0.28) / 0.50));
+        newL.style.opacity = String(tIn);
+        newL.style.transform = "translateX(" + (26 * (1 - tIn)).toFixed(1) + "px)";
+
+        windows.forEach((w, i) => {
+          const a = S[i], b = B[i];
+          w.box.style.left = (a.l + (b.l - a.l) * g).toFixed(1) + "px";
+          w.box.style.top = (a.t + (b.t - a.t) * g).toFixed(1) + "px";
+          w.box.style.width = (a.w + (b.w - a.w) * g).toFixed(1) + "px";
+          w.box.style.height = (a.h + (b.h - a.h) * g).toFixed(1) + "px";
+          w.box.style.borderRadius = (10 - 4 * g).toFixed(1) + "px";
+          w.box.style.opacity = String(appear);
+          /* 换画：左窗拉宽过程中就展开成 Desktop；右窗等到断点停顿那一刻才重排成 Phone */
+          const wantB = p >= (i === 0 ? 0.30 : 0.54);
+          if (w.isB !== wantB) {
+            w.isB = wantB;
+            w.im.src = wantB ? srcB[i] : srcA[i];
+            w.im.style.objectPosition = "left top";
+          }
+        });
+      };
+
+      morphing = true;
+      winCtx = { fly, toY };
+      frame(0);
+
+      const t0 = performance.now();
+      let landed = false;
+      const tick = (now) => {
+        if (!winCtx) return;
+        const k = Math.min(1, (now - t0) / T);
+        frame(k);
+        if (!landed && k >= 1) {
+          landed = true;
+          jump(toY);
+          winClear();
+          lockUntil = performance.now() + 360;
+          lockDir = 1;
+          lockTo = clampY(toY);
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
       const y = window.scrollY;
@@ -729,8 +906,10 @@
         if (!cur && next === sections[0] && morphHero(1)) return true;
         // 01 → 02：02 整页被圆揭出来
         if (cur === sections[0] && next === sections[1] && circleMorph(1)) return true;
-        // 02 → 03：双板铰链
+        // 02 → 03：严格立方体转面
         if (cur === sections[1] && next === sections[2] && hingeMorph(1)) return true;
+        // 04 → 05：拖窄窗口，断点重排（反向 05 → 04 走普通整页上移，不接这里）
+        if (cur === sections[3] && next === sections[4] && winMorph()) return true;
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
