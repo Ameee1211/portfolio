@@ -971,12 +971,17 @@
     let dragging = false;     // 正在拖滚动条：放行，别跟用户抢
 
     const measureRail = () => {
-      bounds = sections.map((sec) => {
+      const last = sections.length - 1;
+      const max = maxScroll();
+      bounds = sections.map((sec, i) => {
         const t = topOf(sec);
         /* 顶边向上取整、底边向下取整 —— 都朝板块「里面」收，
            这样落位时宁可少滚半像素，也绝不把相邻板块漏出来一条边。 */
         const top = Math.ceil(t);
-        return { top: top, end: Math.max(top, endOf(sec)) };
+        /* ★ 最后一个板块例外：它的「段底」之后还有页脚和 next-project 卡片，
+           把边界卡在段底就永远滚不到最底部（用户 2026-11-06 报的就是这个）。
+           所以最后一个板块一直放到页面底部为止。 */
+        return { top: top, end: i === last ? Math.max(top, max) : Math.max(top, endOf(sec)) };
       });
     };
 
