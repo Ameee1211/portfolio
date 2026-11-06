@@ -551,20 +551,26 @@
       return true;
     };
 
-    /* ---------- 02 ↔ 03：双板铰链（用户 2026-11-07 选 A 的铰链版） ----------
-       两张整屏卡片绕各自的竖轴开合：当前页向后转开、往左后方退，下一页从右后方
-       转进来铺满。中间那一帧两面同框，浅青和墨绿同时可见，边缘在画面中间相遇，
-       看起来就是一本打开的书 / 两扇门，不需要真的做一个立方体，也不会露空白。
+    /* ---------- 02 ↔ 03：严格立方体转面 90°（用户 2026-11-07 改版） ----------
+       ★ 上一版是「两张整屏卡各自转一点 + 中线分割」，用户嫌看不出是立方体，推翻。
+         这一版是真的做一个盒子：02 贴正面、03 贴右侧面，整个 cube 绕竖轴
+         rotateY(0 → -90°)。45° 时两个面以透视角度同时可见、中间是立方体的前右棱，
+         转完右侧面正对铺满 —— 这才是「看得出来是立方体在转」。
 
-       ★ 反向不是倒放：两个方向跑的是**同一套 frame(u)，u 都从 0 走到 1**，
-         只把「谁是被转开的、谁是转进来的」对调（和 07↔08 拎牌同一个思路）。
+       几何：深度取 vw（两个面都是 vw×vh），半边长 D = vw/2。
+         front  = translateZ(D)
+         right  = rotateY(90deg) translateZ(D)
+         cube   = translateZ(-D) rotateY(-90deg·u)
+       前面的 translateZ(-D) 是必须的：否则 front 面净 Z = +D，会被 perspective 放大到
+       撑破屏幕。减掉之后 front 净 Z = 0，转完 right 面净 Z 也 = 0，两个面都正好铺满。
 
-       ★ 02 比一屏高 770px，触发正向时用户停在 02 段底，不是顶部。
-         所以 outgoing 那块卡必须按「触发当下视口里 section 顶的位置」摆放，
-         incoming 按「落位后视口里 section 顶的位置」摆放，两者基准不同但各自无缝。
+       left / back 两个面补成纯色，让盒子是实心的；上下不补（视线水平看不到）。
+       两个可见面按角度做 brightness 变化（转走的变暗、转进来的变亮），模拟光照。
 
-       ★ 03 的内嵌 App 是点击 Load the app 之后才创建 iframe 的。
-         如果用户已经点开过，克隆里的 iframe 会重新加载并闪一下 —— 换成同色空板。 */
+       ★ 反向不是倒放：两个方向都是 cube 向右转 90°，只把 front/right 上贴的页面对调。
+       ★ 02 比一屏高 770px，触发正向时停在 02 段底，所以 front 的内容按「当下视口」摆，
+         right 的内容按「落位后的视口」摆，各自无缝。
+       ★ 03 的 iframe 是点 Load the app 之后才建的；克隆会重载并闪，换成同色空板。 */
     let hingeCtx = null;
 
     const hingeClear = () => {
@@ -598,8 +604,7 @@
       const cw = document.documentElement.clientWidth;
       const vw = Math.min(cw, s2.offsetWidth || cw, s3.offsetWidth || cw);
       const nowY = window.scrollY;
-
-      // 容器底色跟着「即将到来的那一页」走，转开时露出的缝就是它的颜色
+      const D = vw / 2;
       const boxBg = dir > 0 ? "#0c2426" : "#eefafa";
 
       const fly = document.createElement("div");
@@ -607,35 +612,48 @@
       fly.style.cssText =
         "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;" +
         "background:" + boxBg + ";" +
-        "perspective:1700px;perspective-origin:50% 50%;";
+        "perspective:1600px;perspective-origin:50% 50%;";
 
-      const card = (sec, off) => {
+      const cube = document.createElement("div");
+      cube.style.cssText =
+        "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+        "transform-style:preserve-3d;will-change:transform;";
+      fly.appendChild(cube);
+
+      const face = (sec, off, tf, bg) => {
         const box = document.createElement("div");
         box.style.cssText =
           "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
-          "overflow:hidden;transform-origin:50% 50%;backface-visibility:hidden;" +
-          "will-change:transform,opacity;";
-        const inner = sec.cloneNode(true);
-        inner.removeAttribute("id");
-        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
-        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
-        inner.querySelectorAll("iframe").forEach((f) => {
-          const ph = document.createElement("div");
-          ph.style.cssText = "width:100%;height:100%;background:#0D1A2B;";
-          if (f.parentNode) f.parentNode.replaceChild(ph, f);
-        });
-        inner.style.cssText =
-          "position:absolute;left:0;top:" + off.toFixed(1) + "px;width:" + vw + "px;margin:0;";
-        box.appendChild(inner);
-        fly.appendChild(box);
+          "overflow:hidden;backface-visibility:hidden;transform:" + tf + ";" +
+          (bg ? "background:" + bg + ";" : "");
+        if (sec) {
+          const inner = sec.cloneNode(true);
+          inner.removeAttribute("id");
+          inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+          inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+          inner.querySelectorAll("iframe").forEach((f) => {
+            const ph = document.createElement("div");
+            ph.style.cssText = "width:100%;height:100%;background:#0D1A2B;";
+            if (f.parentNode) f.parentNode.replaceChild(ph, f);
+          });
+          inner.style.cssText =
+            "position:absolute;left:0;top:" + off.toFixed(1) + "px;width:" + vw + "px;margin:0;";
+          box.appendChild(inner);
+        }
+        cube.appendChild(box);
         return box;
       };
 
-      // outgoing 用「当下视口」，incoming 用「落位后的视口」
-      const out = card(src, topOf(src) - nowY);
-      const inn = card(dst, topOf(dst) - toY);
+      // 正面 = 当前页（按触发当下视口摆），右面 = 下一页（按落位后视口摆）
+      const front = face(src, topOf(src) - nowY, "translateZ(" + D.toFixed(1) + "px)");
+      const right = face(dst, topOf(dst) - toY,
+        "rotateY(90deg) translateZ(" + D.toFixed(1) + "px)");
+      // 补两个纯色面，让盒子实心；转到一半不会从侧面透出背景
+      const sideA = dir > 0 ? "#0a1e20" : "#d8eeee";
+      const sideB = dir > 0 ? "#081a1c" : "#d0eaea";
+      face(null, 0, "rotateY(-90deg) translateZ(" + D.toFixed(1) + "px)", sideA);
+      face(null, 0, "rotateY(180deg) translateZ(" + D.toFixed(1) + "px)", sideB);
 
-      // 终点那页的图先要过来，免得转进来时还是空的
       [...dst.querySelectorAll("img")].forEach((im) => {
         const pre = new Image();
         pre.src = im.getAttribute("src") || "";
@@ -646,26 +664,14 @@
       const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
       const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
       const T = 1500;
-      const TURN = 55;          // 最大转角（度）
 
-      /* ★ 两张整屏卡如果直接叠着转，上面那张会把下面那张盖住，看起来只是
-         「一张斜卡盖过来」，不像两扇门同时打开。所以用屏幕中线当铰链，把可见
-         区域切开：左半永远是当前页、右半永远是下一页。
-         clip-path 的百分比是相对卡片自身（整屏），所以 50% 正好是中央轴；
-         裁剪边界会跟着 rotateY 一起透视变形，两块在中线处始终严丝合缝。
-           a=0   左页全屏可见、正对；右页完全裁掉
-           a=0.5 左页只露左半、右页只露右半，各转 ±27.5°
-           a=1   左页完全裁掉；右页全屏可见、正对
-         两个方向都跑这套 frame，只是把 out / inn 换成不同的页面。 */
       const frame = (u) => {
         const a = es(cl(u));
-        const b = 1 - a;
-        out.style.transform =
-          "rotateY(" + (-TURN * a).toFixed(2) + "deg) scale(" + (1 - 0.06 * a).toFixed(4) + ")";
-        out.style.clipPath = "inset(0 " + (100 * a).toFixed(2) + "% 0 0)";
-        inn.style.transform =
-          "rotateY(" + (TURN * b).toFixed(2) + "deg) scale(" + (1 - 0.06 * b).toFixed(4) + ")";
-        inn.style.clipPath = "inset(0 0 0 " + (100 * b).toFixed(2) + "%)";
+        cube.style.transform =
+          "translateZ(" + (-D).toFixed(1) + "px) rotateY(" + (-90 * a).toFixed(2) + "deg)";
+        // 光照：转走的正面变暗，转进来的右面变亮，两个面才有「不同朝向」的感觉
+        front.style.filter = "brightness(" + (1 - 0.34 * a).toFixed(3) + ")";
+        right.style.filter = "brightness(" + (0.66 + 0.34 * a).toFixed(3) + ")";
       };
 
       morphing = true;
@@ -677,7 +683,7 @@
       const tick = (now) => {
         if (!hingeCtx) return;
         const k = Math.min(1, (now - t0) / T);
-        // 两个方向都从 0 走到 1：不是倒放，是同一套动作换个主角
+        // 两个方向都从 0 转到 -90°：不是倒放，是同一个动作换主角
         frame(k);
         if (!landed && k >= 1) {
           landed = true;
