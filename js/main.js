@@ -2065,12 +2065,22 @@ function initHomeScenes() {
     { at: TL.skills, rev: TL.skills - 0.14 },
     { at: TL.btn, rev: TL.btn - 0.14 },
   ];
-  const STEP_GAP = 250;     // 一格间隔超过它就算手停了，下面算新手势
-  let stLastAt = 0;
-  let stSpent = 0;          // 这一串已经推进过了（存时间戳，0 = 没推进过）
-  let stSpentDir = 0;
+  /* ★ 二次修（用户反馈「还是能一下冲到 Projects」）：
+     上一版用「两格之间的间隔 > 250ms 就算停手」。真实鼠标拨轮的节奏并不均匀，
+     一串猛滑常见 200 / 300 / 180 / 400ms，中间只要有一格超过 250ms，下一格就被
+     当成「停手之后的新一次」，于是照样一下冲过去。
+     现在只认**最后一只滚轮之后安静了多久**：每次按住都把手里的期限往后推 520ms，
+     只要手还在拨（哪怕一格 400ms）就一直按住；真正停手半秒以上，第一次滚动才放行。
+     另加两个保险：① 25 格兜底，绝不锁死；② 位置守卫 —— 按住期间万一被惯性 /
+     合成器合并的滚动推走了，直接拉回节点上。 */
+  const HOLD_MS = 520;        // 最后一只滚轮之后要安静这么久，才算「停手」
+  const HOLD_MAX_MS = 8000;   // 单次按住最长 8 秒（兜底）：1~4 秒的猛滑都能按满，异常情况也不会卡死人
+  let holdUntil = 0;          // 到期时间；0 = 没在按住
+  let holdY = 0;              // 按住时应该停住的位置（px）
+  let holdDir = 0;
+  let holdStart = 0;
 
-  // 落到节点上：time轴是纯几何的，不能带平滑滚动，否则会从节点上飘过去
+  // 落到节点上：时间轴是纯几何的，不能带平滑滚动，否则会从节点上飘过去
   const parkAt = (y) => {
     const root = document.documentElement;
     const prev = root.style.scrollBehavior;
@@ -2079,43 +2089,70 @@ function initHomeScenes() {
     root.style.scrollBehavior = prev;
   };
 
+  const startHold = (y, dir, now) => {
+    holdY = Math.round(y);
+    holdDir = dir;
+    holdStart = now;
+    holdUntil = now + HOLD_MS;
+    parkAt(holdY);
+  };
+  const clearHold = () => { holdUntil = 0; holdY = 0; holdDir = 0; holdStart = 0; };
+
+  /* 位置守卫：按住期间只允许待在节点上。
+     惯性滚动、浏览器合并后的滚动、滚动链这些都可能绕过 wheel 事件，
+     光靠滚轮拦截补不齐，所以再看一眼位置。 */
+  const onHoldScroll = () => {
+    if (!holdUntil) return;
+    if (performance.now() >= holdUntil) { clearHold(); return; }
+    const y = window.scrollY;
+    if (holdDir > 0 ? y > holdY + 2 : y < holdY - 2) parkAt(holdY);
+  };
+  window.addEventListener("scroll", onHoldScroll, { passive: true });
+
   const onStepWheel = (e) => {
-    if (playing) return;                  // 自动播放中：blockInput 已经在吞
+    if (playing) { clearHold(); return; }      // 自动播放中：blockInput 已经在吞
     if (e.ctrlKey) return;
     const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     if (!d) return;
 
     const now = performance.now();
-    const gap = stLastAt ? now - stLastAt : 1e9;
-    stLastAt = now;
-    if (gap > STEP_GAP) stSpent = 0;      // 停手够久 = 新手势
-
     const vh = window.innerHeight || 1;
     const y = window.scrollY;
     const t0 = y / vh;
+    const dir = d > 0 ? 1 : -1;
+
+    /* ① 还在「按住」状态里：手没停够，同方向一律按住，并把期限往后推 */
+    if (holdUntil) {
+      if (now >= holdUntil) {
+        clearHold();                            // 安静够了：这一次是「新的一次」，放行
+      } else if (dir !== holdDir) {
+        clearHold();                            // 中途反向：立刻放行
+      } else if (now - holdStart < HOLD_MAX_MS) {
+        holdUntil = now + HOLD_MS;              // 手还在拨：续命
+        e.preventDefault();
+        if (holdDir > 0 ? y > holdY + 2 : y < holdY - 2) parkAt(holdY);
+        return;
+      } else {
+        clearHold();                            // 兜底：按了 2.5 秒还没停手，放行一次
+      }
+    }
+
     // 已经进了翻牌转场（≈3.07 屏）：交给 onScroll 里的 playForward，这里不碰
     if (y >= (TL.morphA - 0.03) * vh) return;
 
-    const dir = d > 0 ? 1 : -1;
-    if (stSpent) {
-      if (dir !== stSpentDir) stSpent = 0;        // 同一串里中途反向：放行
-      else { e.preventDefault(); return; }        // 同一串剩下的格：吞掉
-    }
-
-    /* 已经站在「按钮屏」上，再往下滑一格的意图就是进转场。
+    /* ② 已经站在「按钮屏」上，再往下滑一格的意图就是进转场。
        否则还得再攒 0.35 屏（约三格）才有反应，用户会觉得「滑了没动」 */
     if (dir > 0 && t0 >= TL.btn - 0.02) {
       e.preventDefault();
-      stSpent = now; stSpentDir = 1;
+      startHold(TL.btn * vh, 1, now);
       playForward();
       return;
     }
 
-    /* 这一格会跨过哪个节点？跨过就截停在节点上，并吃掉这一串剩下的格。
-       ★ 判据必须按**像素**算、并且留 6px 容差：落位后实际位置和节点常常差
-         零点几像素（浏览器高精度滚动、滚轮自带的平滑动画都会造成），用 0.001 屏
-         （≈0.8px）当容差的话，同一格会被反复判成「跨过同一个节点」，每格都重新
-         截停又被覆盖，结果就是彻底滚不动 —— 1366×768 上就是死在这。 */
+    /* ③ 这一格会跨过哪个节点？跨过就截停在节点上，并按住这一串剩下的格。
+       ★ 判据按**像素**算、留 6px 容差：落位后实际位置和节点常差零点几像素
+         （高精度滚动、滚轮自带的平滑动画都会造成），容差太小的话同一格会被
+         反复判成「跨过同一个节点」，每格都截停又被覆盖 —— 1366×768 上死在这。 */
     const y1 = y + d;
     const TOL = 6;
     let hitY = null;
@@ -2130,8 +2167,7 @@ function initHomeScenes() {
     if (hitY === null) return;            // 没跨节点：正常滚，保留原来的连贯手感
 
     e.preventDefault();
-    stSpent = now; stSpentDir = dir;
-    parkAt(hitY);
+    startHold(hitY, dir, now);
   };
   window.addEventListener("wheel", onStepWheel, { passive: false });
 
