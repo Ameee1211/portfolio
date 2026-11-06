@@ -932,6 +932,269 @@
       return true;
     };
 
+    /* ---------- 05 ↔ 06：索引游标接力 + 编号块换字（用户 2026-11-07 选方案 A） ----------
+       这两屏唯一共有的、且不是图片框的元素是「编号系统」：
+         · 左侧 .st-index 01–07 的 .st-index__num（22×16 方角 / Consolas）
+         · 标题上方 .st-eyebrow__no（30×21 方角 / Consolas，同一套青底白字）
+       左侧索引是 fixed 常驻，两屏都在同一位置 —— 所以拿它当锚点，不用飞行层硬接。
+
+       正向：游标沿竖轨从 05 行滑到 06 行 → 到位的 06 那格「弹出」一个放大的
+             06 编号块，飞到 06 标题上方落位 → 06 文字逐组从右往左归位。
+       反向：06 编号块缩小飞回索引 06 那格 → 游标从 06 行滑回 05 行 →
+             05 内容从下往上带回。不是倒放，是同一套动作换主角。
+       ★ 05 的两张图、四格清单、06 的两张 step 卡全程只随整页淡入淡出，不参与变形。
+       ★ 背景不用帘子（04↔05 已用过）：05 淡青渐变整层 → 06 白底整层交叉淡化。
+       ★ .st-index 在 max-width:1179px 时 display:none，此时降级为普通整页移动。
+       ★ 索引 z-index:60 高于飞行层 40，所以游标单独放在 z-index:70 的 overlay 里。 */
+    let m56Ctx = null;
+
+    const m56Clear = () => {
+      const c = m56Ctx;
+      if (!c) return;
+      m56Ctx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+      if (c.overlay.parentNode) c.overlay.remove();
+    };
+
+    const m56Bail = () => {
+      if (!m56Ctx) return;
+      const y = m56Ctx.toY;
+      m56Clear();
+      jump(y);
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(y);
+    };
+
+    const morph56 = (dir) => {
+      if (morphing || m56Ctx) return true;
+      const s5 = sections[4];    // responsive
+      const s6 = sections[5];   // built
+      if (!s5 || !s6) return false;
+
+      /* 索引不可见（1024–1179 的窄桌面）就别做这套了，交给默认整页移动 */
+      const rail = document.querySelector(".st-index");
+      if (!rail || getComputedStyle(rail).display === "none") return false;
+      const items = [...rail.querySelectorAll(".st-index__item")];
+      if (items.length < 6) return false;
+      const n5el = items[4].querySelector(".st-index__num");
+      const n6el = items[5].querySelector(".st-index__num");
+      const chipEl = s6.querySelector(".st-eyebrow__no");
+      if (!n5el || !n6el || !chipEl) return false;
+
+      const yB = Math.ceil(topOf(s6));                       // 06 顶部视图
+      const yA = dir > 0 ? window.scrollY : endOf(s5);          // 05 段底视图
+      const toY = dir > 0 ? yB : yA;
+      const vh = document.documentElement.clientHeight;
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s5.offsetWidth || cw, s6.offsetWidth || cw);
+
+      // 文档坐标 → 指定 scrollY 下的视口坐标（section 内的元素）
+      const R = (el, base) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top + window.scrollY - base, w: r.width, h: r.height };
+      };
+      // ★ 索引是 fixed：它的 rect 本来就是视口坐标，绝不能加减 scrollY，
+      //   否则正向触发时（scrollY=yA，落位=yB，差 900px）游标会飞到屏幕外。
+      const F = (el) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top, w: r.width, h: r.height };
+      };
+      const n5 = F(n5el);
+      const n6 = F(n6el);
+      const chipEnd = R(chipEl, yB);   // 06 编号块在「06 顶部视图」里的落位
+
+      // 飞行层里两张截图的 lazy 加载要提前拉过来
+      [...s5.querySelectorAll("img"), ...s6.querySelectorAll("img")]
+        .forEach((im) => { const pre = new Image(); pre.src = im.getAttribute("src") || ""; });
+
+      const bodyBg = (() => {
+        const page = document.querySelector(".st-page") || document.body;
+        const c = getComputedStyle(page).backgroundColor;
+        return c && c !== "rgba(0, 0, 0, 0)" ? c : "#f7f6fa";
+      })();
+
+      const fly = document.createElement("div");
+      fly.className = "st-flow";
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;background:" + bodyBg + ";";
+
+      /* ① 背景：05 的淡青渐变按 section 真实高度 / A 视图位置铺，
+            06 的白底整层交叉淡化盖上去（不做有方向的帘子）。 */
+      const bgA = document.createElement("div");
+      bgA.style.cssText =
+        "position:absolute;left:0;top:" + (topOf(s5) - yA).toFixed(1) + "px;" +
+        "width:" + cw + "px;height:" + s5.offsetHeight + "px;" +
+        "background:linear-gradient(180deg,#eefafa 0%,#fbfdfd 100%);";
+      fly.appendChild(bgA);
+      const bgB = document.createElement("div");
+      bgB.style.cssText = "position:absolute;inset:0;background:" + bodyBg + ";will-change:opacity;";
+      fly.appendChild(bgB);
+
+      /* ② 两层文字：编号块先藏起来（保留占位），交给飞行 chip 落在原位 */
+      const layer = (sec, base) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;will-change:transform,opacity;";
+        const inner = sec.cloneNode(true);
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        /* ★ 06 的编号块不隐藏：它随 eyebrow 那一组一起淡入，飞行 chip 到位时
+             正好和它重合（同尺寸同色），交接那一下看不出是两个。
+             如果藏掉，中途标题上方会空一块，版式像缺了东西。 */
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + (topOf(sec) - base).toFixed(1) + "px;" +
+          "width:" + vw + "px;margin:0;background:transparent;";
+        box.appendChild(inner);
+        fly.appendChild(box);
+        return { box, wrap: inner.querySelector(".st-wrap") };
+      };
+      const A = layer(s5, yA);
+      const B = layer(s6, yB);
+      const groups = B.wrap ? [...B.wrap.children] : [];
+      /* ★ eyebrow 这一组只让 label 文字淡入，编号块单独摘出来：
+         它要等飞行 chip 落到位才接手，中途标题上方空着但空中有一块在飞，
+         才是「编号块被送过来」而不是「同时出现两个 06」。 */
+      const chipStatic = B.wrap ? B.wrap.querySelector(".st-eyebrow__no") : null;
+      if (groups.length && groups[0].querySelector) {
+        const lab = groups[0].querySelector(".st-eyebrow__label");
+        if (lab) groups[0] = lab;
+      }
+      if (chipStatic) chipStatic.style.opacity = "0";
+
+      document.body.appendChild(fly);
+
+      /* ③ 游标 + 编号块单独放 overlay（z 70 > 索引 60），盖住真实索引的编号格 */
+      const overlay = document.createElement("div");
+      overlay.className = "st-flow-overlay";
+      overlay.style.cssText =
+        "position:fixed;inset:0;z-index:70;overflow:hidden;pointer-events:none;";
+      const teal = (getComputedStyle(document.documentElement)
+        .getPropertyValue("--st-teal-deep") || "").trim() || "#1b9494";
+      const numStyle =
+        "position:absolute;box-sizing:border-box;border-radius:2px;" +
+        "background:" + teal + ";border:1px solid " + teal + ";" +
+        "color:#ffffff;font-family:Consolas,'Courier New',monospace;font-size:11px;" +
+        "font-weight:400;letter-spacing:0;display:flex;align-items:center;justify-content:center;";
+      const cursor = document.createElement("div");
+      cursor.style.cssText = numStyle +
+        "left:" + n5.l.toFixed(1) + "px;width:" + n5.w.toFixed(1) + "px;height:" + n5.h.toFixed(1) + "px;" +
+        "will-change:top;";
+      cursor.textContent = "05";
+      overlay.appendChild(cursor);
+
+      const chip = document.createElement("div");
+      chip.style.cssText =
+        "position:absolute;box-sizing:border-box;width:" + chipEnd.w.toFixed(1) + "px;" +
+        "height:" + chipEnd.h.toFixed(1) + "px;left:" + chipEnd.l.toFixed(1) + "px;" +
+        "top:" + chipEnd.t.toFixed(1) + "px;border-radius:2px;background:" + teal + ";color:#ffffff;" +
+        "font-family:Consolas,'Courier New',monospace;font-size:12px;font-weight:400;" +
+        "display:flex;align-items:center;justify-content:center;" +
+        "transform-origin:0 0;will-change:transform,opacity;";
+      chip.textContent = "06";
+      overlay.appendChild(chip);
+      document.body.appendChild(overlay);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1500;
+      const scale0 = Math.min(n6.w / chipEnd.w, n6.h / chipEnd.h);
+      /* 编号块的飞行路径是二次贝塞尔：起点 = 索引 06 那格，控制点 = 同一条竖线上、
+         与标题同高的位置，终点 = 06 标题上方。所以它是「先沿索引栏往上跑，再拐进标题」，
+         不会像直线那样横穿 step 卡和标题。 */
+      const p0x = n6.l, p0y = n6.t, p1y = chipEnd.t, p2x = chipEnd.l;
+
+      /* 索引的高亮/已读状态在中点跟着游标换一次；label 有 0.3s 颜色过渡，
+         所以不会突然跳字。jump 之后 sync() 会设成同样的值，落位无缝。 */
+      let railIdx = -1;
+      const setRail = (i) => {
+        if (railIdx === i) return;
+        railIdx = i;
+        items.forEach((it, k) => {
+          it.classList.toggle("is-active", k === i);
+          it.classList.toggle("is-past", k < i);
+        });
+      };
+
+      const frame = (p) => {
+        const fwd = dir > 0;
+
+        /* 背景：05 淡青 ↔ 06 白，整层交叉淡化 */
+        bgB.style.opacity = String(fwd
+          ? es(cl((p - 0.06) / 0.56))
+          : 1 - es(cl((p - 0.10) / 0.62)));
+
+        /* 文字：正向 05 整层淡出 / 06 逐组从右归位；
+           反向 06 逐组朝右淡出 / 05 整层从下往上带回 */
+        if (fwd) {
+          A.box.style.opacity = String(1 - es(cl((p - 0.02) / 0.28)));
+          A.box.style.transform = "translateX(0px)";
+        } else {
+          const gA = es(cl((p - 0.44) / 0.50));
+          A.box.style.opacity = String(gA);
+          A.box.style.transform = "translateY(" + (24 * (1 - gA)).toFixed(1) + "px)";
+        }
+        groups.forEach((el, i) => {
+          const g = fwd
+            ? es(cl((p - 0.28 - i * 0.05) / 0.36))
+            : 1 - es(cl((p - 0.02 - i * 0.035) / 0.28));
+          el.style.opacity = String(g);
+          el.style.transform = "translateX(" + (26 * (1 - g)).toFixed(1) + "px)";
+        });
+
+        /* 游标：正向 05 行 → 06 行；反向 06 行 → 05 行（同一套动作换主角） */
+        const cu = fwd ? es(cl((p - 0.02) / 0.24)) : es(cl((p - 0.40) / 0.46));
+        const from = fwd ? n5 : n6, dest = fwd ? n6 : n5;
+        cursor.style.top = (from.t + (dest.t - from.t) * cu).toFixed(1) + "px";
+        cursor.textContent = cu < 0.5 ? (fwd ? "05" : "06") : (fwd ? "06" : "05");
+        setRail(cu >= 0.92 ? (fwd ? 5 : 4) : (fwd ? 4 : 5));
+
+        /* 编号块：正向从索引 06 那格放大飞到标题上方；反向缩小飞回索引 06 那格。
+           落位那一小段里，静态编号块淡入接手、飞行块淡出，两者坐标完全重合。 */
+        const f = fwd ? es(cl((p - 0.24) / 0.42)) : 1 - es(cl(p / 0.42));
+        const u = 1 - f;
+        const px = (u * u + 2 * u * f) * p0x + f * f * p2x;
+        const py = u * u * p0y + (2 * u * f + f * f) * p1y;
+        chip.style.transform =
+          "translate(" + (px - p2x).toFixed(1) + "px," + (py - p1y).toFixed(1) + "px) " +
+          "scale(" + (scale0 + (1 - scale0) * f).toFixed(3) + ")";
+        const arrive = fwd
+          ? es(cl((p - 0.56) / 0.24))
+          : 1 - es(cl((p - 0.04) / 0.24));
+        if (chipStatic) chipStatic.style.opacity = String(arrive);
+        chip.style.opacity = String(fwd
+          ? es(cl((p - 0.24) / 0.10)) * (1 - es(cl((p - 0.56) / 0.24)))
+          : (1 - es(cl((p - 0.28) / 0.14))) * (1 - arrive));
+      };
+
+      morphing = true;
+      m56Ctx = { fly, overlay, toY };
+      /* 两个方向都是 p:0 → 1，frame() 内部按 dir 排顺序 —— 反向不是倒放 */
+      frame(0);
+
+      const t0 = performance.now();
+      let landed = false;
+      const tick = (now) => {
+        if (!m56Ctx) return;
+        const k = Math.min(1, (now - t0) / T);
+        frame(k);
+        if (!landed && k >= 1) {
+          landed = true;
+          jump(toY);
+          m56Clear();
+          lockUntil = performance.now() + 360;
+          lockDir = dir;
+          lockTo = clampY(toY);
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
       const y = window.scrollY;
@@ -965,6 +1228,8 @@
         if (cur === sections[1] && next === sections[2] && hingeMorph(1)) return true;
         // 04 → 05：两个图框直接变形 + 背景帘子从左往右
         if (cur === sections[3] && next === sections[4] && morph45(1)) return true;
+        // 05 → 06：索引游标下滑一格 + 06 编号块弹出飞到标题上方
+        if (cur === sections[4] && next === sections[5] && morph56(1)) return true;
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -994,6 +1259,8 @@
       if (cur === sections[2] && prev === sections[1] && hingeMorph(-1)) return true;
       // 05 → 04：帘子从右往左、05 文字朝右淡出、图框变形回 04、04 文字从下往上
       if (cur === sections[4] && prev === sections[3] && morph45(-1)) return true;
+      // 06 → 05：06 编号块缩回索引、游标滑回 05 行、05 内容从下往上带回
+      if (cur === sections[5] && prev === sections[4] && morph56(-1)) return true;
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
