@@ -551,6 +551,149 @@
       return true;
     };
 
+    /* ---------- 02 ↔ 03：双板铰链（用户 2026-11-07 选 A 的铰链版） ----------
+       两张整屏卡片绕各自的竖轴开合：当前页向后转开、往左后方退，下一页从右后方
+       转进来铺满。中间那一帧两面同框，浅青和墨绿同时可见，边缘在画面中间相遇，
+       看起来就是一本打开的书 / 两扇门，不需要真的做一个立方体，也不会露空白。
+
+       ★ 反向不是倒放：两个方向跑的是**同一套 frame(u)，u 都从 0 走到 1**，
+         只把「谁是被转开的、谁是转进来的」对调（和 07↔08 拎牌同一个思路）。
+
+       ★ 02 比一屏高 770px，触发正向时用户停在 02 段底，不是顶部。
+         所以 outgoing 那块卡必须按「触发当下视口里 section 顶的位置」摆放，
+         incoming 按「落位后视口里 section 顶的位置」摆放，两者基准不同但各自无缝。
+
+       ★ 03 的内嵌 App 是点击 Load the app 之后才创建 iframe 的。
+         如果用户已经点开过，克隆里的 iframe 会重新加载并闪一下 —— 换成同色空板。 */
+    let hingeCtx = null;
+
+    const hingeClear = () => {
+      const c = hingeCtx;
+      if (!c) return;
+      hingeCtx = null;
+      morphing = false;
+      if (c.fly.parentNode) c.fly.remove();
+    };
+
+    const hingeBail = () => {
+      if (!hingeCtx) return;
+      const y = hingeCtx.toY;
+      hingeClear();
+      jump(y);
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(y);
+    };
+
+    const hingeMorph = (dir) => {
+      if (morphing || hingeCtx) return true;
+      const s2 = sections[1];    // flow
+      const s3 = sections[2];    // app
+      if (!s2 || !s3) return false;
+
+      const dst = dir > 0 ? s3 : s2;
+      const src = dir > 0 ? s2 : s3;
+      const toY = Math.ceil(topOf(dst));
+
+      const vh = document.documentElement.clientHeight;
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s2.offsetWidth || cw, s3.offsetWidth || cw);
+      const nowY = window.scrollY;
+
+      // 容器底色跟着「即将到来的那一页」走，转开时露出的缝就是它的颜色
+      const boxBg = dir > 0 ? "#0c2426" : "#eefafa";
+
+      const fly = document.createElement("div");
+      fly.className = "st-flow";
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;" +
+        "background:" + boxBg + ";" +
+        "perspective:1700px;perspective-origin:50% 50%;";
+
+      const card = (sec, off) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;transform-origin:50% 50%;backface-visibility:hidden;" +
+          "will-change:transform,opacity;";
+        const inner = sec.cloneNode(true);
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        inner.querySelectorAll("iframe").forEach((f) => {
+          const ph = document.createElement("div");
+          ph.style.cssText = "width:100%;height:100%;background:#0D1A2B;";
+          if (f.parentNode) f.parentNode.replaceChild(ph, f);
+        });
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + off.toFixed(1) + "px;width:" + vw + "px;margin:0;";
+        box.appendChild(inner);
+        fly.appendChild(box);
+        return box;
+      };
+
+      // outgoing 用「当下视口」，incoming 用「落位后的视口」
+      const out = card(src, topOf(src) - nowY);
+      const inn = card(dst, topOf(dst) - toY);
+
+      // 终点那页的图先要过来，免得转进来时还是空的
+      [...dst.querySelectorAll("img")].forEach((im) => {
+        const pre = new Image();
+        pre.src = im.getAttribute("src") || "";
+      });
+
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1500;
+      const TURN = 55;          // 最大转角（度）
+
+      /* ★ 两张整屏卡如果直接叠着转，上面那张会把下面那张盖住，看起来只是
+         「一张斜卡盖过来」，不像两扇门同时打开。所以用屏幕中线当铰链，把可见
+         区域切开：左半永远是当前页、右半永远是下一页。
+         clip-path 的百分比是相对卡片自身（整屏），所以 50% 正好是中央轴；
+         裁剪边界会跟着 rotateY 一起透视变形，两块在中线处始终严丝合缝。
+           a=0   左页全屏可见、正对；右页完全裁掉
+           a=0.5 左页只露左半、右页只露右半，各转 ±27.5°
+           a=1   左页完全裁掉；右页全屏可见、正对
+         两个方向都跑这套 frame，只是把 out / inn 换成不同的页面。 */
+      const frame = (u) => {
+        const a = es(cl(u));
+        const b = 1 - a;
+        out.style.transform =
+          "rotateY(" + (-TURN * a).toFixed(2) + "deg) scale(" + (1 - 0.06 * a).toFixed(4) + ")";
+        out.style.clipPath = "inset(0 " + (100 * a).toFixed(2) + "% 0 0)";
+        inn.style.transform =
+          "rotateY(" + (TURN * b).toFixed(2) + "deg) scale(" + (1 - 0.06 * b).toFixed(4) + ")";
+        inn.style.clipPath = "inset(0 0 0 " + (100 * b).toFixed(2) + "%)";
+      };
+
+      morphing = true;
+      hingeCtx = { fly, toY };
+      frame(0);
+
+      const t0 = performance.now();
+      let landed = false;
+      const tick = (now) => {
+        if (!hingeCtx) return;
+        const k = Math.min(1, (now - t0) / T);
+        // 两个方向都从 0 走到 1：不是倒放，是同一套动作换个主角
+        frame(k);
+        if (!landed && k >= 1) {
+          landed = true;
+          jump(toY);
+          hingeClear();
+          lockUntil = performance.now() + 360;
+          lockDir = dir;
+          lockTo = clampY(toY);
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const step = (dir, delta, gid) => {
       if (flipGid === gid) return true;
       const y = window.scrollY;
@@ -578,8 +721,10 @@
         flipGid = gid;
         // 首屏 → 01：笔电屏幕被抬起来落进左图
         if (!cur && next === sections[0] && morphHero(1)) return true;
-        // 01 → 02：圆扩背景 + 两个框拉长换图 + 文字从右淡入
+        // 01 → 02：02 整页被圆揭出来
         if (cur === sections[0] && next === sections[1] && circleMorph(1)) return true;
+        // 02 → 03：双板铰链
+        if (cur === sections[1] && next === sections[2] && hingeMorph(1)) return true;
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -603,8 +748,10 @@
       flipGid = gid;
       // 01 → 首屏：同一段倒放
       if (cur === sections[0] && prev === hero && morphHero(-1)) return true;
-      // 02 → 01：圆缩回中心 + 两个框缩短换图
+      // 02 → 01：圆缩回中心，01 从四周显现
       if (cur === sections[1] && prev === sections[0] && circleMorph(-1)) return true;
+      // 03 → 02：同一套铰链动作，换成 02 转进来
+      if (cur === sections[2] && prev === sections[1] && hingeMorph(-1)) return true;
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
