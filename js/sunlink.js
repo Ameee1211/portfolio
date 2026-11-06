@@ -2771,22 +2771,16 @@
       const boxDocTop = br.top + window.scrollY;
       const boxTop = boxDocTop - land8;
 
-      const from = dir > 0
-        ? { l: boxLeft, t: boxTop, w: boxW, h: boxH }          // 3D 框 → 照片格
-        : { l: figLeft, t: figTop, w: figW, h: figH };         // 照片格 → 3D 框
-      const to = dir > 0
-        ? { l: figLeft, t: figTop, w: figW, h: figH }
-        : { l: boxLeft, t: boxTop, w: boxW, h: boxH };
+      /* 照片相对 3D 框的缩放（cover：按大的那一维铺满，多出来的裁掉）。
+         3D 是 16:10，照片接近 4:3，所以横向会裁一点。 */
+      const scaleTo = Math.max(figW / boxW, figH / boxH);
+      const cropX = Math.max(0, (boxW - figW / scaleTo) / 2);
+      const cropY = Math.max(0, (boxH - figH / scaleTo) / 2);
 
-      /* cover：按大的那一维铺满，多出来的部分裁掉（3D 是 16:10，照片接近 4:3） */
-      const scaleTo = Math.max(to.w / from.w, to.h / from.h);
-      const cropX = Math.max(0, (from.w - to.w / scaleTo) / 2);
-      const cropY = Math.max(0, (from.h - to.h / scaleTo) / 2);
-
-      const fromCX = from.l + from.w / 2;
-      const fromCY = from.t + from.h / 2;
-      const toCX = to.l + to.w / 2;
-      const toCY = to.t + to.h / 2;
+      /* 卡片永远以「3D 框的位置」为基准，所以位移一律写成「从 3D 框中心到照片中心」，
+         反向只是把进度 p 倒过来走（1 → 0），起点自然就是照片中心。 */
+      const dx = (figLeft + figW / 2) - (boxLeft + boxW / 2);
+      const dy = (figTop + figH / 2) - (boxTop + boxH / 2);
 
       const fly = document.createElement("div");
       fly.className = "sl-flow";
@@ -2796,63 +2790,53 @@
         "background:#101c2e;" +
         "perspective:" + Math.max(1400, vw * 1.2).toFixed(0) + "px;perspective-origin:50% 46%;";
 
-      /* 09 的页面从下面升上来（浅色），同时把深色底盖掉 */
+      /* 背景的走向两个方向不一样（用户 2026-11-06 指出的）：
+         正向 08→09：浅色的 09 从下面升上来
+         反向 09→08：深色的 08 从上面落下来 —— 不能还是浅色往上铺 */
+      const isDown = dir > 0;
+      const bgSec = isDown ? s9 : s8;
+      const bgInnerTop = isDown ? 0 : -(land8 - topOf(s8));
+      const bgShift = isDown ? vh : -vh;
+      const bgBg = isDown
+        ? (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa")
+        : "#101c2e";
+
       const bg = document.createElement("div");
       bg.style.cssText =
         "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
-        "overflow:hidden;background:" + (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa") + ";";
-      const bgInner = s9.cloneNode(true);
+        "overflow:hidden;background:" + bgBg + ";";
+      const bgInner = bgSec.cloneNode(true);
       bgInner.removeAttribute("id");
       bgInner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
       bgInner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
       bgInner.style.cssText =
-        "position:absolute;left:0;top:0;width:" + vw + "px;margin:0;";
+        "position:absolute;left:0;top:" + bgInnerTop.toFixed(1) + "px;width:" + vw + "px;margin:0;";
       bg.appendChild(bgInner);
       fly.appendChild(bg);
 
-      /* 飞的那一块 */
-      let card;
+      /* 飞的这一块：始终按 08 那块 3D 框的尺寸做。
+         这样两个方向结束时都能和 08 的真实画面对齐，不会差一截。 */
+      const card = box3d.cloneNode(true);
+      card.removeAttribute("id");
+      card.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      card.querySelectorAll("canvas").forEach((n) => n.remove());
+      const slot = card.querySelector(".sl-3d__canvas") || card;
+      const st = window.__sl3d;
       let home = null;
       let liveCanvas = null;
-      if (dir > 0) {
-        /* 克隆整个 3D 框（含标题栏和状态按钮），再把真实的 canvas 塞进去 */
-        card = box3d.cloneNode(true);
-        card.removeAttribute("id");
-        card.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
-        card.querySelectorAll("canvas").forEach((n) => n.remove());
-        const slot = card.querySelector(".sl-3d__canvas") || card;
-        const st = window.__sl3d;
-        if (st && st.canvas) {
-          liveCanvas = st.canvas;
-          home = st.canvas.parentNode;
-          slot.appendChild(st.canvas);
-        }
-        card.style.cssText =
-          "position:absolute;left:" + from.l + "px;top:" + from.t + "px;" +
-          "width:" + from.w + "px;height:" + from.h + "px;margin:0;border-radius:0;" +
-          "transform-origin:50% 50%;will-change:transform,clip-path;overflow:hidden;";
-      } else {
-        /* 反向：08 在页面外，拿当前这一帧 3D 画面当牌面 */
-        card = document.createElement("div");
-        let dataUrl = "";
-        try { if (window.__sl3d && window.__sl3d.canvas) dataUrl = window.__sl3d.canvas.toDataURL("image/png"); } catch (e) { /* 拿不到就留空 */ }
-        card.style.cssText =
-          "position:absolute;left:" + from.l + "px;top:" + from.t + "px;" +
-          "width:" + from.w + "px;height:" + from.h + "px;margin:0;border-radius:0;" +
-          "transform-origin:50% 50%;will-change:transform,clip-path;overflow:hidden;" +
-          "background:#101c2e;";
-        if (dataUrl) {
-          const im = document.createElement("img");
-          im.src = dataUrl;
-          im.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
-          card.appendChild(im);
-        }
+      if (st && st.canvas) {
+        liveCanvas = st.canvas;
+        home = st.canvas.parentNode;
+        slot.appendChild(st.canvas);
       }
+      card.style.cssText =
+        "position:absolute;left:" + boxLeft + "px;top:" + boxTop + "px;" +
+        "width:" + boxW + "px;height:" + boxH + "px;margin:0;border-radius:0;" +
+        "transform-origin:50% 50%;will-change:transform,clip-path;overflow:hidden;";
+
       /* 飞的这块要像「一块板子」：圆角 + 投影。顶栏那排按钮和底部说明先记下来，
          飞行中段让它们淡掉 —— 不然落格变成照片时它们会凭空消失。 */
-      const chrome = card.querySelectorAll
-        ? card.querySelectorAll(".sl-3d__bar, .sl-3d__caption, .sl-3d__hint")
-        : [];
+      const chrome = card.querySelectorAll(".sl-3d__bar, .sl-3d__caption, .sl-3d__hint");
       fly.appendChild(card);
       document.body.appendChild(fly);
 
@@ -2870,9 +2854,11 @@
         const lift = es(cl(u / 0.16));
         const k = es(cl((u - 0.10) / 0.86));
         /* 抬手的 3.5% 放大必须在落格前收干净，否则最后会比照片格大一圈 */
-        const s = (1 + 0.035 * lift * (1 - k)) * (1 + (scaleTo - 1) * k);
-        const tx = (toCX - fromCX) * k;
-        const ty = (toCY - fromCY) * k;
+        /* p：0 = 停在 3D 框，1 = 停在照片格。正向往后走，反向往前退。 */
+        const p = dir > 0 ? k : 1 - k;
+        const s = (1 + 0.035 * lift * (1 - k)) * (1 + (scaleTo - 1) * p);
+        const tx = dx * p;
+        const ty = dy * p;
         /* ② 旋转只在中段出现，u=1 时正好回到 0 —— 落格必须回正，否则贴不上格子。
            街景本来是自己在慢慢转的（每帧 +0.075），所以这里只能在原角度上叠一个
            会归零的偏移，不能把它按住不动，否则转完会看到角度回跳。 */
@@ -2883,7 +2869,8 @@
           "translate(" + tx.toFixed(1) + "px," + ty.toFixed(1) + "px) " +
           "scale(" + s.toFixed(4) + ") rotateY(" + rotY.toFixed(2) + "deg) rotateX(" + rotX.toFixed(2) + "deg)";
         /* ③ 最后 28% 才把多余的部分裁掉，正好贴住照片格 */
-        const ck = es(cl((u - 0.72) / 0.28));
+        /* 裁切只在「靠近照片那一侧」发生：正向是最后 28%，反向是一开场就裁好再展开 */
+        const ck = dir > 0 ? es(cl((u - 0.72) / 0.28)) : 1 - es(cl(u / 0.28));
         card.style.clipPath = ck > 0.002
           ? "inset(" + (cropY * ck).toFixed(1) + "px " + (cropX * ck).toFixed(1) + "px)"
           : "none";
@@ -2900,7 +2887,7 @@
         if (world) world.rotation.y = baseRot + swing * (dir > 0 ? 0.30 : -0.30);
         /* ⑤ 09 的页面从下方升起 */
         const rise = es(cl((u - 0.18) / 0.72));
-        bg.style.transform = "translate3d(0," + (vh * (1 - rise)).toFixed(1) + "px,0)";
+        bg.style.transform = "translate3d(0," + (bgShift * (1 - rise)).toFixed(1) + "px,0)";
       };
 
       morphing = true; morphStartedAt = performance.now();
@@ -2929,6 +2916,9 @@
           lockDir = dir;
           lockTo = clampY(targetY);
         }
+        /* 反向：跳页之后 08 已经严丝合缝地接上了，这时候再淡出会让街景「消失一下」
+           （用户 2026-11-06 报的闪）。直接收掉，这一帧 card 和真实 3D 框完全重合。 */
+        if (dir < 0 && jumped && t >= T_JUMP + 30) { sceneClear(); return; }
         if (t >= T_JUMP) fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
         if (t < T_END) requestAnimationFrame(tick);
         else sceneClear();
