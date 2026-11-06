@@ -288,6 +288,15 @@
 
     const world = new THREE.Group();
     scene.add(world);
+    /* 07↔08 / 08↔09 转场时让整个街区跟着镜头一起转，露给转场用 */
+    window.__sl3d = {
+      world: world,
+      canvas: renderer.domElement,
+      host: host,
+      renderer: renderer,
+      scene: scene,
+      camera: camera
+    };
 
     /* --- 材质 --- */
     const matPla = new THREE.MeshStandardMaterial({
@@ -2695,6 +2704,239 @@
       return true;
     };
 
+    /* ---------- 08 ↔ 09：街景缩小、旋转着落进右下那张照片（用户 2026-11-06 选 A） ----------
+       ★ 不是把街景拍成图片再飞 —— 而是把**真的 WebGL canvas 搬进转场层**，
+         飞行过程中它还在实时渲染，再叠一层 CSS 3D 旋转。
+         所以飞的是「那块 3D 场景本身」，一边转一边缩小，落进 09 右侧的实拍照片格里，
+         最后交叉淡出成真照片。反向就是把照片放大、转回 08 的街景位置。 */
+    let sceneCtx = null;
+
+    const sceneClear = () => {
+      const c = sceneCtx;
+      if (!c) return;
+      sceneCtx = null;
+      morphing = false;
+      /* 真实 canvas 必须放回 08 板块，否则 08 会永久缺一块 */
+      if (c.canvas && c.home && c.canvas.parentNode !== c.home) c.home.appendChild(c.canvas);
+      if (window.__sl3d && c.baseRot !== undefined) window.__sl3d.world.rotation.y = c.baseRot;
+      if (c.fly.parentNode) c.fly.remove();
+      slIndexHold = -1;
+      if (slIndexSync) slIndexSync();
+    };
+
+    const sceneBail = () => {
+      if (!sceneCtx) return;
+      const y = sceneCtx.targetY;
+      sceneClear();
+      jump(y);
+      lockUntil = performance.now() + 400;
+      lockTo = clampY(y);
+    };
+
+    const sceneMorph = (dir) => {
+      if (morphing || sceneCtx) return true;
+
+      const s8 = sections[7];   // model
+      const s9 = sections[8];   // physical
+      if (!s8 || !s9) return false;
+
+      const box3d = s8.querySelector(".sl-3d");
+      if (!box3d) return false;
+
+      const vh = document.documentElement.clientHeight;
+      const cw = document.documentElement.clientWidth;
+      const vw = Math.min(cw, s8.offsetWidth || cw, s9.offsetWidth || cw);
+
+      const land8 = Math.max(topOf(s8), endOf(s8));
+      const land9 = Math.ceil(topOf(s9));
+      const targetY = dir > 0 ? land9 : land8;
+
+      /* 09 右侧那张实拍照片 —— 落格的目标矩形（按跳到 09 顶之后的视口坐标算） */
+      const figs = s9.querySelectorAll("figure");
+      const fig = figs[1] || figs[0];
+      if (!fig) return false;
+      /* 按图片本身量，不按 figure：figure 可能比图宽，那样落格会偏大 */
+      const figImg = fig.querySelector("img");
+      const fr = (figImg || fig).getBoundingClientRect();
+      const figLeft = fr.left;
+      const figW = fr.width;
+      const figH = fr.height;
+      const figTop = fr.top + window.scrollY - land9;
+
+      /* 08 那块 3D 框的矩形（文档坐标，换算到「08 段底」那一刻的视口位置） */
+      const br = box3d.getBoundingClientRect();
+      const boxLeft = br.left;
+      const boxW = br.width;
+      const boxH = br.height;
+      const boxDocTop = br.top + window.scrollY;
+      const boxTop = boxDocTop - land8;
+
+      const from = dir > 0
+        ? { l: boxLeft, t: boxTop, w: boxW, h: boxH }          // 3D 框 → 照片格
+        : { l: figLeft, t: figTop, w: figW, h: figH };         // 照片格 → 3D 框
+      const to = dir > 0
+        ? { l: figLeft, t: figTop, w: figW, h: figH }
+        : { l: boxLeft, t: boxTop, w: boxW, h: boxH };
+
+      /* cover：按大的那一维铺满，多出来的部分裁掉（3D 是 16:10，照片接近 4:3） */
+      const scaleTo = Math.max(to.w / from.w, to.h / from.h);
+      const cropX = Math.max(0, (from.w - to.w / scaleTo) / 2);
+      const cropY = Math.max(0, (from.h - to.h / scaleTo) / 2);
+
+      const fromCX = from.l + from.w / 2;
+      const fromCY = from.t + from.h / 2;
+      const toCX = to.l + to.w / 2;
+      const toCY = to.t + to.h / 2;
+
+      const fly = document.createElement("div");
+      fly.className = "sl-flow";
+      const pageBg = getComputedStyle(document.body).backgroundColor;
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;" +
+        "background:#101c2e;" +
+        "perspective:" + Math.max(1400, vw * 1.2).toFixed(0) + "px;perspective-origin:50% 46%;";
+
+      /* 09 的页面从下面升上来（浅色），同时把深色底盖掉 */
+      const bg = document.createElement("div");
+      bg.style.cssText =
+        "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+        "overflow:hidden;background:" + (pageBg && pageBg !== "rgba(0, 0, 0, 0)" ? pageBg : "#f7f6fa") + ";";
+      const bgInner = s9.cloneNode(true);
+      bgInner.removeAttribute("id");
+      bgInner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      bgInner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+      bgInner.style.cssText =
+        "position:absolute;left:0;top:0;width:" + vw + "px;margin:0;";
+      bg.appendChild(bgInner);
+      fly.appendChild(bg);
+
+      /* 飞的那一块 */
+      let card;
+      let home = null;
+      let liveCanvas = null;
+      if (dir > 0) {
+        /* 克隆整个 3D 框（含标题栏和状态按钮），再把真实的 canvas 塞进去 */
+        card = box3d.cloneNode(true);
+        card.removeAttribute("id");
+        card.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        card.querySelectorAll("canvas").forEach((n) => n.remove());
+        const slot = card.querySelector(".sl-3d__canvas") || card;
+        const st = window.__sl3d;
+        if (st && st.canvas) {
+          liveCanvas = st.canvas;
+          home = st.canvas.parentNode;
+          slot.appendChild(st.canvas);
+        }
+        card.style.cssText =
+          "position:absolute;left:" + from.l + "px;top:" + from.t + "px;" +
+          "width:" + from.w + "px;height:" + from.h + "px;margin:0;border-radius:0;" +
+          "transform-origin:50% 50%;will-change:transform,clip-path;overflow:hidden;";
+      } else {
+        /* 反向：08 在页面外，拿当前这一帧 3D 画面当牌面 */
+        card = document.createElement("div");
+        let dataUrl = "";
+        try { if (window.__sl3d && window.__sl3d.canvas) dataUrl = window.__sl3d.canvas.toDataURL("image/png"); } catch (e) { /* 拿不到就留空 */ }
+        card.style.cssText =
+          "position:absolute;left:" + from.l + "px;top:" + from.t + "px;" +
+          "width:" + from.w + "px;height:" + from.h + "px;margin:0;border-radius:0;" +
+          "transform-origin:50% 50%;will-change:transform,clip-path;overflow:hidden;" +
+          "background:#101c2e;";
+        if (dataUrl) {
+          const im = document.createElement("img");
+          im.src = dataUrl;
+          im.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+          card.appendChild(im);
+        }
+      }
+      /* 飞的这块要像「一块板子」：圆角 + 投影。顶栏那排按钮和底部说明先记下来，
+         飞行中段让它们淡掉 —— 不然落格变成照片时它们会凭空消失。 */
+      const chrome = card.querySelectorAll
+        ? card.querySelectorAll(".sl-3d__bar, .sl-3d__caption, .sl-3d__hint")
+        : [];
+      fly.appendChild(card);
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+
+      const T_JUMP = 1300;
+      const T_END = 1460;
+
+      const world = window.__sl3d ? window.__sl3d.world : null;
+      const baseRot = world ? world.rotation.y : 0;
+
+      const frame = (u) => {
+        /* ① 先轻轻抬起来（稍微放大 + 压出影子），再飞 */
+        const lift = es(cl(u / 0.16));
+        const k = es(cl((u - 0.10) / 0.86));
+        /* 抬手的 3.5% 放大必须在落格前收干净，否则最后会比照片格大一圈 */
+        const s = (1 + 0.035 * lift * (1 - k)) * (1 + (scaleTo - 1) * k);
+        const tx = (toCX - fromCX) * k;
+        const ty = (toCY - fromCY) * k;
+        /* ② 旋转只在中段出现，u=1 时正好回到 0 —— 落格必须回正，否则贴不上格子。
+           街景本来是自己在慢慢转的（每帧 +0.075），所以这里只能在原角度上叠一个
+           会归零的偏移，不能把它按住不动，否则转完会看到角度回跳。 */
+        const swing = Math.sin(Math.PI * cl(u));
+        const rotY = (dir > 0 ? -26 : 26) * swing;
+        const rotX = 9 * swing;
+        card.style.transform =
+          "translate(" + tx.toFixed(1) + "px," + ty.toFixed(1) + "px) " +
+          "scale(" + s.toFixed(4) + ") rotateY(" + rotY.toFixed(2) + "deg) rotateX(" + rotX.toFixed(2) + "deg)";
+        /* ③ 最后 28% 才把多余的部分裁掉，正好贴住照片格 */
+        const ck = es(cl((u - 0.72) / 0.28));
+        card.style.clipPath = ck > 0.002
+          ? "inset(" + (cropY * ck).toFixed(1) + "px " + (cropX * ck).toFixed(1) + "px)"
+          : "none";
+        /* 圆角 + 投影：抬起来是一块板子；裁切贴格的那一刻收平 */
+        card.style.borderRadius = (18 * lift * (1 - ck)).toFixed(1) + "px";
+        card.style.boxShadow = lift > 0.01 && ck < 0.99
+          ? "0 " + (26 * lift).toFixed(0) + "px " + (70 * lift).toFixed(0) +
+            "px rgba(4,8,16," + (0.42 * lift * (1 - ck)).toFixed(3) + ")"
+          : "none";
+        /* 顶栏按钮 / 底部说明在 0.2~0.5 之间淡掉 */
+        const fade = 1 - cl((u - 0.2) / 0.3);
+        if (chrome.length) chrome.forEach((n) => { n.style.opacity = String(fade); });
+        /* ④ 3D 场景自己也跟着转一点，让它看起来是「一个立体物件在转」而不是一张纸在转 */
+        if (world) world.rotation.y = baseRot + swing * (dir > 0 ? 0.30 : -0.30);
+        /* ⑤ 09 的页面从下方升起 */
+        const rise = es(cl((u - 0.18) / 0.72));
+        bg.style.transform = "translate3d(0," + (vh * (1 - rise)).toFixed(1) + "px,0)";
+      };
+
+      morphing = true; morphStartedAt = performance.now();
+      sceneCtx = { fly, targetY, canvas: liveCanvas, home: home, baseRot: baseRot };
+      frame(0);
+
+      const t0 = performance.now();
+      let jumped = false;
+      let indexMoved = false;
+
+      const tick = (ts) => {
+        if (!sceneCtx) return;
+        const t = ts - t0;
+        const raw = Math.min(t / T_JUMP, 1);
+        frame(raw);
+
+        if (!indexMoved && raw >= 0.7) {
+          indexMoved = true;
+          slIndexHold = dir > 0 ? 8 : 7;
+          if (slIndexSync) slIndexSync();
+        }
+        if (!jumped && raw >= 1) {
+          jumped = true;
+          jump(targetY);
+          lockUntil = performance.now() + 320;
+          lockDir = dir;
+          lockTo = clampY(targetY);
+        }
+        if (t >= T_JUMP) fly.style.opacity = String(cl(1 - (t - T_JUMP) / (T_END - T_JUMP)));
+        if (t < T_END) requestAnimationFrame(tick);
+        else sceneClear();
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
     const morphDown = () => {
       if (morphing) return true;
 
@@ -2933,6 +3175,8 @@
         if (cur === sections[5]) return panMorph(1);
         /* 07 → 08：拎起一张牌翻到后面 */
         if (cur === sections[6]) return liftMorph(1);
+        /* 08 → 09：街景缩小旋转，落进照片格 */
+        if (cur === sections[7]) return sceneMorph(1);
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -2982,6 +3226,8 @@
       if (cur === sections[6]) return panMorph(-1);
       /* 08 → 07：后面那张被拎到前面 */
       if (cur === sections[7]) return liftMorph(-1);
+      /* 09 → 08：照片放大转回街景 */
+      if (cur === sections[8]) return sceneMorph(-1);
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
@@ -3007,7 +3253,7 @@
     /* 转场期间滚轮一律吞掉。但如果动画已经跑了 0.7 秒、用户还在往下拨，
        说明他等不及了 —— 直接快进到终点，别让人白滚十几下。 */
     const skipMorph = () => {
-      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail(); liftBail();
+      morphBail(); flowBail(); conBail(); foldBail(); stepBail(); deckBail(); panBail(); liftBail(); sceneBail();
     };
 
     const onWheel = (e) => {
