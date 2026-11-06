@@ -700,43 +700,45 @@
       return true;
     };
 
-    /* ---------- 04 → 05：拖窄窗口，断点重排（用户 2026-11-07 选 A） ----------
-       把 04 的两张设计稿当成两个浏览器窗口：左边被拉宽展开成 Desktop 界面，
-       右边被压窄；窄过 1024 时停一下，那一瞬间右窗的内容从并排重排成单列。
-       背景白 → 淡青，标题正文从右侧淡入。**不加 1024 刻度线**（用户明确不要）。
+    /* ---------- 04 ↔ 05：两个图框直接变形（用户 2026-11-07 改版 B 方案） ----------
+       04 两张等宽竖版稿、05 左宽右窄两张 420 高的图：两个「图框」从 04 的真实
+       位置/尺寸，一路插值成 05 的位置/尺寸（位置 + 宽高 + 圆角 + 描边一起变）。
+       框里的两张图**固定在各自视口位置**、绝不缩放位移，只做交叉淡化；
+       正向「换图与变形同步」，反向「05 图先淡光，变形时 04 图固定淡入」。
+       背景色不一样：正向 05 淡青底像帘子从左往右拉开，反向从右往左收回
+       （分界线由右往左走，白底从右侧盖回来）。
+       文字：正向保持原样（04 整层淡出、05 从右往左淡入）；
+       反向 05 文字朝右位移淡出、04 文字从下往上带入。
+       ★ 04 高 1920，触发时停在段底（比顶多 1020px），所以 A 视图按「段底视口」
+         摆放，B 视图按「05 顶部视口」摆放，两端都和真实页面严丝合缝。 */
+    let m45Ctx = null;
 
-       ★ 只做正向。反向 05 → 04 用户指定普通整页上移，step 里不接这个分支。
-       ★ 04 高 1920，触发时停在段底（比顶多 1020px），所以两个窗口框按
-         「触发当下视口」起手、按「落位后视口」收尾，各自无缝。
-       ★ 断点停顿：进度 0.48~0.60 之间尺寸冻结 0.12×1500≈180ms，
-         右窗的换图正好放在停顿中间，看起来就是「重排发生了」。 */
-    let winCtx = null;
-
-    const winClear = () => {
-      const c = winCtx;
+    const m45Clear = () => {
+      const c = m45Ctx;
       if (!c) return;
-      winCtx = null;
+      m45Ctx = null;
       morphing = false;
       if (c.fly.parentNode) c.fly.remove();
     };
 
-    const winBail = () => {
-      if (!winCtx) return;
-      const y = winCtx.toY;
-      winClear();
+    const m45Bail = () => {
+      if (!m45Ctx) return;
+      const y = m45Ctx.toY;
+      m45Clear();
       jump(y);
       lockUntil = performance.now() + 400;
       lockTo = clampY(y);
     };
 
-    const winMorph = () => {
-      if (morphing || winCtx) return true;
-      const s4 = sections[3];    // mockups
-      const s5 = sections[4];    // responsive
+    const morph45 = (dir) => {
+      if (morphing || m45Ctx) return true;
+      const s4 = sections[3];    // 04 mockups
+      const s5 = sections[4];   // 05 responsive
       if (!s4 || !s5) return false;
 
-      const toY = Math.ceil(topOf(s5));
-      const nowY = window.scrollY;
+      const yB = Math.ceil(topOf(s5));                       // 05 顶部视图
+      const yA = dir > 0 ? window.scrollY : endOf(s4);          // 04 段底视图
+      const toY = dir > 0 ? yB : yA;
       const vh = document.documentElement.clientHeight;
       const cw = document.documentElement.clientWidth;
       const vw = Math.min(cw, s4.offsetWidth || cw, s5.offsetWidth || cw);
@@ -745,34 +747,45 @@
       const imgsB = [...s5.querySelectorAll(".st-widths figure img")];
       if (imgsA.length < 2 || imgsB.length < 2) return false;
 
-      // 文档坐标 → 指定 scrollY 下的视口坐标
+      // 文档坐标 → 「指定 scrollY」下的视口坐标
       const R = (el, base) => {
         const r = el.getBoundingClientRect();
         return { l: r.left, t: r.top + window.scrollY - base, w: r.width, h: r.height };
       };
-      const B = imgsB.map((im) => R(im, toY));    // 落位后，05 顶部那两个图位
+      const A = imgsA.map((im) => R(im, yA));   // 04 图框：段底视口里的真实位置
+      const B = imgsB.map((im) => R(im, yB));   // 05 图框：落位视口里的真实位置
       const srcA = imgsA.map((im) => im.getAttribute("src") || "");
       const srcB = imgsB.map((im) => im.getAttribute("src") || "");
       srcA.concat(srcB).forEach((u) => { const im = new Image(); im.src = u; });
 
-      /* ★ 两个窗口固定待在 05 的图区（屏幕下半），只做「左拉宽 / 右压窄」，
-         不再从 04 段底的位置一路扫下来 —— 那样会横穿并盖住 05 的标题和正文。
-         起点两个等宽，位置就用终点各自的 left / top，所以全程几乎不移动。 */
-      const START_W = Math.min(380, vw * 0.27);
-      const S = B.map((b) => ({ l: b.l, t: b.t, w: START_W, h: b.h }));
+      const bodyBg = (() => {
+        const page = document.querySelector(".st-page") || document.body;
+        const c = getComputedStyle(page).backgroundColor;
+        return c && c !== "rgba(0, 0, 0, 0)" ? c : "#f7f6fa";
+      })();
 
       const fly = document.createElement("div");
       fly.className = "st-flow";
       fly.style.cssText =
-        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;background:#f7f6fa;";
+        "position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;background:" + bodyBg + ";";
 
-      /* ① 05 的淡青底，淡入盖掉白底 */
-      const bg = document.createElement("div");
-      bg.style.cssText =
-        "position:absolute;inset:0;background:linear-gradient(180deg,#eefafa 0%,#fbfdfd 100%);will-change:opacity;";
-      fly.appendChild(bg);
+      /* ① 背景帘子：05 的淡青渐变按 section 真实高度铺，落位那一帧才和真页面一致 */
+      const sky = document.createElement("div");
+      sky.style.cssText =
+        "position:absolute;left:0;top:0;width:" + cw + "px;height:" + s5.offsetHeight + "px;" +
+        "background:linear-gradient(180deg,#eefafa 0%,#fbfdfd 100%);will-change:clip-path;";
+      fly.appendChild(sky);
+      // 帘子边：右侧 12px 的淡影，硬边但不生硬
+      const seam = document.createElement("div");
+      seam.style.cssText =
+        "position:absolute;top:0;bottom:0;width:12px;pointer-events:none;" +
+        "background:linear-gradient(90deg,rgba(16,34,43,0.10),rgba(16,34,43,0));" +
+        "will-change:left,opacity;";
+      fly.appendChild(seam);
 
-      const layer = (sec, base, hideFigs) => {
+      /* ② 两层文字：标题 / 正文 / 图注 / lawbox 都跟着各自的文字层走；
+            图先藏起来（保留占位），交给飞行图框，避免同一张图出现两次。 */
+      const layer = (sec, base) => {
         const box = document.createElement("div");
         box.style.cssText =
           "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
@@ -780,12 +793,10 @@
         const inner = sec.cloneNode(true);
         inner.removeAttribute("id");
         inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
-        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
-        // 05 那层的图由窗口框负责，这里只留占位，图注位置才不会动；
-        // 04 那层保留完整页面，第一帧才和真实页面完全一致。
-        if (hideFigs) {
-          inner.querySelectorAll("figure img").forEach((im) => { im.style.visibility = "hidden"; });
-        }
+        inner.querySelectorAll("img").forEach((im) => {
+          im.loading = "eager";
+          im.style.visibility = "hidden";
+        });
         inner.style.cssText =
           "position:absolute;left:0;top:" + (topOf(sec) - base).toFixed(1) + "px;" +
           "width:" + vw + "px;margin:0;background:transparent;";
@@ -793,25 +804,36 @@
         fly.appendChild(box);
         return box;
       };
+      const textA = layer(s4, yA);
+      const textB = layer(s5, yB);
 
-      /* ② 04 整页（含图，原地淡出）／ 05 的文字（从右侧淡入） */
-      const oldL = layer(s4, nowY, false);
-      const newL = layer(s5, toY, true);
-
-      /* ③ 两个窗口框：只装一张图，cover 裁切不拉伸 */
-      const windows = S.map((a, i) => {
+      /* ③ 两个飞行图框：框本身形变；框内两张图钉死在各自视口坐标，只交叉淡化。
+            inner 用 translate(-L,-T) 抵消框的移动，所以图片全程不缩放不位移。 */
+      const frames = [0, 1].map((i) => {
         const box = document.createElement("div");
         box.style.cssText =
-          "position:absolute;overflow:hidden;border-radius:10px;" +
+          "position:absolute;overflow:hidden;box-sizing:border-box;background:#fff;" +
           "will-change:left,top,width,height;";
-        const im = document.createElement("img");
-        im.src = srcA[i];
-        im.alt = "";
-        im.style.cssText =
-          "width:100%;height:100%;object-fit:cover;object-position:left top;display:block;";
-        box.appendChild(im);
+        const inner = document.createElement("div");
+        inner.style.cssText =
+          "position:absolute;left:0;top:0;width:" + cw + "px;height:" + vh + "px;will-change:transform;";
+        const mk = (src, r) => {
+          const im = document.createElement("img");
+          im.src = src;
+          im.alt = "";
+          im.draggable = false;
+          im.style.cssText =
+            "position:absolute;display:block;object-fit:fill;" +
+            "left:" + r.l.toFixed(1) + "px;top:" + r.t.toFixed(1) + "px;" +
+            "width:" + r.w.toFixed(1) + "px;height:" + r.h.toFixed(1) + "px;";
+          inner.appendChild(im);
+          return im;
+        };
+        const ia = mk(srcA[i], A[i]);   // 04 的图，固定在 A 位置
+        const ib = mk(srcB[i], B[i]);   // 05 的图，固定在 B 位置
+        box.appendChild(inner);
         fly.appendChild(box);
-        return { box, im, isB: false };
+        return { box, inner, ia, ib };
       });
 
       document.body.appendChild(fly);
@@ -821,53 +843,86 @@
       const T = 1500;
 
       const frame = (p) => {
-        /* 拖宽度的进度：0.48~0.60 冻住，就是那个「断点」 */
-        const g = p < 0.48 ? (p / 0.48) * 0.52
-          : p < 0.60 ? 0.52
-          : 0.52 + ((p - 0.60) / 0.40) * 0.48;
+        const fwd = dir > 0;
 
-        bg.style.opacity = String(es(cl((p - 0.08) / 0.64)));
-        // 04 整页先退干净，两个窗口同时淡入接手；之后 05 文字再从右侧进来
-        oldL.style.opacity = String(1 - es(cl((p - 0.02) / 0.20)));
-        const appear = es(cl(p / 0.18));
-        const tIn = es(cl((p - 0.28) / 0.50));
-        newL.style.opacity = String(tIn);
-        newL.style.transform = "translateX(" + (26 * (1 - tIn)).toFixed(1) + "px)";
+        /* 帘子：sky 占左边 u；反向 u 1→0，白底从右往左盖回来 */
+        const u = fwd ? es(cl(p / 0.72)) : 1 - es(cl(p / 0.64));
+        sky.style.clipPath = "inset(0 " + (100 * (1 - u)).toFixed(2) + "% 0 0)";
+        const edge = u * cw;
+        seam.style.left = (edge - 1).toFixed(1) + "px";
+        seam.style.opacity = u > 0.002 && u < 0.998 ? "1" : "0";
 
-        windows.forEach((w, i) => {
-          const a = S[i], b = B[i];
-          w.box.style.left = (a.l + (b.l - a.l) * g).toFixed(1) + "px";
-          w.box.style.top = (a.t + (b.t - a.t) * g).toFixed(1) + "px";
-          w.box.style.width = (a.w + (b.w - a.w) * g).toFixed(1) + "px";
-          w.box.style.height = (a.h + (b.h - a.h) * g).toFixed(1) + "px";
-          w.box.style.borderRadius = (10 - 4 * g).toFixed(1) + "px";
-          w.box.style.opacity = String(appear);
-          /* 换画：左窗拉宽过程中就展开成 Desktop；右窗等到断点停顿那一刻才重排成 Phone */
-          const wantB = p >= (i === 0 ? 0.30 : 0.54);
-          if (w.isB !== wantB) {
-            w.isB = wantB;
-            w.im.src = wantB ? srcB[i] : srcA[i];
-            w.im.style.objectPosition = "left top";
+        /* q：0 = 04 的图框，1 = 05 的图框。正向 0.10~0.90，反向 0.34~0.90 */
+        const q = fwd
+          ? es(cl((p - 0.10) / 0.80))
+          : 1 - es(cl((p - 0.34) / 0.56));
+
+        /* 文字：正向保持原来的两段（04 淡出 / 05 从右往左淡入）；
+           反向 05 朝右位移淡出、04 从下往上带入（最后一步）。 */
+        if (fwd) {
+          const aOut = 1 - es(cl((p - 0.02) / 0.20));
+          const bIn = es(cl((p - 0.28) / 0.50));
+          textA.style.opacity = String(aOut);
+          textA.style.transform = "translateX(0px)";
+          textB.style.opacity = String(bIn);
+          textB.style.transform = "translateX(" + (26 * (1 - bIn)).toFixed(1) + "px)";
+        } else {
+          const bOut = 1 - es(cl((p - 0.04) / 0.28));
+          const aIn = es(cl((p - 0.64) / 0.36));
+          textB.style.opacity = String(bOut);
+          textB.style.transform = "translateX(" + (26 * (1 - bOut)).toFixed(1) + "px)";
+          textA.style.opacity = String(aIn);
+          textA.style.transform = "translateY(" + (28 * (1 - aIn)).toFixed(1) + "px)";
+        }
+
+        frames.forEach((w, i) => {
+          const a = A[i], b = B[i];
+          const L = a.l + (b.l - a.l) * q;
+          const Tp = a.t + (b.t - a.t) * q;
+          const W = a.w + (b.w - a.w) * q;
+          const H = a.h + (b.h - a.h) * q;
+          w.box.style.left = L.toFixed(1) + "px";
+          w.box.style.top = Tp.toFixed(1) + "px";
+          w.box.style.width = W.toFixed(1) + "px";
+          w.box.style.height = H.toFixed(1) + "px";
+          const rt = 14 - 4 * q, rb = 10 * q;   // 04 卡片上圆角 → 05 全圆角
+          w.box.style.borderRadius =
+            rt.toFixed(1) + "px " + rt.toFixed(1) + "px " + rb.toFixed(1) + "px " + rb.toFixed(1) + "px";
+          w.box.style.boxShadow =
+            "inset 0 0 0 " + q.toFixed(2) + "px rgba(16,34,43,0.10)," +
+            "0 20px 44px -30px rgba(16,34,43," + (0.55 * q).toFixed(3) + ")";
+          w.inner.style.transform =
+            "translate(" + (-L).toFixed(1) + "px," + (-Tp).toFixed(1) + "px)";
+
+          /* 图：正向与形变同步交叉淡化；反向 05 图先淡光、04 图固定淡入 */
+          if (fwd) {
+            w.ia.style.opacity = String(1 - q);
+            w.ib.style.opacity = String(q);
+          } else {
+            w.ia.style.opacity = String(es(cl((p - 0.48) / 0.38)));
+            w.ib.style.opacity = String(1 - es(cl((p - 0.12) / 0.24)));
           }
         });
       };
 
       morphing = true;
-      winCtx = { fly, toY };
+      m45Ctx = { fly, toY };
+      /* 正反向都是 p:0 → 1；frame() 内部按 dir 自己排顺序，
+         所以反向不是倒放，而是「同一套动作换主角」。 */
       frame(0);
 
       const t0 = performance.now();
       let landed = false;
       const tick = (now) => {
-        if (!winCtx) return;
+        if (!m45Ctx) return;
         const k = Math.min(1, (now - t0) / T);
         frame(k);
         if (!landed && k >= 1) {
           landed = true;
           jump(toY);
-          winClear();
+          m45Clear();
           lockUntil = performance.now() + 360;
-          lockDir = 1;
+          lockDir = dir;
           lockTo = clampY(toY);
           return;
         }
@@ -908,8 +963,8 @@
         if (cur === sections[0] && next === sections[1] && circleMorph(1)) return true;
         // 02 → 03：严格立方体转面
         if (cur === sections[1] && next === sections[2] && hingeMorph(1)) return true;
-        // 04 → 05：拖窄窗口，断点重排（反向 05 → 04 走普通整页上移，不接这里）
-        if (cur === sections[3] && next === sections[4] && winMorph()) return true;
+        // 04 → 05：两个图框直接变形 + 背景帘子从左往右
+        if (cur === sections[3] && next === sections[4] && morph45(1)) return true;
         const target = topOf(next);
         if (Math.abs(target - y) < 4) return false;
         go(target, 1);
@@ -937,6 +992,8 @@
       if (cur === sections[1] && prev === sections[0] && circleMorph(-1)) return true;
       // 03 → 02：同一套铰链动作，换成 02 转进来
       if (cur === sections[2] && prev === sections[1] && hingeMorph(-1)) return true;
+      // 05 → 04：帘子从右往左、05 文字朝右淡出、图框变形回 04、04 文字从下往上
+      if (cur === sections[4] && prev === sections[3] && morph45(-1)) return true;
       const prevTop = topOf(prev);
       const prevEnd = endOf(prev);
       const target = prevEnd > prevTop + EDGE ? prevEnd : prevTop;
