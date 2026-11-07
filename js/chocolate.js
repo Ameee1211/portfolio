@@ -533,11 +533,260 @@
     };
   })();
 
-  /* 两个专属转场共用一个钩子：先判首屏↔01，再判 01↔02 */
+  /* ---------- 03 ↔ 04：三列收成参数表（用户 2026-11-08 口述方案） ----------
+     ① 与 ② 同时启动：03 三列区（含真实 3D 模型）淡出，同时上下各长出一条横线，
+        横线从中心向两端展开、并向中间收拢，直到变成 04 参数表的两条长横线。
+     ③ 横线长到位之后，04 的文字才开始出现：标题/正文/尾段打字机式逐字打入，
+        参数表 8 格与 3 条竖线按列从右往左错开淡入。
+     ★★ 全程不 clone 03 的 model-viewer：只把真实三列区整体淡出（3D 一直是
+        同一个实时旋转的节点），两条横线、参数表、逐字文字都在透明飞行层里画。
+        绝不会出现上两轮「先变静态图片、再开始转」的断层。
+     ★ 文字全程零位移：03 的字在自己位置逐字擦掉，04 的字在自己位置逐字打出。
+     反向按用户给的顺序反演（距离变大 → 文字淡出 → 三框出现 → 图片淡入 → 文字刷回），
+     用 frame(1-k) 做对称反演。 */
+  const CH_34_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const clear = () => {
+      const c = ctx;
+      if (!c) return;
+      ctx = null;
+      busy = false;
+      if (c.fly.parentNode) c.fly.remove();
+      c.realText.forEach((el, i) => { el.style.visibility = c.savedVis[i]; });
+      c.rowEl.style.opacity = c.savedRowOpacity;
+    };
+
+    const morph = (dir) => {
+      if (busy || ctx) return true;
+      const s3 = document.getElementById("prints");
+      const s4 = document.getElementById("params");
+      if (!s3 || !s4) return false;
+      const rowEl = s3.querySelector(".ch-prints-row");
+      const parEl = s4.querySelector(".ch-params");
+      if (!rowEl || !parEl) return false;
+
+      const fwd = dir > 0;
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const top3 = topOf(s3);
+      const top4 = Math.ceil(topOf(s4));
+      const end3 = Math.max(top3, top3 + s3.offsetHeight - vh);
+      const nowY = window.scrollY;
+      const yA = fwd ? nowY : end3;      // 03 侧视口基准
+      const yB = fwd ? top4 : nowY;      // 04 侧视口基准
+      const toY = fwd ? top4 : end3;
+      const R = (el, base) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top + window.scrollY - base, w: r.width, h: r.height };
+      };
+      const row = R(rowEl, yA);          // 03 三列区（含图注）
+      const par = R(parEl, yB);          // 04 参数表
+
+      const realText = [...s3.querySelectorAll(".ch-eyebrow,.ch-h2,.ch-p")];
+
+      /* 文字拆成单字符，用 CSS transition 做柔和的逐字出现/消失。
+         只改跨越阈值的那几个 span，避免每帧写几百个 DOM 属性。 */
+      const split = (host) => {
+        const c = host.cloneNode(true);
+        const t = (c.textContent || "").replace(/\s+/g, " ").trim();
+        c.textContent = "";
+        c.style.whiteSpace = "pre-wrap";
+        const spans = [];
+        for (const ch of t) {
+          const sp = document.createElement("span");
+          sp.textContent = ch;
+          sp.style.cssText = "transition:opacity .12s linear;";
+          c.appendChild(sp);
+          spans.push(sp);
+        }
+        return { el: c, spans };
+      };
+      /* ★ 字符在「每一行内部」必须从左到右连续出现/消失（打字机、退格感），
+         不能在同一行里跳着显隐 —— 那样会变成 "Sam nt op" 这种碎字。
+         「不要整齐划一」靠的是块与块之间的启动延迟 + 速度差：
+         第一行慢/少、第二行快/多、第三行再慢、第四行最快。 */
+      const SPEED = [0.85, 1.20, 0.80, 1.05];
+      const DELAY = [0.00, 0.08, 0.16, 0.24];
+      const makeTextLayer = (sec, base, tag) => {
+        const box = document.createElement("div");
+        box.className = "ch-m34-text ch-m34-text--" + tag;
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;";
+        const groups = [...sec.querySelectorAll(".ch-eyebrow,.ch-h2,.ch-p")].map((el, bi) => {
+          const g = split(el);
+          const r = R(el, base);
+          g.el.style.cssText +=
+            "position:absolute;left:" + r.l.toFixed(1) + "px;top:" + r.t.toFixed(1) + "px;" +
+            "width:" + r.w.toFixed(1) + "px;margin:0;";
+          g.speed = SPEED[bi] || 1;
+          g.delay = DELAY[bi] || 0;
+          box.appendChild(g.el);
+          return g;
+        });
+        return { box, groups };
+      };
+      const initType = (layer, shown) => {
+        layer.groups.forEach((g) => {
+          g.spans.forEach((sp) => { sp.style.opacity = shown ? "1" : "0"; });
+          g.last = shown ? g.spans.length : 0;
+        });
+      };
+      const setType = (groups, prog, show) => {
+        groups.forEach((g) => {
+          const n = g.spans.length;
+          if (!n) return;
+          /* 端点严格固定：prog=0 / 1 时字符全隐 / 全显，不会擦不干净或打不满。
+             延迟与速度只改变中途形状，于是各行进度刻意参差不齐。 */
+          const u = Math.max(0, Math.min(1, (prog - g.delay) / (1 - g.delay)));
+          const local = Math.pow(u, 1 / g.speed);
+          const ratio = show ? local : 1 - local;
+          const target = Math.round(ratio * n);
+          if (g.last === target) return;
+          const lo = Math.min(g.last, target), hi = Math.max(g.last, target);
+          for (let i = lo; i < hi; i++) {
+            g.spans[i].style.opacity = (i < target) ? "1" : "0";
+          }
+          g.last = target;
+        });
+      };
+
+      /* 先克隆（此时真实文字还正常），再把真实 03 的文字藏起来交给飞行层。
+         ★ 只隐藏文字，三列图区（含 model-viewer）留在真实 DOM 里继续渲染。 */
+      const oldText = makeTextLayer(s3, yA, "old");
+      const newText = makeTextLayer(s4, yB, "new");
+      const savedVis = realText.map((el) => el.style.visibility);
+      const savedRowOpacity = rowEl.style.opacity;
+      realText.forEach((el) => { el.style.visibility = "hidden"; });
+
+      const fly = document.createElement("div");
+      fly.className = "ch-fly ch-fly--34";
+      fly.style.cssText =
+        /* 透明容器：底色由单独的 bg 层淡入，前半段能透出真实 3D */
+        "position:fixed;inset:0;z-index:15;overflow:hidden;pointer-events:none;";
+
+      const bg = document.createElement("div");
+      bg.style.cssText = "position:absolute;inset:0;background:#f1eefb;will-change:opacity;";
+      fly.appendChild(bg);
+
+      /* 两条横线：从中心向两端展开，同时上下向中间收拢 */
+      const mkLine = () => {
+        const d = document.createElement("div");
+        d.className = "ch-m34-line";
+        d.style.cssText =
+          "position:absolute;height:1px;background:rgba(43,26,18,0.12);" +
+          "will-change:left,top,width;";
+        fly.appendChild(d);
+        return d;
+      };
+      const lineT = mkLine(), lineB = mkLine();
+
+      /* 参数表：clone 真实 .ch-params，只留 8 格和列间竖线，上下边由横线画 */
+      const cellsBox = parEl.cloneNode(true);
+      cellsBox.classList.add("ch-m34-cells");
+      cellsBox.style.cssText =
+        "position:absolute;left:" + par.l.toFixed(1) + "px;top:" + par.t.toFixed(1) + "px;" +
+        "width:" + par.w.toFixed(1) + "px;margin:0;" +
+        "border-top-color:transparent;border-bottom-color:transparent;";
+      const cells = [...cellsBox.querySelectorAll(":scope > div")];
+      cells.forEach((c) => { c.style.opacity = "0"; });
+      fly.appendChild(cellsBox);
+
+      fly.appendChild(oldText.box);
+      fly.appendChild(newText.box);
+      document.body.appendChild(fly);
+      initType(oldText, true);
+      initType(newText, false);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1500;
+      const LINE_DONE = 0.62;   // 横线长到位的时间点；04 文字一律在这之后才出现
+
+      const frame = (p) => {
+        /* 背景奶油 → 淡紫 */
+        bg.style.opacity = String(es(cl((p - 0.10) / 0.62)));
+
+        /* ① 真实三列区（含 3D 真身）淡出，与横线生长同时启动。
+           稍微拉长一点，让中段还能看见正在转的 3D，不会一下子空掉。 */
+        rowEl.style.opacity = String(1 - es(cl((p - 0.00) / 0.56)));
+
+        /* ② 横线：中心展开 + 上下收拢 */
+        const g = es(cl(p / LINE_DONE));
+        const w = par.w * g;
+        const l = par.l + (par.w - w) / 2;
+        const yT = row.t + (par.t - row.t) * g;
+        const yB = (row.t + row.h) + ((par.t + par.h) - (row.t + row.h)) * g;
+        [lineT, lineB].forEach((d, i) => {
+          d.style.left = l.toFixed(1) + "px";
+          d.style.width = w.toFixed(1) + "px";
+          d.style.top = (i === 0 ? yT : yB).toFixed(1) + "px";
+          d.style.opacity = g > 0.01 ? "1" : "0";
+        });
+
+        /* ③ 03 文字逐字擦掉（收拢期间）；04 文字等横线长到位后才逐字打入 */
+        setType(oldText.groups, es(cl((p - 0.00) / 0.52)), false);
+        setType(newText.groups, es(cl((p - LINE_DONE) / 0.34)), true);
+
+        /* ④ 参数表 8 格 + 竖线按列从右往左错开淡入，同样等到横线长到位 */
+        cells.forEach((c, i) => {
+          const order = 3 - (i % 4);        // 最右列先
+          c.style.opacity = String(es(cl((p - LINE_DONE - order * 0.055) / 0.20)));
+        });
+      };
+
+      busy = true;
+      ctx = { fly, toY, realText, savedVis, rowEl, savedRowOpacity };
+      frame(0);
+      const t0 = performance.now();
+      let landed = false;
+      const tick = (now) => {
+        if (!ctx) return;
+        const k = Math.min(1, (now - t0) / T);
+        // 反向按用户描述的顺序反演（同一套动作反过来走）
+        frame(fwd ? k : 1 - k);
+        if (!landed && k >= 1) {
+          landed = true;
+          chJump(toY);
+          clear();
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!cur || cur.id !== "prints" || !next || next.id !== "params") return false;
+        return morph(1);
+      },
+      up: (cur, prev) => {
+        if (!cur || cur.id !== "params" || !prev || prev.id !== "prints") return false;
+        return morph(-1);
+      },
+      busy: () => busy
+    };
+  })();
+
+  /* 三个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 */
   const CH_TRANSITIONS = {
-    down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next),
-    up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev),
-    busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy()
+    down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next) ||
+      CH_34_MORPH.down(cur, next),
+    up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev) ||
+      CH_34_MORPH.up(cur, prev),
+    busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy() || CH_34_MORPH.busy()
   };
 
   /* ---------- 分页 ---------- */
