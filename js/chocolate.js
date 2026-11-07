@@ -533,11 +533,200 @@
     };
   })();
 
-  /* 两个专属转场共用一个钩子：先判首屏↔01，再判 01↔02 */
+  /* ---------- 02 ↔ 03：0.15mm 逐层重印（用户 2026-11-08 选方案 A） ----------
+     依据 03 正文 "printed at 0.15mm layers on an Ultimaker 2"。
+     一条水平打印头自上而下（正向）／自下而上（反向）扫过整屏：
+     扫过的一侧换成目标页、没扫到的一侧仍是起始页，扫描线附近留一小段细密层纹。
+     ★ 02 的 5 行正文就是这样一行行被刷成 03 的 1 行短句 —— 不额外做文字动画，
+       也不用任何位移（上一轮用户明确不要文字跳）。
+     ★ 四列图 / 三列图（含 3D 模型）只是整页内容的一部分，随页面一起被扫过，
+       不做任何形变、裁切形状变化或单独位移 —— 这段不利用图片框。
+     ★ 反向不是倒放：打印头反向走、两个主角对调，动作形态一致。 */
+  const CH_23_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    // 03 的图在真实页面是 lazy 的，转场只有 1.5s，先提前取好
+    ["cho-print-black", "cho-print-white", "cho-model-poster"].forEach((n) => {
+      const im = new Image();
+      im.src = "assets/img/choc/" + n + ".webp";
+    });
+
+    const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const clear = () => {
+      if (!ctx) return;
+      if (ctx.fly.parentNode) ctx.fly.remove();
+      ctx = null;
+      busy = false;
+    };
+
+    const morph = (dir) => {
+      if (busy || ctx) return true;
+      const s2 = document.getElementById("shapes");
+      const s3 = document.getElementById("prints");
+      if (!s2 || !s3) return false;
+
+      const fwd = dir > 0;
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const top2 = topOf(s2);
+      const top3 = Math.ceil(topOf(s3));
+      const end2 = Math.max(top2, top2 + s2.offsetHeight - vh);
+      const nowY = window.scrollY;
+      const yA = fwd ? nowY : end2;      // 02 侧：触发当下视口 / 反向落位视口
+      const yB = fwd ? top3 : nowY;      // 03 侧：正向落位视口 / 触发当下视口
+      const toY = fwd ? top3 : end2;
+      /* ★ 3D 模型在克隆创建时常常还在屏外、未布局，getBoundingClientRect().height
+         会读到 0。必须从真实元素取 computed height（CSS 固定 350px），
+         否则占位板塌成 0 高、第三列 figure 从 452 变 102、整行变矮，
+         flex 居中会把所有文字下移 18px —— 交接时就会跳一下。 */
+      const realMv = s3.querySelector("model-viewer");
+      let modelH = realMv ? parseFloat(getComputedStyle(realMv).height) : 350;
+      if (!Number.isFinite(modelH) || modelH <= 0) modelH = 350;
+
+      const fly = document.createElement("div");
+      fly.className = "ch-fly ch-fly--23";
+      fly.style.cssText =
+        /* 03 的 section 本身是透明底，飞行层底色就是它的奶油底；
+           02 的 ch-sec--alt 自带淡紫，会盖住这里 */
+        "position:fixed;inset:0;z-index:15;overflow:hidden;pointer-events:none;background:#f7f1e8;";
+
+      /* 整页克隆。★ 保留 section 自己的 id（#shapes 有 4 条专属规则，
+         丢掉会让 flex 居中的文字整体错位、交接时跳一下）；只清内部子元素 id。
+         03 的 model-viewer 换成 poster 静态占位，避免 3D 模型重新加载并闪。 */
+      const layer = (sec, base) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;";
+        const inner = sec.cloneNode(true);
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        inner.querySelectorAll("model-viewer").forEach((mv) => {
+          const ph = document.createElement("div");
+          ph.style.cssText =
+            "width:100%;height:" + modelH.toFixed(1) + "px;" +
+            "background-color:#f3eee4;" +
+            "background-image:url(assets/img/choc/cho-model-poster.webp);" +
+            "background-size:contain;background-position:center;background-repeat:no-repeat;";
+          mv.replaceWith(ph);
+        });
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + (topOf(sec) - base).toFixed(1) + "px;" +
+          "width:" + sec.getBoundingClientRect().width.toFixed(1) + "px;margin:0;";
+        box.appendChild(inner);
+        fly.appendChild(box);
+        return box;
+      };
+      const srcLayer = layer(fwd ? s2 : s3, fwd ? yA : yB);
+      const dstLayer = layer(fwd ? s3 : s2, fwd ? yB : yA);
+      /* 起始页文字先整批退场：否则分界线切过 02 的两行标题时，
+         03 的一行标题会和 02 标题的第二行拼成一句实心文字，很难看。
+         背景、图片、层纹仍完全交给打印头逐层刷，不受影响。 */
+      const srcText = [...srcLayer.querySelectorAll(".ch-eyebrow,.ch-h2,.ch-p")];
+
+      /* 层纹带：只在刚打印完的那一侧、扫描线附近 40px 内可见 */
+      const grain = document.createElement("div");
+      grain.style.cssText =
+        "position:absolute;left:0;width:" + vw + "px;height:40px;pointer-events:none;" +
+        "background:repeating-linear-gradient(to bottom," +
+        "rgba(107,74,52,0.13) 0px,rgba(107,74,52,0.13) 1px," +
+        "transparent 1px,transparent 5px);will-change:top,opacity;";
+      fly.appendChild(grain);
+
+      /* 打印头：2px 可可色硬线 + 下方一条极淡的伴线，不用模糊/发光 */
+      const head = document.createElement("div");
+      head.style.cssText =
+        "position:absolute;left:0;width:" + vw + "px;height:2px;background:#6b4a34;" +
+        "border-bottom:3px solid rgba(107,74,52,0.10);pointer-events:none;will-change:top,opacity;";
+      fly.appendChild(head);
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1500;
+      /* 扫描进度用缓动，但首尾必须是精确的 0 / 1，否则第一帧/末帧会露出缝隙 */
+      const scan = (p) => es(cl(p));
+      const setMask = (el, showTop, h, soft) => {
+        const a = Math.max(0, h - soft);
+        const b = Math.min(vh, h + soft);
+        const g = showTop
+          ? "linear-gradient(to bottom,#000 " + a.toFixed(1) + "px,transparent " + b.toFixed(1) + "px)"
+          : "linear-gradient(to bottom,transparent " + a.toFixed(1) + "px,#000 " + b.toFixed(1) + "px)";
+        el.style.webkitMaskImage = g;
+        el.style.maskImage = g;
+      };
+
+      const frame = (p) => {
+        const s = scan(p);
+        // 正向线从上往下、反向从下往上；两个方向都是「线扫过的一侧＝目标页」
+        const h = (fwd ? s : 1 - s) * vh;
+        // 两端把柔化收成 0，保证第一帧/末帧与真实页面严丝合缝、不露底
+        const soft = 18 * Math.min(1, Math.min(p, 1 - p) * 10);
+        const topLayer = fwd ? dstLayer : srcLayer;
+        const bottomLayer = fwd ? srcLayer : dstLayer;
+        setMask(topLayer, true, h, soft);
+        setMask(bottomLayer, false, h, soft);
+        srcText.forEach((el) => {
+          el.style.opacity = String(1 - es(cl((p - 0.03) / 0.20)));
+        });
+
+        const edge = Math.min(1, Math.min(p, 1 - p) * 10);
+        head.style.top = h.toFixed(1) + "px";
+        head.style.opacity = String(edge);
+        grain.style.top = (fwd ? h - 40 : h).toFixed(1) + "px";
+        grain.style.opacity = String(edge * 0.9);
+      };
+
+      busy = true;
+      ctx = { fly, toY };
+      frame(0);
+      const t0 = performance.now();
+      let landed = false;
+      const tick = (now) => {
+        if (!ctx) return;
+        const k = Math.min(1, (now - t0) / T);
+        frame(k);
+        if (!landed && k >= 1) {
+          landed = true;
+          chJump(toY);
+          clear();
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!cur || cur.id !== "shapes" || !next || next.id !== "prints") return false;
+        return morph(1);
+      },
+      up: (cur, prev) => {
+        if (!cur || cur.id !== "prints" || !prev || prev.id !== "shapes") return false;
+        return morph(-1);
+      },
+      busy: () => busy
+    };
+  })();
+
+  /* 三个专属转场共用一个钩子：首屏↔01 → 01↔02 → 02↔03 */
   const CH_TRANSITIONS = {
-    down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next),
-    up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev),
-    busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy()
+    down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next) ||
+      CH_23_MORPH.down(cur, next),
+    up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev) ||
+      CH_23_MORPH.up(cur, prev),
+    busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy() || CH_23_MORPH.busy()
   };
 
   /* ---------- 分页 ---------- */
