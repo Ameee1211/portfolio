@@ -452,10 +452,11 @@
         const inNew = es(cl((p - 0.44) / 0.32));
         const outA = fwd ? outOld : inNew;
         const inB = fwd ? inNew : outOld;
+        /* ★ 文字只做原地淡入淡出，不做任何位移（用户 2026-11-07 明确要求）：
+           之前两层各带 ±16px 的 translateY，02 的标题／正文／四张图下面那段
+           文字会整层跳一下。这里连 tA 一起去掉，保证正反两个方向都不跳。 */
         tA.style.opacity = String(outA);
-        tA.style.transform = "translateY(" + ((fwd ? -16 : 16) * (1 - outA)).toFixed(1) + "px)";
         tB.style.opacity = String(inB);
-        tB.style.transform = "translateY(" + ((fwd ? 16 : -16) * (1 - inB)).toFixed(1) + "px)";
 
         const q = es(cl((p - 0.04) / 0.76));
         cards.forEach((c, i) => {
