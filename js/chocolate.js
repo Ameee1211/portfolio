@@ -563,8 +563,12 @@
       ctx = null;
       busy = false;
       if (c.fly.parentNode) c.fly.remove();
-      c.realText.forEach((el, i) => { el.style.visibility = c.savedVis[i]; });
+      c.hideList.forEach((el, i) => { el.style.visibility = c.savedVis[i]; });
       c.rowEl.style.opacity = c.savedRowOpacity;
+      c.rowEl.style.transform = c.savedRowTransform;
+      c.s4.style.backgroundColor = c.savedBg4;
+      c.s3.style.position = c.savedS3Pos;
+      c.s3.style.zIndex = c.savedS3Z;
     };
 
     const morph = (dir) => {
@@ -593,7 +597,13 @@
       const row = R(rowEl, yA);          // 03 三列区（含图注）
       const par = R(parEl, yB);          // 04 参数表
 
+      /* ★★ 反向触发时真实页面停在 04 顶部，04 的文字和参数表也在视口里。
+         只藏 03 的文字是不够的：淡紫底褪去后真实 04 会整片透出来，
+         和飞行层的 03 文字叠成一团 —— 这就是用户说的「诡异」。
+         正反两个方向都把两页的文字 + 04 参数表统一交给飞行层。 */
       const realText = [...s3.querySelectorAll(".ch-eyebrow,.ch-h2,.ch-p")];
+      const realText4 = [...s4.querySelectorAll(".ch-eyebrow,.ch-h2,.ch-p")];
+      const hideList = [...realText, ...realText4, parEl];
 
       /* 文字拆成单字符，用 CSS transition 做柔和的逐字出现/消失。
          只改跨越阈值的那几个 span，避免每帧写几百个 DOM 属性。 */
@@ -665,9 +675,22 @@
          ★ 只隐藏文字，三列图区（含 model-viewer）留在真实 DOM 里继续渲染。 */
       const oldText = makeTextLayer(s3, yA, "old");
       const newText = makeTextLayer(s4, yB, "new");
-      const savedVis = realText.map((el) => el.style.visibility);
+      const savedVis = hideList.map((el) => el.style.visibility);
       const savedRowOpacity = rowEl.style.opacity;
-      realText.forEach((el) => { el.style.visibility = "hidden"; });
+      const savedRowTransform = rowEl.style.transform;
+      const savedBg4 = s4.style.backgroundColor;
+      hideList.forEach((el) => { el.style.visibility = "hidden"; });
+      /* 反向：把 04 的淡紫底临时换成奶油，飞行层淡紫褪去后露出的才是 03 的奶油底。
+         并把真实 03 三列区（含 3D 真身）平移进当前视口，三框才真的「出现」。
+         正向 shift=0，完全不设，行为一点不变。 */
+      if (!fwd) s4.style.backgroundColor = "#f7f1e8";
+      const shift = nowY - yA;
+      if (!fwd && shift) rowEl.style.transform = "translateY(" + shift.toFixed(1) + "px)";
+      /* ★★ 04 的 section 在 DOM 里排在 03 后面、且背景不透明，会把平移过来的
+         三框整个盖住（elementFromPoint 命中的是 04 的 .ch-wrap）。
+         给 03 临时提一层，低于飞行层 15、高于 04 的 auto。 */
+      const savedS3Pos = s3.style.position, savedS3Z = s3.style.zIndex;
+      if (!fwd) { s3.style.position = "relative"; s3.style.zIndex = "1"; }
 
       const fly = document.createElement("div");
       fly.className = "ch-fly ch-fly--34";
@@ -696,7 +719,7 @@
       cellsBox.classList.add("ch-m34-cells");
       cellsBox.style.cssText =
         "position:absolute;left:" + par.l.toFixed(1) + "px;top:" + par.t.toFixed(1) + "px;" +
-        "width:" + par.w.toFixed(1) + "px;margin:0;" +
+        "width:" + par.w.toFixed(1) + "px;margin:0;visibility:visible;" +
         "border-top-color:transparent;border-bottom-color:transparent;";
       const cells = [...cellsBox.querySelectorAll(":scope > div")];
       cells.forEach((c) => { c.style.opacity = "0"; });
@@ -705,8 +728,6 @@
       fly.appendChild(oldText.box);
       fly.appendChild(newText.box);
       document.body.appendChild(fly);
-      initType(oldText, true);
-      initType(newText, false);
 
       const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
       const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
@@ -745,16 +766,53 @@
         });
       };
 
+      /* ★★ 反向不是正向倒放（用户 2026-11-08：倒放「非常诡异」）。
+         倒放会让横线往中心缩短、文字倒着长回来、图片在横线没张到位就出现。
+         按用户口述重排一套顺序，同一批元素、同一套打字机，只换步骤与节奏：
+         ① 04 文字刷新成 03 文字 → ② 两条横线中间的参数表文字淡出
+         → ③ 两条横线保持全宽、距离从 152 张到 452（03 三列区）
+         → ④ 三框（含真实 3D 真身）在横线张到位之后才淡入。 */
+      const frameBack = (k) => {
+        bg.style.opacity = String(1 - es(cl((k - 0.10) / 0.60)));
+
+        /* ① 文字刷新：04 逐字擦掉、03 逐字打入（行内连续，块间错落） */
+        const t = es(cl(k / 0.30));
+        setType(newText.groups, t, false);
+        setType(oldText.groups, t, true);
+
+        /* ② 参数表 8 格 + 竖线一起淡出，不按列 */
+        const cellOut = 1 - es(cl((k - 0.30) / 0.18));
+        cells.forEach((c) => { c.style.opacity = String(cellOut); });
+
+        /* ③ 横线：宽度始终是 1160，只有上下距离变大（k=0.70 张到位） */
+        const g = es(cl((k - 0.42) / 0.28));
+        const yT = par.t + (row.t - par.t) * g;
+        const yB = (par.t + par.h) + ((row.t + row.h) - (par.t + par.h)) * g;
+        const lineOut = 1 - es(cl((k - 0.84) / 0.16));
+        [lineT, lineB].forEach((d, i) => {
+          d.style.left = par.l.toFixed(1) + "px";
+          d.style.width = par.w.toFixed(1) + "px";
+          d.style.top = (i === 0 ? yT : yB).toFixed(1) + "px";
+          d.style.opacity = String(lineOut);
+        });
+
+        /* ④ 横线张开到位后，三个图片框（含真实 3D）才淡入，留足 30% 时长 */
+        rowEl.style.opacity = String(es(cl((k - 0.70) / 0.30)));
+      };
+
       busy = true;
-      ctx = { fly, toY, realText, savedVis, rowEl, savedRowOpacity };
-      frame(0);
+      ctx = { fly, toY, hideList, savedVis, rowEl, savedRowOpacity,
+        savedRowTransform, s4, savedBg4, s3, savedS3Pos, savedS3Z };
+      // 反向的起手是 04 完整页面，所以初始字符状态与正向相反
+      initType(oldText, fwd);
+      initType(newText, !fwd);
+      if (fwd) frame(0); else frameBack(0);
       const t0 = performance.now();
       let landed = false;
       const tick = (now) => {
         if (!ctx) return;
         const k = Math.min(1, (now - t0) / T);
-        // 反向按用户描述的顺序反演（同一套动作反过来走）
-        frame(fwd ? k : 1 - k);
+        if (fwd) frame(k); else frameBack(k);
         if (!landed && k >= 1) {
           landed = true;
           chJump(toY);
