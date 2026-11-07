@@ -97,12 +97,224 @@
     });
   }
 
+  /* ============================================================
+     首屏 ↔ 01：四朵巧克力花脱模，飞进 01 的四格（用户 2026-11-07 选方案 A）
+     ------------------------------------------------------------
+     ★ 抠图口径：不用「沿花的真实轮廓逐像素抠」—— 那些花是手工脱模的，
+       边缘本来就不平整，抠出来会带毛刺、缺口和灰盘残留（实测过，很难看）。
+       改用 07 四张单图，按检测出的花心裁成【圆形 + 抗锯齿 + 1.5px 羽化】的
+       透明 webp：边缘是数学上平滑的圆，螺旋纹理完整保留，四张完全统一。
+       素材由 .workbuddy/design/_chcut.py 生成：fly-{brown,pink,blue,purple}.webp
+     ★ 起点坐标是圆盘里四朵花的真实位置，按比例存（px/py/r 相对 .ch-hero__shot），
+       所以换视口宽度也不会跑偏；终点运行时从 .ch-law 的 rect 取。
+     ★ 反向不是倒放：四个小点从四格抽回、长回四朵花，奶油底收回深色。
+     ============================================================ */
+  /* ★ 按「起点 x 从左到右」排列，和四格 1→4 一一对应：
+     若按盘子里的视觉顺序（棕/绿/粉/紫）配 1→4，紫花起点比粉花靠左、终点却更右，
+     两条弧线会在中途交叉、两朵花叠在一起（实测过，很难看）。 */
+  const CH_FLYERS = [
+    { src: "fly-blue.webp",   px: 0.203, py: 0.553, r: 0.119 },  // 左下 蓝绿 → 格 1
+    { src: "fly-brown.webp",  px: 0.273, py: 0.259, r: 0.100 },  // 左上 棕   → 格 2
+    { src: "fly-purple.webp", px: 0.427, py: 0.754, r: 0.119 },  // 中下 灰紫 → 格 3
+    { src: "fly-pink.webp",   px: 0.755, py: 0.625, r: 0.123 }   // 右侧 粉橙 → 格 4
+  ];
+  CH_FLYERS.forEach((f) => {
+    const pre = new Image();
+    pre.src = "assets/img/choc/" + f.src;
+  });
+
+  const CH_HERO_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const clear = () => {
+      if (!ctx) return;
+      if (ctx.fly.parentNode) ctx.fly.remove();
+      ctx = null;
+      busy = false;
+    };
+
+    const morph = (dir) => {
+      if (busy || ctx) return true;
+      const hero = document.getElementById("top");
+      const one = document.getElementById("overview");
+      const shot = hero && hero.querySelector(".ch-hero__shot");
+      const laws = one ? [...one.querySelectorAll(".ch-law")] : [];
+      if (!shot || laws.length < 4) return false;
+
+      const yA = 0;                          // 首屏顶部视图
+      const yB = Math.ceil(topOf(one));      // 01 顶部视图
+      const toY = dir > 0 ? yB : yA;
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+
+      // 文档坐标 → 指定 scrollY 下的视口坐标
+      const R = (el, base) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top + window.scrollY - base, w: r.width, h: r.height };
+      };
+      const sr = R(shot, yA);
+      const start = CH_FLYERS.map((f) => ({
+        x: sr.l + sr.w * f.px,
+        y: sr.t + sr.h * f.py,
+        r: sr.w * f.r
+      }));
+      const end = laws.slice(0, 4).map((el) => {
+        const r = R(el, yB);
+        return { x: r.l + r.w / 2, y: r.t + r.h / 2, r: 9 };
+      });
+
+      const fly = document.createElement("div");
+      fly.className = "ch-fly";
+      fly.style.cssText =
+        /* z-index 15 < .ch-index(20)：转场期间左侧小花索引栏要一直露着 */
+        "position:fixed;inset:0;z-index:15;overflow:hidden;pointer-events:none;background:#150c09;";
+
+      /* 克隆整屏：显式写回原元素的 left / width，避免 max-width + margin:auto
+         在 absolute 定位下失效导致整屏左移。 */
+      const layer = (sec, base) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;will-change:transform,opacity;";
+        const r = sec.getBoundingClientRect();
+        const inner = sec.cloneNode(true);
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        inner.style.cssText =
+          "position:absolute;left:" + r.left.toFixed(1) + "px;" +
+          "top:" + (topOf(sec) - base).toFixed(1) + "px;" +
+          "width:" + r.width.toFixed(1) + "px;margin:0;";
+        box.appendChild(inner);
+        return box;
+      };
+      const oldL = layer(hero, yA);
+      const bgB = document.createElement("div");
+      bgB.style.cssText =
+        "position:absolute;inset:0;background:#f7f1e8;will-change:opacity;";
+      const newL = layer(one, yB);
+      fly.appendChild(oldL);
+      fly.appendChild(bgB);
+      fly.appendChild(newL);
+
+      const flyers = CH_FLYERS.map((f) => {
+        const im = document.createElement("img");
+        im.src = "assets/img/choc/" + f.src;
+        im.alt = "";
+        im.style.cssText =
+          "position:absolute;display:block;border-radius:50%;" +
+          "filter:drop-shadow(0 10px 18px rgba(20,10,6,0.38));" +
+          "will-change:left,top,width,height,opacity;";
+        fly.appendChild(im);
+        return im;
+      });
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1500;
+      const fwd = dir > 0;
+
+      const frame = (p) => {
+        /* 背景：深棕 → 奶油（整层交叉淡化，不用帘子/揭幕） */
+        bgB.style.opacity = String(fwd
+          ? es(cl((p - 0.06) / 0.60))
+          : 1 - es(cl((p - 0.10) / 0.62)));
+
+        const outOld = fwd ? 1 - es(cl((p - 0.02) / 0.28)) : es(cl((p - 0.44) / 0.50));
+        /* 01 文字很淡地提前托住画面，但主体淡入仍在花快落完之后 */
+        const inNew = fwd ? es(cl((p - 0.46) / 0.50)) : 1 - es(cl((p - 0.02) / 0.30));
+        oldL.style.opacity = String(outOld);
+        oldL.style.transform = "translateY(" +
+          ((fwd ? -18 : 22) * (1 - outOld)).toFixed(1) + "px)";
+        newL.style.opacity = String(inNew);
+        newL.style.transform = "translateY(" +
+          ((fwd ? 22 : 18) * (1 - inNew)).toFixed(1) + "px)";
+
+        flyers.forEach((im, i) => {
+          const f = es(cl((p - 0.02 - i * 0.035) / 0.64));
+          const from = fwd ? start[i] : end[i];
+          const dest = fwd ? end[i] : start[i];
+          // 二次贝塞尔；四条弧线抬升高度依次错开，像一朵朵被拎起来，不挤成一条
+          const cx = (from.x + dest.x) / 2;
+          const cy = Math.min(from.y, dest.y) - (58 + i * 30);
+          const u = 1 - f;
+          const x = u * u * from.x + 2 * u * f * cx + f * f * dest.x;
+          const y = u * u * from.y + 2 * u * f * cy + f * f * dest.y;
+          const size = from.r * 2 * (1 - f) + dest.r * 2 * f;
+          const appear = es(cl((p - 0.02 - i * 0.035) / (fwd ? 0.10 : 0.14)));
+          /* 两个方向都在飞到终点时化开：正向交给 01 文字，反向交给真实首屏里
+             那四朵花（否则飞行图和盘里的花叠成重影，移除飞行层时会闪一下）。
+             反向再加一道全局收尾，保证最后一朵不会拖到首屏完全恢复才消失。 */
+          const byArrive = 1 - es(cl((f - 0.86) / 0.14));
+          const vanish = fwd ? byArrive
+            : Math.min(byArrive, 1 - es(cl((p - 0.80) / 0.20)));
+          im.style.left = (x - size / 2).toFixed(1) + "px";
+          im.style.top = (y - size / 2).toFixed(1) + "px";
+          im.style.width = size.toFixed(1) + "px";
+          im.style.height = size.toFixed(1) + "px";
+          im.style.opacity = String(appear * vanish);
+        });
+      };
+
+      busy = true;
+      ctx = { fly, toY };
+      /* 两个方向都是 p:0 → 1，frame() 内部按 dir 换起终点 —— 反向不是倒放 */
+      frame(0);
+      const t0 = performance.now();
+      let landed = false;
+      const tick = (now) => {
+        if (!ctx) return;
+        const k = Math.min(1, (now - t0) / T);
+        frame(k);
+        if (!landed && k >= 1) {
+          landed = true;
+          chJump(toY);
+          clear();
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!next || next.id !== "overview") return false;
+        if (cur && cur.id !== "top") return false;
+        return morph(1);
+      },
+      up: (cur, prev) => {
+        if (!cur || cur.id !== "overview") return false;
+        if (!prev || prev.id !== "top") return false;
+        return morph(-1);
+      },
+      busy: () => busy
+    };
+  })();
+
   /* ---------- 分页 ---------- */
   function chInitPager() {
     const main = $("#chMain");
     if (!main) return;
     const sections = CH_SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean);
-    window.initSectionPager({ main, sections, hero: main.querySelector(".ch-hero") });
+    window.initSectionPager({
+      main,
+      sections,
+      hero: main.querySelector(".ch-hero"),
+      transition: CH_HERO_MORPH
+    });
   }
 
   /* ---------- 首屏提示 ---------- */
