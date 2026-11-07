@@ -304,6 +304,236 @@
     };
   })();
 
+  /* ---------- 01 ↔ 02：四格裂成四张卡（用户 2026-11-07 选方案 A） ----------
+     两屏共用同一条四列栅格（x=140 起、总宽 1160、列距约 294）：
+     01 是 1×4 连着的定律条，02 是四张分开的白卡。
+     动作：三条竖线断开 → 四格原地圆角化、长到卡片尺寸 → 依次显影 v1→v4。
+     反向：图先淡出 → 四张卡收回四格 → 步骤文字回来（同一套动作换主角，不倒放）。
+     ★ 首屏→01 刚用过「四个独立飞行物」，这里全程没有飞行物；
+       也不用帘子、圆形揭幕、索引游标（这些别的段落已用过）。 */
+  const CH_12_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    // 四张版本图在 02 里是 lazy 加载，转场只有 1.5s，先提前取好
+    ["cho-v1", "cho-v2", "cho-v3", "cho-v4"].forEach((n) => {
+      const im = new Image();
+      im.src = "assets/img/choc/" + n + ".webp";
+    });
+
+    const topOf = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const clear = () => {
+      if (!ctx) return;
+      if (ctx.fly.parentNode) ctx.fly.remove();
+      ctx = null;
+      busy = false;
+    };
+
+    const morph = (dir) => {
+      if (busy || ctx) return true;
+      const s1 = document.getElementById("overview");
+      const s2 = document.getElementById("shapes");
+      if (!s1 || !s2) return false;
+      const laws = [...s1.querySelectorAll(".ch-law")];
+      const figs = [...s2.querySelectorAll(".ch-views--four figure")];
+      if (laws.length < 4 || figs.length < 4) return false;
+
+      const fwd = dir > 0;
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const top1 = topOf(s1);
+      const top2 = Math.ceil(topOf(s2));
+      const end1 = Math.max(top1, top1 + s1.offsetHeight - vh);
+      const nowY = window.scrollY;
+      // 01 侧用「触发当下视口」/「反向落位视口」，02 侧同理，两方向都不跳位
+      const yA = fwd ? nowY : end1;
+      const yB = fwd ? top2 : nowY;
+      const toY = fwd ? top2 : end1;
+
+      const R = (el, base) => {
+        const r = el.getBoundingClientRect();
+        return { l: r.left, t: r.top + window.scrollY - base, w: r.width, h: r.height };
+      };
+      const A = laws.slice(0, 4).map((el) => R(el, yA));   // 01 四格
+      const B = figs.slice(0, 4).map((el) => R(el, yB));   // 02 四张卡
+      // 极窄桌面若 .ch-views--four 变成 2×2，四列栅格不成立 → 交回普通整页移动
+      if (B.some((b, i) => i > 0 && Math.abs(b.t - B[0].t) > 8)) return false;
+
+      const fly = document.createElement("div");
+      fly.className = "ch-fly ch-fly--12";
+      fly.style.cssText =
+        /* z-index 15 < .ch-index(20)：左侧小花索引栏全程露着 */
+        "position:fixed;inset:0;z-index:15;overflow:hidden;pointer-events:none;background:#f7f1e8;";
+
+      const bgB = document.createElement("div");
+      bgB.style.cssText =
+        "position:absolute;inset:0;background:#f1eefb;will-change:opacity;";
+      fly.appendChild(bgB);
+
+      /* 两个文字层：各自整页克隆，把「四格 / 四卡」隐藏但保留占位，
+         位置交给上面的 card 层负责，这样首尾帧都和真实页面严丝合缝。 */
+      const layer = (sec, base, hideSel) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
+          "overflow:hidden;will-change:opacity,transform;";
+        const inner = sec.cloneNode(true);
+        inner.removeAttribute("id");
+        inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+        inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        inner.style.cssText =
+          "position:absolute;left:0;top:" + (topOf(sec) - base).toFixed(1) + "px;" +
+          "width:" + sec.getBoundingClientRect().width.toFixed(1) + "px;" +
+          "margin:0;background:transparent;";
+        inner.querySelectorAll(hideSel).forEach((n) => { n.style.visibility = "hidden"; });
+        box.appendChild(inner);
+        fly.appendChild(box);
+        return box;
+      };
+      const tA = layer(s1, yA, ".ch-lawbox");
+      const tB = layer(s2, yB, ".ch-views--four");
+
+      /* 四枚卡：起点装 01 的步骤文字，终点装 02 的真实 figure 克隆。
+         figure 固定按终点尺寸摆，卡在它周围变形、overflow 裁切，
+         所以落位那一帧和真实 02 一模一样。 */
+      const LINE = "43,26,18";
+      const cards = laws.slice(0, 4).map((law, i) => {
+        const box = document.createElement("div");
+        box.className = "ch-m12-card";
+        box.style.cssText =
+          "position:absolute;box-sizing:border-box;overflow:hidden;" +
+          "will-change:left,top,width,height;";
+        const txt = law.cloneNode(true);
+        txt.style.cssText =
+          "position:absolute;left:0;top:0;width:100%;box-sizing:border-box;" +
+          "border-left:0;padding-left:" + (i === 0 ? "0" : "18px") + ";";
+        /* ★ figure 的样式全靠祖先选择器（.ch-views img / .ch-views--four figcaption），
+           直接塞进卡里会退回 640×480 原图尺寸、图注被挤出裁掉。
+           所以外面补一层同名的 ch-views ch-views--four 壳，只把 display 改成 block，
+           后代选择器照样命中，宽高仍由卡控制。 */
+        const wrap = document.createElement("div");
+        wrap.className = "ch-views ch-views--four";
+        wrap.style.cssText =
+          "display:block;position:absolute;left:0;top:0;margin:0;" +
+          "width:" + B[i].w.toFixed(1) + "px;height:" + B[i].h.toFixed(1) + "px;";
+        const fig = figs[i].cloneNode(true);
+        fig.style.margin = "0";
+        fig.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
+        wrap.appendChild(fig);
+        box.appendChild(txt);
+        box.appendChild(wrap);
+        fly.appendChild(box);
+        return { box, txt, fig: wrap };
+      });
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const T = 1500;
+
+      const frame = (p) => {
+        /* 背景：奶油 ↔ 淡紫，整层交叉淡化（不用帘子） */
+        bgB.style.opacity = String(fwd
+          ? es(cl((p - 0.04) / 0.58))
+          : 1 - es(cl((p - 0.08) / 0.60)));
+
+        /* 标题 / 正文沿同一条左栅格换字。★ 必须「排队」而不是长交叉淡化：
+           两页标题 y 不同（01 在 255 / 02 在 150），重叠会变成错行的重影。
+           旧页退干净新页才进，中间那一小段由卡区正在显影的图片接住。 */
+        const outOld = 1 - es(cl((p - 0.20) / 0.24));
+        const inNew = es(cl((p - 0.44) / 0.32));
+        const outA = fwd ? outOld : inNew;
+        const inB = fwd ? inNew : outOld;
+        tA.style.opacity = String(outA);
+        tA.style.transform = "translateY(" + ((fwd ? -16 : 16) * (1 - outA)).toFixed(1) + "px)";
+        tB.style.opacity = String(inB);
+        tB.style.transform = "translateY(" + ((fwd ? 16 : -16) * (1 - inB)).toFixed(1) + "px)";
+
+        const q = es(cl((p - 0.04) / 0.76));
+        cards.forEach((c, i) => {
+          const a = fwd ? A[i] : B[i];
+          const b = fwd ? B[i] : A[i];
+          c.box.style.left = (a.l + (b.l - a.l) * q).toFixed(1) + "px";
+          c.box.style.top = (a.t + (b.t - a.t) * q).toFixed(1) + "px";
+          c.box.style.width = (a.w + (b.w - a.w) * q).toFixed(1) + "px";
+          c.box.style.height = (a.h + (b.h - a.h) * q).toFixed(1) + "px";
+
+          /* 线、圆角、边框宽度都要按「当前靠哪一侧」判断，
+             不能只看 q：反向起点是四张白卡（无线有圆角），终点才是四格。 */
+          const lineAmt = fwd ? 1 - cl(q / 0.45) : cl((q - 0.55) / 0.45);
+          const alpha = 0.12 * lineAmt;
+          c.box.style.borderRadius = (10 * (fwd ? q : 1 - q)).toFixed(1) + "px";
+          /* 中途白底最亮、两端透明，保证首尾帧和真实页面一模一样 */
+          c.box.style.backgroundColor = "rgba(255,255,255," +
+            (0.9 * Math.sin(Math.PI * q)).toFixed(3) + ")";
+          c.box.style.borderStyle = "solid";
+          const bw = (fwd ? q < 0.98 : q > 0.02) ? "1px" : "0";
+          c.box.style.borderTopWidth = bw;
+          c.box.style.borderBottomWidth = bw;
+          c.box.style.borderLeftWidth = i === 0 ? "0" : bw;
+          c.box.style.borderRightWidth = "0";
+          c.box.style.borderColor = "rgba(" + LINE + "," + alpha.toFixed(3) + ")";
+
+          /* 正向：v1→v4 依次显影；反向：图先淡出、步骤文字紧接着回来 */
+          c.fig.style.opacity = String(fwd
+            ? es(cl((p - 0.26 - i * 0.055) / 0.30))
+            : 1 - es(cl((p - 0.02 - i * 0.02) / 0.24)));
+          c.txt.style.opacity = String(fwd
+            ? 1 - es(cl((p - 0.08) / 0.26))
+            : es(cl((p - 0.28 - i * 0.03) / 0.40)));
+        });
+      };
+
+      busy = true;
+      ctx = { fly, toY };
+      // 两个方向都是 p:0 → 1，frame 内部按 dir 换起终点 —— 反向不是倒放
+      frame(0);
+      const t0 = performance.now();
+      let landed = false;
+      const tick = (now) => {
+        if (!ctx) return;
+        const k = Math.min(1, (now - t0) / T);
+        frame(k);
+        if (!landed && k >= 1) {
+          landed = true;
+          chJump(toY);
+          clear();
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!cur || cur.id !== "overview" || !next || next.id !== "shapes") return false;
+        return morph(1);
+      },
+      up: (cur, prev) => {
+        if (!cur || cur.id !== "shapes" || !prev || prev.id !== "overview") return false;
+        return morph(-1);
+      },
+      busy: () => busy
+    };
+  })();
+
+  /* 两个专属转场共用一个钩子：先判首屏↔01，再判 01↔02 */
+  const CH_TRANSITIONS = {
+    down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next),
+    up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev),
+    busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy()
+  };
+
   /* ---------- 分页 ---------- */
   function chInitPager() {
     const main = $("#chMain");
@@ -313,7 +543,7 @@
       main,
       sections,
       hero: main.querySelector(".ch-hero"),
-      transition: CH_HERO_MORPH
+      transition: CH_TRANSITIONS
     });
   }
 
