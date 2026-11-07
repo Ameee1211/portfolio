@@ -854,9 +854,13 @@
      ★ 用户 2026-11-08 追加两点：
        · 真实 .ch-params 的 border-top 在转场期间设透明、飞行层也不再重复画下横线，
          屏幕上只剩被压弯的那根粗棕线（原位那根细直线不再残留）。
-       · 04 的标题 + 两段正文逐字符拆成 inline 片段，用与粗线同一条抛物线按水平位置
-         整体下垂（字符保持水平、不旋转）；幅度按「块宽 / 线宽」等比缩放，视觉曲率一致。
-         压到最底时文字淡出。首帧 --warp=0，字符位置与真实页面严丝合缝。
+       · 04 的标题 + 两段正文逐字符拆成 inline 片段，字符保持水平、整体下垂，压到最底淡出。
+     ★★ 文字与粗线「永远平行」（用户 2026-11-08 再改口）：
+       文字只占线的左半 / 三分之二，但要当成和线一样长、右半边是透明文字，
+       所以每个字符用**整条线的全局 U = (x - 线左端)/线宽**算下垂，不是文字块自己的宽度。
+       于是只有最左侧固定（文字左对齐），右端跟着线继续往下走、不回弹；
+       幅度也必须用同一个 sag（不再等比缩放），文字与线处处垂直间距恒定。
+       首帧 --warp=0，字符位置与真实页面严丝合缝。
   */
   const CH_45_MORPH = (() => {
     let ctx = null;
@@ -916,13 +920,12 @@
       const savedBorderTop = parEl.style.borderTopColor;
       parEl.style.borderTopColor = "transparent";
 
-      /* ② 标题 + 两段正文：逐字符拆成 inline 片段，按水平位置整体下垂。
+      /* ② 标题 + 两段正文：逐字符拆成 inline 片段，按「整条粗线的全局 U」下垂。
          不拆行、不换字体、不重建排版：首帧 --warp=0 时与真实页面完全一致。
          position:relative + top 对 inline 元素生效，且不影响周围排版。 */
       const textBlocks = [...s4.querySelectorAll(".ch-h2, .ch-p")].map((el) => {
         const html = el.innerHTML;
         const savedOpacity = el.style.opacity;
-        const rect = el.getBoundingClientRect();
         const norm = (el.textContent || "").replace(/\s+/g, " ").trim();
         const frag = document.createDocumentFragment();
         const chars = [];
@@ -936,15 +939,18 @@
         }
         el.textContent = "";
         el.appendChild(frag);
-        /* 用渲染后的字符位置算归一化 u，抛物线系数 k = 4u(1-u)，
-           与粗线 y = t + 4*sag*u*(1-u) 是同一条曲线。 */
+        /* ★ 全局 U = (字符中心 x - 粗线左端)/粗线宽，不是文字块自己的宽度。
+           二次贝塞尔 M l t Q (l+w/2) (t+2sag) (l+w) t 的
+           y(U) = t + 4*sag*U*(1-U)，且 x(U) = l + U*w 是线性的。
+           文字虽只到 U≈0.62，但用同一个 U 就等于「右半边有透明文字」，
+           与粗线处处平行；U=0 的左端位移为 0（文字左对齐，只需左侧固定）。 */
         chars.forEach((sp) => {
           const cr = sp.getBoundingClientRect();
-          const u = rect.width ? (cr.left + cr.width / 2 - rect.left) / rect.width : 0;
-          const uu = Math.max(0, Math.min(1, u));
+          const U = par.w ? (cr.left + cr.width / 2 - par.l) / par.w : 0;
+          const uu = Math.max(0, Math.min(1, U));
           sp.style.setProperty("--k", (4 * uu * (1 - uu)).toFixed(4));
         });
-        return { el, html, savedOpacity, width: rect.width };
+        return { el, html, savedOpacity };
       });
 
       s5.style.transform = "translateY(" + (nowY - top5).toFixed(1) + "px)";
@@ -991,11 +997,11 @@
         /* 两端固定在参数表上边，控制点 y = t + 2*sag：
            二次贝塞尔中点正好落在 t + sag，sag 到 par.h 时中点贴住下横线。 */
         const sag = par.h * g1;
-        /* 文字与粗线同一条抛物线 y = 4*sag*u*(1-u)；幅度按「块宽/线宽」等比缩放
-           （用户选：视觉曲率一致，文字块约 94px 下垂而不是 152px）。
-           每帧只给每个块写一个 CSS 变量，字符自己用 calc() 算 top，开销极小。 */
+        /* 文字与粗线用同一个 sag（不再等比缩小）：字符位移 = sag*4U(1-U)，
+           与线 y = t + 4*sag*U*(1-U) 完全平行。每帧每块只写一个 CSS 变量，
+           字符自己用 calc() 算 top，开销极小。 */
         textBlocks.forEach((b) => {
-          b.el.style.setProperty("--warp", (sag * (b.width / par.w)).toFixed(2) + "px");
+          b.el.style.setProperty("--warp", sag.toFixed(2) + "px");
           b.el.style.opacity = String(1 - es(cl((g1 - 0.78) / 0.22)));
         });
         const cx = par.l + par.w / 2;
