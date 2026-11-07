@@ -838,13 +838,210 @@
     };
   })();
 
-  /* 三个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 */
+  /* ---------- 04 → 05：上横线当片材被真空吸下去（用户 2026-11-08 选方案 B） ----------
+     ★ 只用 04 参数表现有的两根横线，不新增片材元素：
+       上横线（border-top）两端钉死、中间下垂成弧，压到下横线（border-bottom）为止；
+       下横线全程不动；8 格参数按列从左到右被压得下沉 + 熄灭。
+     ★ 05 的 <video autoplay loop> 全程是真实节点：不 clone、不用 poster 占位。
+       把真实 #mould 平移进当前视口并提一层，直接淡入；transform 与落位后的
+       scrollY 变化正好抵消，清除时零跳变。
+     ★ 只做正向。05 → 04 用户指定保持普通上移，up 一律返回 false。
+     ★ 真跟手：转场期间 busy=true 让分页器吞掉滚轮（一串仍只翻一次页），
+       本转场在 window capture 阶段抢先读 deltaY 推进自己的进度；
+       每格滑一点、停手横线停住、松手 220ms 后自动补完剩余进度并落位。
+  */
+  const CH_45_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const clear = () => {
+      const c = ctx;
+      if (!c) return;
+      ctx = null;
+      busy = false;
+      window.removeEventListener("wheel", c.onWheelCap, true);
+      window.removeEventListener("scroll", c.onScroll);
+      if (c.fly.parentNode) c.fly.remove();
+      c.cells.forEach((el, i) => { el.style.cssText = c.savedCells[i]; });
+      c.wrap4.style.opacity = c.savedWrap4;
+      c.s4.style.backgroundColor = c.savedBg4;
+      c.KEYS.forEach((k, i) => { c.s5.style[k] = c.savedS5[i]; });
+    };
+
+    const morph = () => {
+      if (busy || ctx) return true;
+      const s4 = document.getElementById("params");
+      const s5 = document.getElementById("mould");
+      if (!s4 || !s5) return false;
+      const parEl = s4.querySelector(".ch-params");
+      const wrap4 = s4.querySelector(".ch-wrap");
+      if (!parEl || !wrap4) return false;
+
+      const nowY = window.scrollY;
+      const top5 = Math.ceil(s5.getBoundingClientRect().top + window.scrollY);
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const r = parEl.getBoundingClientRect();
+      const par = { l: r.left, t: r.top, w: r.width, h: r.height };
+      const cells = [...parEl.querySelectorAll(":scope > div")];
+      const savedCells = cells.map((el) => el.style.cssText);
+      const savedWrap4 = wrap4.style.opacity;
+      const savedBg4 = s4.style.backgroundColor;
+      const KEYS = ["transform", "position", "zIndex", "backgroundColor", "opacity"];
+      const savedS5 = KEYS.map((k) => s5.style[k]);
+
+      s5.style.transform = "translateY(" + (nowY - top5).toFixed(1) + "px)";
+      s5.style.position = "relative";
+      s5.style.zIndex = "2";
+      s5.style.backgroundColor = "#f7f1e8";
+      s5.style.opacity = "0";
+
+      /* 飞行层完全透明：只画两根横线，文字与视频都用真实 DOM */
+      const fly = document.createElement("div");
+      fly.className = "ch-fly ch-fly--45";
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:15;overflow:hidden;pointer-events:none;background:transparent;";
+      const NS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("width", String(vw));
+      svg.setAttribute("height", String(vh));
+      svg.style.cssText = "position:absolute;left:0;top:0;overflow:visible;will-change:opacity;";
+      const mkPath = () => {
+        const q = document.createElementNS(NS, "path");
+        q.setAttribute("fill", "none");
+        q.setAttribute("stroke", "rgba(43, 26, 18, 0.12)");
+        q.setAttribute("stroke-width", "1");
+        svg.appendChild(q);
+        return q;
+      };
+      const arc = mkPath(), baseLine = mkPath();
+      baseLine.setAttribute("d", "M" + par.l.toFixed(1) + " " + (par.t + par.h).toFixed(1) +
+        "H" + (par.l + par.w).toFixed(1));
+      fly.appendChild(svg);
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const A = 0.55;   // 阶段一：压弧 + 8 格熄灭；阶段二：05 淡入
+
+      const frame = (p) => {
+        /* g1 刻意线性：滚轮每推进一格，弧就实实在在多下垂一段，跟手不打折 */
+        const g1 = cl(p / A);
+        /* ★ 两页文字必须严格排队：04 先退干净、05 才淡入。
+           长交叉淡化会让两个标题（y=209 / y=132）叠成实心重影，
+           和 03→04 那轮修过的问题同源。 */
+        const out4 = 1 - es(cl((p - A) / 0.18));
+        const in5 = es(cl((p - A - 0.14) / 0.31));
+        /* 两端固定在参数表上边，控制点 y = t + 2*sag：
+           二次贝塞尔中点正好落在 t + sag，sag 到 par.h 时中点贴住下横线。 */
+        const sag = par.h * g1;
+        const cx = par.l + par.w / 2;
+        arc.setAttribute("d",
+          "M" + par.l.toFixed(1) + " " + par.t.toFixed(1) +
+          " Q" + cx.toFixed(1) + " " + (par.t + 2 * sag).toFixed(1) +
+          " " + (par.l + par.w).toFixed(1) + " " + par.t.toFixed(1));
+        svg.style.opacity = String(out4);
+        /* 8 格按列从左到右：被压过时轻微下沉 + 熄灭，不新增任何元素 */
+        cells.forEach((el, i) => {
+          const t = es(cl((g1 - (i % 4) * 0.14) / 0.42));
+          el.style.opacity = String(1 - t);
+          el.style.transform = "translateY(" + (5 * t).toFixed(1) + "px)";
+        });
+        /* 04 文字先退干净，05（含真实 video）随后淡入。
+           04 的淡紫底同步褪成奶油：05 半透明时透上来的是奶油而不是紫雾。 */
+        wrap4.style.opacity = String(out4);
+        const bgT = 1 - out4;
+        const C4 = [241, 238, 251], C5 = [247, 241, 232];
+        s4.style.backgroundColor = "rgb(" + C4.map((v, j) =>
+          Math.round(v + (C5[j] - v) * bgT)).join(",") + ")";
+        s5.style.opacity = String(in5);
+        fly.dataset.p = p.toFixed(3);
+        fly.dataset.sag = sag.toFixed(1);
+      };
+
+      let p = 0;
+      let lastWheelAt = performance.now();
+      let autoFrom = null, autoT0 = 0;
+      let finishing = false;
+
+      const finish = () => {
+        if (!ctx || finishing) return;
+        finishing = true;
+        frame(1);
+        chJump(top5);
+        clear();
+      };
+      const onWheelCap = (e) => {
+        if (!ctx || finishing) return;
+        const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+        if (!d) return;
+        e.preventDefault();
+        autoFrom = null;
+        lastWheelAt = performance.now();
+        p = Math.max(0, Math.min(1, p + (d > 0 ? 0.16 : -0.12)));
+        frame(p);
+        /* 滑满也不立刻落位：一串猛滑的剩余格必须仍由 busy 吞掉，
+           否则落位后会被分页器当成新手势继续往 05 段底滚。 */
+      };
+      /* 被导航点击 / 键盘滚动打断时，直接还原真实 DOM，不强行落位 */
+      const onScroll = () => {
+        if (!ctx || finishing) return;
+        if (Math.abs(window.scrollY - nowY) > 4) clear();
+      };
+      /* 停手判据 250ms（与分页器 EDGE_GAP 同源）：用户还在滑就一直不落位，
+         同一串滚轮全部被 busy 吞掉；停手后才补完剩余进度并落位。 */
+      const tick = (now) => {
+        if (!ctx || finishing) return;
+        if (now - lastWheelAt > 250) {
+          if (p >= 1) { finish(); return; }
+          if (autoFrom === null) { autoFrom = p; autoT0 = now; }
+          const k = Math.min(1, (now - autoT0) / 420);
+          p = autoFrom + (1 - autoFrom) * es(k);
+          frame(p);
+          if (k >= 1) { finish(); return; }
+        } else {
+          autoFrom = null;
+        }
+        requestAnimationFrame(tick);
+      };
+
+      window.addEventListener("wheel", onWheelCap, { capture: true, passive: false });
+      window.addEventListener("scroll", onScroll);
+      busy = true;
+      ctx = { fly, cells, savedCells, wrap4, savedWrap4, s4, savedBg4,
+        s5, savedS5, KEYS, onWheelCap, onScroll, baseY: nowY };
+      frame(0);
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!cur || cur.id !== "params" || !next || next.id !== "mould") return false;
+        return morph();
+      },
+      up: () => false,   // 05 → 04 保持原来的普通上移
+      busy: () => busy
+    };
+  })();
+
+  /* 四个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 → 04→05（单向） */
   const CH_TRANSITIONS = {
     down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next) ||
-      CH_34_MORPH.down(cur, next),
+      CH_34_MORPH.down(cur, next) || CH_45_MORPH.down(cur, next),
+    /* 05 → 04 刻意不接 CH_45_MORPH：用户要普通上移 */
     up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev) ||
       CH_34_MORPH.up(cur, prev),
-    busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy() || CH_34_MORPH.busy()
+    busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy() || CH_34_MORPH.busy() ||
+      CH_45_MORPH.busy()
   };
 
   /* ---------- 分页 ---------- */
