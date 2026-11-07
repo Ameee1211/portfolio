@@ -906,6 +906,7 @@
 }
 .ch-index.is-on { opacity: 1; }
 .ch-index__item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -918,18 +919,119 @@
   transition: color 0.25s ease;
   white-space: nowrap;
 }
-.ch-index__item i {
-  width: 14px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.4;
-  transition: width 0.3s ease, opacity 0.3s ease;
+/* ---------- 索引标记：一朵小花（A 的形态）+ 四种口味色（C 的配色） ----------
+   三态：未读=细线空花略收拢 / 已读=浅色半开 / 当前=口味色实心全开 + 淡晕。
+   换板块时由 CSS transition 完成「从中心卷开 / 收回」，hover 再张开一点。 */
+.ch-index__flower {
+  width: 16px;
+  height: 16px;
   flex: none;
+  overflow: visible;
+  transform: scale(0.82);
+  opacity: 0.6;
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.32s ease;
 }
+.ch-index__petals ellipse,
+.ch-index__core,
+.ch-index__swirl {
+  fill: none;
+  stroke: #c4b5a8;
+  stroke-width: 1.1;
+  transition: fill 0.32s ease, fill-opacity 0.32s ease, stroke 0.32s ease,
+    transform 0.32s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.32s ease;
+}
+.ch-index__petals ellipse {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0.86);
+}
+.ch-index__swirl { opacity: 0; }
+
+/* 已读：浅色半开 */
+.ch-index__item.is-past .ch-index__flower { transform: scale(0.96); opacity: 0.85; }
+.ch-index__item.is-past .ch-index__petals ellipse {
+  fill: var(--ch-flavour);
+  fill-opacity: 0.24;
+  stroke: var(--ch-flavour);
+  transform: scale(0.94);
+}
+.ch-index__item.is-past .ch-index__core { stroke: var(--ch-flavour); }
+
+/* 当前：口味色实心全开 */
+.ch-index__item.is-active .ch-index__flower { transform: scale(1.16); opacity: 1; }
+.ch-index__item.is-active .ch-index__petals ellipse {
+  fill: var(--ch-flavour);
+  fill-opacity: 1;
+  stroke: var(--ch-flavour);
+  transform: scale(1);
+}
+.ch-index__item.is-active .ch-index__core { fill: var(--ch-cream); stroke: var(--ch-flavour); }
+.ch-index__item.is-active .ch-index__swirl { opacity: 0.55; stroke: var(--ch-cream); }
+
+/* 悬停：再张开一点（写在三态之后，才压得住 is-active 的 transform） */
+.ch-index__item:hover .ch-index__flower { transform: scale(1.26); }
+.ch-index__item:hover .ch-index__petals ellipse { transform: scale(1.04); }
+
+/* 当前项外一圈淡晕 —— 方案 C 的「色素搅进白巧」 */
+.ch-index__item::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: var(--ch-flavour);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.32s ease, transform 0.32s ease;
+  pointer-events: none;
+}
+.ch-index__item.is-active::before { opacity: 0.16; transform: scale(1); }
+
+/* 滚到 09：索引栏顶部浮出一朵合拢的完成花 */
+.ch-index__bloom {
+  position: absolute;
+  left: 3px;
+  top: -32px;
+  width: 22px;
+  height: 22px;
+  opacity: 0;
+  transform: scale(0.55) rotate(-25deg);
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.3, 1);
+  pointer-events: none;
+}
+.ch-index__bloom .ch-index__flower { width: 22px; height: 22px; opacity: 1; transform: none; }
+.ch-index__bloom .ch-index__petals ellipse {
+  fill: #b07a52;
+  fill-opacity: 0.92;
+  stroke: #b07a52;
+  transform: none;
+}
+.ch-index__bloom .ch-index__core { fill: var(--ch-cream); stroke: #b07a52; }
+.ch-index__bloom .ch-index__swirl { opacity: 0.65; stroke: var(--ch-cream); }
+.ch-index.is-bloom .ch-index__bloom { opacity: 1; transform: scale(1) rotate(0); }
+
 .ch-index__item.is-active { color: var(--ch-ink); }
-.ch-index__item.is-active i { width: 26px; opacity: 1; }
 .ch-index.is-light .ch-index__item { color: rgba(255, 255, 255, 0.4); }
 .ch-index.is-light .ch-index__item.is-active { color: #fff; }
+/* 深色板块上小花反白 */
+.ch-index.is-light .ch-index__item .ch-index__petals ellipse,
+.ch-index.is-light .ch-index__item .ch-index__core { stroke: rgba(255, 255, 255, 0.55); }
+.ch-index.is-light .ch-index__item.is-past .ch-index__petals ellipse {
+  fill: rgba(255, 255, 255, 0.28);
+  stroke: rgba(255, 255, 255, 0.6);
+}
+.ch-index.is-light .ch-index__item.is-active .ch-index__petals ellipse {
+  fill: #f7f1e8;
+  stroke: #f7f1e8;
+}
+.ch-index.is-light .ch-index__item.is-active .ch-index__core {
+  fill: #5a3a26;
+  stroke: #f7f1e8;
+}
+.ch-index.is-light .ch-index__item.is-active::before { background: #f7f1e8; opacity: 0.2; }
 
 /* ---------- 04 产品展示：模型 + 视频 + 原型入口 ---------- */
 #product { padding: 76px 0 92px; }

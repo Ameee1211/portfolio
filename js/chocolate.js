@@ -24,17 +24,40 @@
     { id: "changes", label: "Known Issues" },
   ];
 
-  /* ---------- 索引 ---------- */
+  /* ---------- 索引：一朵小花 + 四种口味色（用户 2026-11-07 选 A+C） ---------- */
+  /* 四项循环，取自 07 Flavours 的四张实拍：棕 / 草莓粉 / 蓝莓绿 / 薰衣草紫。
+     棕、粉正好是项目色板里的 --ch-cocoa、--ch-rose。 */
+  const CH_FLAVOURS = ["#5a3a26", "#c98a8a", "#6f9a8d", "#a894bd"];
+
+  /* 一朵完整的俯视小花，不是一片花瓣：5 片圆润花瓣 + 一圈内卷弧 + 花心。
+     形态取自 cho-brown.webp（圆形底座、一层层卷进去的浅浮雕），16px 下也认得出是花。
+     ★ 旋转放在外层 <g> 的 transform 属性上，不能放 <ellipse> —— CSS 里要用
+       transform 给花瓣做「卷开」，会覆盖 ellipse 自己的 transform 属性，五瓣会叠成一瓣。 */
+  const CH_FLOWER_SVG =
+    '<svg class="ch-index__flower" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<g class="ch-index__petals">' +
+        [0, 72, 144, 216, 288]
+          .map((a) => '<g transform="rotate(' + a + ' 12 12)">' +
+            '<ellipse cx="12" cy="6.4" rx="3" ry="4.6"/></g>')
+          .join("") +
+      "</g>" +
+      '<circle class="ch-index__swirl" cx="12" cy="12" r="5.2"/>' +
+      '<circle class="ch-index__core" cx="12" cy="12" r="2.4"/>' +
+    "</svg>";
+
   function chRenderIndex() {
     const rail = $("#chIndex");
     if (!rail) return null;
     rail.innerHTML = CH_SECTIONS.slice(1)
       .map(
         (s, i) =>
-          `<a class="ch-index__item" href="#${s.id}" data-id="${s.id}">` +
-          `<i></i><span>${String(i + 1).padStart(2, "0")} ${s.label}</span></a>`
+          `<a class="ch-index__item" href="#${s.id}" data-id="${s.id}" ` +
+          `style="--ch-flavour:${CH_FLAVOURS[i % CH_FLAVOURS.length]}">` +
+          CH_FLOWER_SVG +
+          `<span>${String(i + 1).padStart(2, "0")} ${s.label}</span></a>`
       )
-      .join("");
+      .join("") +
+      `<span class="ch-index__bloom" aria-hidden="true">${CH_FLOWER_SVG}</span>`;
     return rail;
   }
 
@@ -51,11 +74,17 @@
         const r = s.getBoundingClientRect();
         if (r.top <= mid && r.bottom > mid) current = s;
       });
-      items.forEach((it) => it.classList.toggle("is-active", it.dataset.id === current.id));
+      const activeIdx = items.findIndex((it) => it.dataset.id === current.id);
+      items.forEach((it, i) => {
+        it.classList.toggle("is-active", i === activeIdx);
+        it.classList.toggle("is-past", activeIdx >= 0 && i < activeIdx);
+      });
       // 深色板块上让索引反白
       rail.classList.toggle("is-light", current.classList.contains("ch-sec--ink"));
       // 首屏不显示索引，滚过之后才淡入
       rail.classList.toggle("is-on", window.scrollY > window.innerHeight * 0.4);
+      // 到最后一节：索引栏顶部浮出一朵合拢的完成花
+      rail.classList.toggle("is-bloom", current.id === "changes");
     };
 
     setActive();
