@@ -851,6 +851,12 @@
        一串猛滑仍只翻一次页，播完直接落位。
      ★ 下压的那根上横线加粗成 2.5px 深可可棕（--ch-cocoa-deep #402417），
        下横线保持页面原本的 1px 细线，全程不动。
+     ★ 用户 2026-11-08 追加两点：
+       · 真实 .ch-params 的 border-top 在转场期间设透明、飞行层也不再重复画下横线，
+         屏幕上只剩被压弯的那根粗棕线（原位那根细直线不再残留）。
+       · 04 的标题 + 两段正文逐字符拆成 inline 片段，用与粗线同一条抛物线按水平位置
+         整体下垂（字符保持水平、不旋转）；幅度按「块宽 / 线宽」等比缩放，视觉曲率一致。
+         压到最底时文字淡出。首帧 --warp=0，字符位置与真实页面严丝合缝。
   */
   const CH_45_MORPH = (() => {
     let ctx = null;
@@ -874,6 +880,12 @@
       c.cells.forEach((el, i) => { el.style.cssText = c.savedCells[i]; });
       c.wrap4.style.opacity = c.savedWrap4;
       c.s4.style.backgroundColor = c.savedBg4;
+      c.parEl.style.borderTopColor = c.savedBorderTop;
+      c.textBlocks.forEach((b) => {
+        b.el.innerHTML = b.html;
+        b.el.style.opacity = b.savedOpacity;
+        b.el.style.removeProperty("--warp");
+      });
       c.KEYS.forEach((k, i) => { c.s5.style[k] = c.savedS5[i]; });
     };
 
@@ -899,13 +911,49 @@
       const KEYS = ["transform", "position", "zIndex", "backgroundColor", "opacity"];
       const savedS5 = KEYS.map((k) => s5.style[k]);
 
+      /* ① 原位那根细直线是真实 .ch-params 的 border-top，压弯后不该还留着。
+         转场期间设透明；飞行层也不再重复画下横线（真实 border-bottom 本来就在）。 */
+      const savedBorderTop = parEl.style.borderTopColor;
+      parEl.style.borderTopColor = "transparent";
+
+      /* ② 标题 + 两段正文：逐字符拆成 inline 片段，按水平位置整体下垂。
+         不拆行、不换字体、不重建排版：首帧 --warp=0 时与真实页面完全一致。
+         position:relative + top 对 inline 元素生效，且不影响周围排版。 */
+      const textBlocks = [...s4.querySelectorAll(".ch-h2, .ch-p")].map((el) => {
+        const html = el.innerHTML;
+        const savedOpacity = el.style.opacity;
+        const rect = el.getBoundingClientRect();
+        const norm = (el.textContent || "").replace(/\s+/g, " ").trim();
+        const frag = document.createDocumentFragment();
+        const chars = [];
+        for (const ch of norm) {
+          const sp = document.createElement("span");
+          sp.textContent = ch;
+          sp.style.cssText = "position:relative;display:inline;" +
+            "top:calc(var(--warp,0px) * var(--k,0));";
+          frag.appendChild(sp);
+          chars.push(sp);
+        }
+        el.textContent = "";
+        el.appendChild(frag);
+        /* 用渲染后的字符位置算归一化 u，抛物线系数 k = 4u(1-u)，
+           与粗线 y = t + 4*sag*u*(1-u) 是同一条曲线。 */
+        chars.forEach((sp) => {
+          const cr = sp.getBoundingClientRect();
+          const u = rect.width ? (cr.left + cr.width / 2 - rect.left) / rect.width : 0;
+          const uu = Math.max(0, Math.min(1, u));
+          sp.style.setProperty("--k", (4 * uu * (1 - uu)).toFixed(4));
+        });
+        return { el, html, savedOpacity, width: rect.width };
+      });
+
       s5.style.transform = "translateY(" + (nowY - top5).toFixed(1) + "px)";
       s5.style.position = "relative";
       s5.style.zIndex = "2";
       s5.style.backgroundColor = "#f7f1e8";
       s5.style.opacity = "0";
 
-      /* 飞行层完全透明：只画两根横线，文字与视频都用真实 DOM */
+      /* 飞行层完全透明：只画被压弯的那根线，文字与视频都用真实 DOM */
       const fly = document.createElement("div");
       fly.className = "ch-fly ch-fly--45";
       fly.style.cssText =
@@ -923,12 +971,8 @@
         svg.appendChild(q);
         return q;
       };
-      /* 下压的片材线：加粗 + 深巧克力棕（项目色板 --ch-cocoa-deep） */
+      /* 只有这一根：加粗的深巧克力棕片材线。下横线由真实 border-bottom 承担。 */
       const arc = mkPath("#402417", 2.5);
-      /* 下横线仍是页面原本那根 1px 淡线，不动 */
-      const baseLine = mkPath("rgba(43, 26, 18, 0.12)", 1);
-      baseLine.setAttribute("d", "M" + par.l.toFixed(1) + " " + (par.t + par.h).toFixed(1) +
-        "H" + (par.l + par.w).toFixed(1));
       fly.appendChild(svg);
       document.body.appendChild(fly);
 
@@ -947,6 +991,13 @@
         /* 两端固定在参数表上边，控制点 y = t + 2*sag：
            二次贝塞尔中点正好落在 t + sag，sag 到 par.h 时中点贴住下横线。 */
         const sag = par.h * g1;
+        /* 文字与粗线同一条抛物线 y = 4*sag*u*(1-u)；幅度按「块宽/线宽」等比缩放
+           （用户选：视觉曲率一致，文字块约 94px 下垂而不是 152px）。
+           每帧只给每个块写一个 CSS 变量，字符自己用 calc() 算 top，开销极小。 */
+        textBlocks.forEach((b) => {
+          b.el.style.setProperty("--warp", (sag * (b.width / par.w)).toFixed(2) + "px");
+          b.el.style.opacity = String(1 - es(cl((g1 - 0.78) / 0.22)));
+        });
         const cx = par.l + par.w / 2;
         arc.setAttribute("d",
           "M" + par.l.toFixed(1) + " " + par.t.toFixed(1) +
@@ -1001,6 +1052,7 @@
       window.addEventListener("scroll", onScroll);
       busy = true;
       ctx = { fly, cells, savedCells, wrap4, savedWrap4, s4, savedBg4,
+        parEl, savedBorderTop, textBlocks,
         s5, savedS5, KEYS, onScroll, baseY: nowY };
       frame(0);
       requestAnimationFrame(tick);
