@@ -386,7 +386,12 @@
           "position:absolute;left:0;top:0;width:" + vw + "px;height:" + vh + "px;" +
           "overflow:hidden;will-change:opacity,transform;";
         const inner = sec.cloneNode(true);
-        inner.removeAttribute("id");
+        /* ★ 必须保留 section 自己的 id：CSS 里有 4 条 #shapes 专属规则
+           （padding-bottom 78px / .ch-views--four margin 24 0 16 /
+            .ch-p--after margin-top 14px）。以前 removeAttribute("id") 让克隆
+            section 从 900 变成 954 高，flex 居中的标题／正文／尾段整体上移 18px，
+           转场收尾飞行层一撤，文字就跳回真实位置 —— 用户说的「跳动」就是这个。
+           只移除内部子元素的 id，section 自身的 id 保留。 */
         inner.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
         inner.querySelectorAll("img").forEach((im) => { im.loading = "eager"; });
         inner.style.cssText =
