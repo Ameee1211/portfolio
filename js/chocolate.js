@@ -56,8 +56,7 @@
           CH_FLOWER_SVG +
           `<span>${String(i + 1).padStart(2, "0")} ${s.label}</span></a>`
       )
-      .join("") +
-      `<span class="ch-index__bloom" aria-hidden="true">${CH_FLOWER_SVG}</span>`;
+      .join("");
     return rail;
   }
 
@@ -83,8 +82,6 @@
       rail.classList.toggle("is-light", current.classList.contains("ch-sec--ink"));
       // 首屏不显示索引，滚过之后才淡入
       rail.classList.toggle("is-on", window.scrollY > window.innerHeight * 0.4);
-      // 到最后一节：索引栏顶部浮出一朵合拢的完成花
-      rail.classList.toggle("is-bloom", current.id === "changes");
     };
 
     setActive();

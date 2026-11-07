@@ -990,29 +990,6 @@
 }
 .ch-index__item.is-active::before { opacity: 0.16; transform: scale(1); }
 
-/* 滚到 09：索引栏顶部浮出一朵合拢的完成花 */
-.ch-index__bloom {
-  position: absolute;
-  left: 3px;
-  top: -32px;
-  width: 22px;
-  height: 22px;
-  opacity: 0;
-  transform: scale(0.55) rotate(-25deg);
-  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.3, 1);
-  pointer-events: none;
-}
-.ch-index__bloom .ch-index__flower { width: 22px; height: 22px; opacity: 1; transform: none; }
-.ch-index__bloom .ch-index__petals ellipse {
-  fill: #b07a52;
-  fill-opacity: 0.92;
-  stroke: #b07a52;
-  transform: none;
-}
-.ch-index__bloom .ch-index__core { fill: var(--ch-cream); stroke: #b07a52; }
-.ch-index__bloom .ch-index__swirl { opacity: 0.65; stroke: var(--ch-cream); }
-.ch-index.is-bloom .ch-index__bloom { opacity: 1; transform: scale(1) rotate(0); }
-
 .ch-index__item.is-active { color: var(--ch-ink); }
 .ch-index.is-light .ch-index__item { color: rgba(255, 255, 255, 0.4); }
 .ch-index.is-light .ch-index__item.is-active { color: #fff; }
