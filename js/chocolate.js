@@ -846,9 +846,11 @@
        把真实 #mould 平移进当前视口并提一层，直接淡入；transform 与落位后的
        scrollY 变化正好抵消，清除时零跳变。
      ★ 只做正向。05 → 04 用户指定保持普通上移，up 一律返回 false。
-     ★ 真跟手：转场期间 busy=true 让分页器吞掉滚轮（一串仍只翻一次页），
-       本转场在 window capture 阶段抢先读 deltaY 推进自己的进度；
-       每格滑一点、停手横线停住、松手 220ms 后自动补完剩余进度并落位。
+     ★ 定时 1.5s 播放（用户 2026-11-08 改口：不要滚轮驱动）：
+       进度只由时间推进；转场期间 busy=true 让分页器吞掉滚轮，
+       一串猛滑仍只翻一次页，播完直接落位。
+     ★ 下压的那根上横线加粗成 2.5px 深可可棕（--ch-cocoa-deep #402417），
+       下横线保持页面原本的 1px 细线，全程不动。
   */
   const CH_45_MORPH = (() => {
     let ctx = null;
@@ -867,7 +869,6 @@
       if (!c) return;
       ctx = null;
       busy = false;
-      window.removeEventListener("wheel", c.onWheelCap, true);
       window.removeEventListener("scroll", c.onScroll);
       if (c.fly.parentNode) c.fly.remove();
       c.cells.forEach((el, i) => { el.style.cssText = c.savedCells[i]; });
@@ -914,15 +915,18 @@
       svg.setAttribute("width", String(vw));
       svg.setAttribute("height", String(vh));
       svg.style.cssText = "position:absolute;left:0;top:0;overflow:visible;will-change:opacity;";
-      const mkPath = () => {
+      const mkPath = (stroke, width) => {
         const q = document.createElementNS(NS, "path");
         q.setAttribute("fill", "none");
-        q.setAttribute("stroke", "rgba(43, 26, 18, 0.12)");
-        q.setAttribute("stroke-width", "1");
+        q.setAttribute("stroke", stroke);
+        q.setAttribute("stroke-width", String(width));
         svg.appendChild(q);
         return q;
       };
-      const arc = mkPath(), baseLine = mkPath();
+      /* 下压的片材线：加粗 + 深巧克力棕（项目色板 --ch-cocoa-deep） */
+      const arc = mkPath("#402417", 2.5);
+      /* 下横线仍是页面原本那根 1px 淡线，不动 */
+      const baseLine = mkPath("rgba(43, 26, 18, 0.12)", 1);
       baseLine.setAttribute("d", "M" + par.l.toFixed(1) + " " + (par.t + par.h).toFixed(1) +
         "H" + (par.l + par.w).toFixed(1));
       fly.appendChild(svg);
@@ -933,7 +937,7 @@
       const A = 0.55;   // 阶段一：压弧 + 8 格熄灭；阶段二：05 淡入
 
       const frame = (p) => {
-        /* g1 刻意线性：滚轮每推进一格，弧就实实在在多下垂一段，跟手不打折 */
+        /* g1 线性：进度推进一分，弧就实实在在多下垂一段 */
         const g1 = cl(p / A);
         /* ★ 两页文字必须严格排队：04 先退干净、05 才淡入。
            长交叉淡化会让两个标题（y=209 / y=132）叠成实心重影，
@@ -967,9 +971,6 @@
         fly.dataset.sag = sag.toFixed(1);
       };
 
-      let p = 0;
-      let lastWheelAt = performance.now();
-      let autoFrom = null, autoT0 = 0;
       let finishing = false;
 
       const finish = () => {
@@ -979,45 +980,28 @@
         chJump(top5);
         clear();
       };
-      const onWheelCap = (e) => {
-        if (!ctx || finishing) return;
-        const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-        if (!d) return;
-        e.preventDefault();
-        autoFrom = null;
-        lastWheelAt = performance.now();
-        p = Math.max(0, Math.min(1, p + (d > 0 ? 0.16 : -0.12)));
-        frame(p);
-        /* 滑满也不立刻落位：一串猛滑的剩余格必须仍由 busy 吞掉，
-           否则落位后会被分页器当成新手势继续往 05 段底滚。 */
-      };
       /* 被导航点击 / 键盘滚动打断时，直接还原真实 DOM，不强行落位 */
       const onScroll = () => {
         if (!ctx || finishing) return;
         if (Math.abs(window.scrollY - nowY) > 4) clear();
       };
-      /* 停手判据 250ms（与分页器 EDGE_GAP 同源）：用户还在滑就一直不落位，
-         同一串滚轮全部被 busy 吞掉；停手后才补完剩余进度并落位。 */
+      /* ★ 定时播放：进度只由时间推进，滚轮不再驱动。
+         一串猛滑在 busy 期间全被分页器吞掉，1.5s 播完时手势早已结束，
+         所以直接落位不会再出现「剩余格被当成新手势」的问题。 */
+      const T = 1500;
+      const t0 = performance.now();
       const tick = (now) => {
         if (!ctx || finishing) return;
-        if (now - lastWheelAt > 250) {
-          if (p >= 1) { finish(); return; }
-          if (autoFrom === null) { autoFrom = p; autoT0 = now; }
-          const k = Math.min(1, (now - autoT0) / 420);
-          p = autoFrom + (1 - autoFrom) * es(k);
-          frame(p);
-          if (k >= 1) { finish(); return; }
-        } else {
-          autoFrom = null;
-        }
+        const p = Math.min(1, (now - t0) / T);
+        frame(p);
+        if (p >= 1) { finish(); return; }
         requestAnimationFrame(tick);
       };
 
-      window.addEventListener("wheel", onWheelCap, { capture: true, passive: false });
       window.addEventListener("scroll", onScroll);
       busy = true;
       ctx = { fly, cells, savedCells, wrap4, savedWrap4, s4, savedBg4,
-        s5, savedS5, KEYS, onWheelCap, onScroll, baseY: nowY };
+        s5, savedS5, KEYS, onScroll, baseY: nowY };
       frame(0);
       requestAnimationFrame(tick);
       return true;
