@@ -1599,8 +1599,11 @@
       const paper = paperBg(window.innerWidth, window.innerHeight);
       const fly = document.createElement("div");
       fly.className = "ch-fly ch-fly--78";
+      /* ★ z-index 30：盖住左侧小花索引（.ch-index = 20），但仍在顶部
+         Home Bar（.nav = 50）之下，所以站点级导航保持可见。
+         起手/收尾纸片本身有 opacity 淡入淡出，索引栏会跟着自然隐现。 */
       fly.style.cssText =
-        "position:fixed;inset:0;z-index:15;pointer-events:none;background:transparent;" +
+        "position:fixed;inset:0;z-index:30;pointer-events:none;background:transparent;" +
         "perspective:2800px;perspective-origin:50% 50%;";
       const flaps = FLAPS.map((d) => {
         const el = document.createElement("div");
