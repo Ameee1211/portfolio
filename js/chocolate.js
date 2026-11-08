@@ -1474,7 +1474,8 @@
 
   /* ---------- 07 ↔ 08：盒盖四片合上，再向外打开（用户 2026-11-08 选方案 D） ----------
      依据 07 正文 "a piece for whoever is opening the box" 和 08 的 die-cut sheet：
-     四片纸用 cho-dieline.webp 的波点铺面 —— 四个 div 都是 inset:0 同一张全屏背景，
+     四片纸用程序生成的**矢量波点纸**（淡黄底 + 四色 polka dots），不再用低分辨率的
+     cho-dieline.webp —— 四个 div 都是 inset:0 同一张全屏背景，
      各用 clip-path 裁成上/右/下/左一个三角，合拢时拼起来正好是完整一张平片。
      每片绕自己的外沿边 3D 翻：90°（侧立、看不见）→ 0°（平铺盖满屏幕）
      → 停约 210ms → 再翻回 90°（向外打开，露出下一页）。
@@ -1515,6 +1516,44 @@
       c.dstWrap.style.opacity = c.savedDstWrap;
     };
 
+    /* 矢量波点纸：按当前视口生成一张 SVG 当 background-image。
+       四片共用同一个字符串、同样的 background-size/position，所以合拢时图案连续；
+       圆点半径按格宽计算，任意分辨率下都是正圆，不会有位图放大的糊边。
+       淡黄纸底 + 四色循环（沿用 08 刀模图里那组橙 / 紫 / 蓝 / 浅青）。 */
+    const paperBg = (w, h) => {
+      const COLORS = ["#E8A05C", "#A894BD", "#4A82B8", "#9FC4BA"];
+      const cols = Math.max(8, Math.round(w / 120));
+      const rows = Math.max(6, Math.round(h / 112));
+      const cw = w / cols, ch = h / rows;
+      let seed = 20261108;
+      const rnd = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return seed / 0x7fffffff;
+      };
+      let dots = "";
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (rnd() < 0.12) continue;                       // 偶尔留白，别太满
+          const x = c * cw + cw * (0.12 + rnd() * 0.76);
+          const y = r * ch + ch * (0.12 + rnd() * 0.76);
+          const rad = cw * (0.10 + rnd() * 0.27);
+          const col = COLORS[(r * cols + c + Math.floor(rnd() * 4)) % 4];
+          dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) +
+            '" r="' + rad.toFixed(1) + '" fill="' + col + '"/>';
+          if (rnd() < 0.22) {                               // 少量小点，密度更自然
+            dots += '<circle cx="' + (x + (rnd() - 0.5) * cw).toFixed(1) +
+              '" cy="' + (y + (rnd() - 0.5) * ch).toFixed(1) +
+              '" r="' + (cw * (0.04 + rnd() * 0.08)).toFixed(1) +
+              '" fill="' + COLORS[(c + r) % 4] + '"/>';
+          }
+        }
+      }
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' +
+        w + ' ' + h + '"><rect width="100%" height="100%" fill="#F6F2D8"/>' +
+        dots + '</svg>';
+      return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+    };
+
     /* 四片：上 / 右 / 下 / 左。中心取 50.5%、外沿过 1%，避免接缝漏光 */
     const FLAPS = [
       { clip: "polygon(-1% -1%, 101% -1%, 50.5% 50.5%)", org: "50% 0%", axis: "X", sign: -1 },
@@ -1552,11 +1591,12 @@
       srcSec.style.position = "relative";
       srcSec.style.zIndex = "1";
 
-      /* 预取纸面与 08 的两张图，避免转场中 lazy 图来不及解码 */
-      ["assets/img/choc/cho-dieline.webp", "assets/img/choc/cho-box.webp"]
-        .concat([...s8.querySelectorAll("img")].map((im) => im.currentSrc || im.getAttribute("src")))
+      /* 纸面已改成矢量生成、无需预载；只需预取 08 真实页面里的两张图 */
+      [...s8.querySelectorAll("img")]
+        .map((im) => im.currentSrc || im.getAttribute("src"))
         .forEach((u) => { if (u) { const im = new Image(); im.src = u; } });
 
+      const paper = paperBg(window.innerWidth, window.innerHeight);
       const fly = document.createElement("div");
       fly.className = "ch-fly ch-fly--78";
       fly.style.cssText =
@@ -1567,8 +1607,9 @@
         el.className = "ch-flap";
         el.style.cssText =
           "position:absolute;inset:0;backface-visibility:hidden;will-change:transform;" +
-          "background-image:url('assets/img/choc/cho-dieline.webp');" +
-          "background-size:cover;background-position:center;background-repeat:no-repeat;" +
+          "background-image:" + paper + ";" +
+          "background-size:100% 100%;background-position:center;background-repeat:no-repeat;" +
+          "background-color:#f6f2d8;" +
           "clip-path:" + d.clip + ";transform-origin:" + d.org + ";";
         fly.appendChild(el);
         return el;
