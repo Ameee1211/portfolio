@@ -280,6 +280,16 @@ img { display: block; max-width: 100%; }
   .scrollcue__line i { animation: none; transform: translateY(10px); opacity: 1; }
 }
 
+/* 手机端去掉首屏的「Scroll down to explore more」提示词
+   （2026-11-08 用户要求）：窄屏上打开页面自然会往下滑，这条提示反而占位置。
+   ★ 只作用于 ≤900px，电脑端完全不变；只隐藏 .scrollcue，
+     不动 About Me 页那个「Explore More」按钮。
+   首页没有 .scrollcue，所以命中范围正好是 About Me + 四个项目页的首屏。
+   （Chocolate 页在 ≤1000px 本来就已隐藏 cue，这条与它一致。） */
+@media (max-width: 900px) {
+  .scrollcue { display: none; }
+}
+
 /* 拖拽中的选区 / 提示动画的划痕 —— 粗细跟高亮条一致（由 JS 写入 --ws-band） */
 .ws__sel {
   stroke: var(--orange);
