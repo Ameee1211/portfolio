@@ -1472,16 +1472,221 @@
     };
   })();
 
-  /* 六个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 → 04→05（单向） → 05↔06 → 06↔07 */
+  /* ---------- 07 ↔ 08：盒盖四片合上，再向外打开（用户 2026-11-08 选方案 D） ----------
+     依据 07 正文 "a piece for whoever is opening the box" 和 08 的 die-cut sheet：
+     四片纸用 cho-dieline.webp 的波点铺面 —— 四个 div 都是 inset:0 同一张全屏背景，
+     各用 clip-path 裁成上/右/下/左一个三角，合拢时拼起来正好是完整一张平片。
+     每片绕自己的外沿边 3D 翻：90°（侧立、看不见）→ 0°（平铺盖满屏幕）
+     → 停约 210ms → 再翻回 90°（向外打开，露出下一页）。
+
+     ★ 换页发生在「四片完全盖住屏幕」的停顿期：目标 section 提前平移进视口、
+       提层、设不透明底色、opacity 在遮蔽下 0→1。观众全程只看到波点纸，
+       所以两页文字不会叠成重影，也不会有半透明混色。
+     ★ 反向是独立重排的一套 frameBack（合盖顺序相反、分段不同），
+       不是 frame(1-k) 纯倒放 —— 04→03 那轮的教训。
+     ★ 定时 1.5s，不接管滚轮；两页都是纯静态，不克隆任何 section
+       （#colours 有 id 专属规则 padding-bottom:138px，克隆会丢）。
+  */
+  const CH_78_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const KEYS = ["transform", "position", "zIndex", "backgroundColor", "opacity"];
+    const save = (el) => KEYS.map((k) => el.style[k]);
+    const restore = (el, a) => KEYS.forEach((k, i) => { el.style[k] = a[i]; });
+
+    const clear = () => {
+      const c = ctx;
+      if (!c) return;
+      ctx = null;
+      busy = false;
+      window.removeEventListener("scroll", c.onScroll);
+      if (c.fly.parentNode) c.fly.remove();
+      restore(c.s7, c.saved7);
+      restore(c.s8, c.saved8);
+      c.dstWrap.style.opacity = c.savedDstWrap;
+    };
+
+    /* 四片：上 / 右 / 下 / 左。中心取 50.5%、外沿过 1%，避免接缝漏光 */
+    const FLAPS = [
+      { clip: "polygon(-1% -1%, 101% -1%, 50.5% 50.5%)", org: "50% 0%", axis: "X", sign: -1 },
+      { clip: "polygon(101% -1%, 101% 101%, 50.5% 50.5%)", org: "100% 50%", axis: "Y", sign: -1 },
+      { clip: "polygon(-1% 101%, 101% 101%, 50.5% 50.5%)", org: "50% 100%", axis: "X", sign: 1 },
+      { clip: "polygon(-1% -1%, -1% 101%, 50.5% 50.5%)", org: "0% 50%", axis: "Y", sign: 1 }
+    ];
+
+    const morph = (dir) => {
+      if (busy || ctx) return true;
+      const s7 = document.getElementById("colours");
+      const s8 = document.getElementById("box");
+      if (!s7 || !s8) return false;
+
+      const fwd = dir > 0;
+      const nowY = window.scrollY;
+      const vh = window.innerHeight;
+      const top7 = Math.ceil(s7.getBoundingClientRect().top + nowY);
+      const top8 = Math.ceil(s8.getBoundingClientRect().top + nowY);
+      const end7 = Math.max(top7, top7 + s7.offsetHeight - vh);
+      const toY = fwd ? top8 : end7;
+      const shift = nowY - toY;
+
+      const srcSec = fwd ? s7 : s8;
+      const dstSec = fwd ? s8 : s7;
+      const dstWrap = dstSec.querySelector(".ch-wrap");
+      const savedDstWrap = dstWrap.style.opacity;
+      const saved7 = save(s7), saved8 = save(s8);
+      dstWrap.style.opacity = "0";
+      dstSec.style.transform = "translateY(" + shift.toFixed(1) + "px)";
+      dstSec.style.position = "relative";
+      dstSec.style.zIndex = "2";
+      dstSec.style.backgroundColor = fwd ? "#f7f1e8" : "#2a1811";
+      dstSec.style.opacity = "0";
+      srcSec.style.position = "relative";
+      srcSec.style.zIndex = "1";
+
+      /* 预取纸面与 08 的两张图，避免转场中 lazy 图来不及解码 */
+      ["assets/img/choc/cho-dieline.webp", "assets/img/choc/cho-box.webp"]
+        .concat([...s8.querySelectorAll("img")].map((im) => im.currentSrc || im.getAttribute("src")))
+        .forEach((u) => { if (u) { const im = new Image(); im.src = u; } });
+
+      const fly = document.createElement("div");
+      fly.className = "ch-fly ch-fly--78";
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:15;pointer-events:none;background:transparent;" +
+        "perspective:2800px;perspective-origin:50% 50%;";
+      const flaps = FLAPS.map((d) => {
+        const el = document.createElement("div");
+        el.className = "ch-flap";
+        el.style.cssText =
+          "position:absolute;inset:0;backface-visibility:hidden;will-change:transform;" +
+          "background-image:url('assets/img/choc/cho-dieline.webp');" +
+          "background-size:cover;background-position:center;background-repeat:no-repeat;" +
+          "clip-path:" + d.clip + ";transform-origin:" + d.org + ";";
+        fly.appendChild(el);
+        return el;
+      });
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+
+      /* ★ 3D 透视下 90° 侧立的纸片仍会在四角投出可见三角，不能只靠角度藏。
+         起手淡入、翻到侧立后淡出，保证首尾帧与真实页面严丝合缝。 */
+      const setFlaps = (angles, vis) => {
+        flaps.forEach((el, i) => {
+          const a = angles[i] * FLAPS[i].sign;
+          el.style.transform = FLAPS[i].axis === "X"
+            ? "rotateX(" + a.toFixed(2) + "deg)"
+            : "rotateY(" + a.toFixed(2) + "deg)";
+          el.style.opacity = vis.toFixed(3);
+        });
+        fly.dataset.angle = angles[0].toFixed(1);
+        fly.dataset.vis = vis.toFixed(3);
+      };
+
+      /* 正向：合盖 0–40%（四片依次错开 22ms）→ 停顿 40–54%（约 210ms）
+         → 翻开 54–100%。换页只在停顿这段遮蔽期做。 */
+      const A = 0.40, B = 0.54;
+      const frame = (p) => {
+        const angles = flaps.map((_, i) => {
+          const lag = i * 0.022;
+          if (p < A) return 90 * (1 - es(cl((p - lag) / 0.32)));
+          if (p < B) return 0;
+          return 90 * es(cl((p - B - lag) / 0.32));
+        });
+        const vis = es(cl((p - 0.004) / 0.18)) * (1 - es(cl((p - 0.78) / 0.16)));
+        setFlaps(angles, vis);
+        /* 换页严格收在「四片完全盖住」的窗口内，两端各留一点余量 */
+        dstSec.style.opacity = String(es(cl((p - (A + 0.01)) / (B - A - 0.03))));
+        /* 文字等纸片翻开才出现：否则四片接缝里会先透出下一页的标题 */
+        dstWrap.style.opacity = String(es(cl((p - 0.60) / 0.24)));
+        fly.dataset.p = p.toFixed(3);
+      };
+
+      /* 反向：独立重排的一套 —— 合盖更快、四片顺序相反、停顿同样 200ms、
+         翻开更慢。不是把正向倒着播。 */
+      const C = 0.36, D = 0.50;
+      const frameBack = (p) => {
+        const angles = flaps.map((_, i) => {
+          const inLag = (3 - i) * 0.020;
+          const outLag = i * 0.025;
+          if (p < C) return 90 * (1 - es(cl((p - inLag) / 0.30)));
+          if (p < D) return 0;
+          return 90 * es(cl((p - D - outLag) / 0.40));
+        });
+        const vis = es(cl((p - 0.004) / 0.18)) * (1 - es(cl((p - 0.78) / 0.16)));
+        setFlaps(angles, vis);
+        dstSec.style.opacity = String(es(cl((p - (C + 0.01)) / (D - C - 0.03))));
+        dstWrap.style.opacity = String(es(cl((p - 0.56) / 0.26)));
+        fly.dataset.p = p.toFixed(3);
+        fly.dataset.dir = "back";
+      };
+
+      let finishing = false;
+      const finish = () => {
+        if (!ctx || finishing) return;
+        finishing = true;
+        (fwd ? frame : frameBack)(1);
+        chJump(toY);
+        clear();
+      };
+      /* 被导航点击 / 键盘滚动打断时，直接还原真实 DOM，不强行落位 */
+      const onScroll = () => {
+        if (!ctx || finishing) return;
+        if (Math.abs(window.scrollY - nowY) > 4) clear();
+      };
+      const T = 1500;
+      const t0 = performance.now();
+      const tick = (now) => {
+        if (!ctx || finishing) return;
+        const p = Math.min(1, (now - t0) / T);
+        (fwd ? frame : frameBack)(p);
+        if (p >= 1) { finish(); return; }
+        requestAnimationFrame(tick);
+      };
+
+      window.addEventListener("scroll", onScroll);
+      busy = true;
+      ctx = { fly, s7, s8, saved7, saved8, dstWrap, savedDstWrap, onScroll };
+      (fwd ? frame : frameBack)(0);
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!cur || cur.id !== "colours" || !next || next.id !== "box") return false;
+        return morph(1);
+      },
+      up: (cur, prev) => {
+        if (!cur || cur.id !== "box" || !prev || prev.id !== "colours") return false;
+        return morph(-1);
+      },
+      busy: () => busy
+    };
+  })();
+
+  /* 七个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 → 04→05（单向） → 05↔06 → 06↔07 → 07↔08 */
   const CH_TRANSITIONS = {
     down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next) ||
       CH_34_MORPH.down(cur, next) || CH_45_MORPH.down(cur, next) ||
-      CH_56_MORPH.down(cur, next) || CH_67_MORPH.down(cur, next),
+      CH_56_MORPH.down(cur, next) || CH_67_MORPH.down(cur, next) ||
+      CH_78_MORPH.down(cur, next),
     /* 05 → 04 刻意不接 CH_45_MORPH：用户要普通上移 */
     up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev) ||
-      CH_34_MORPH.up(cur, prev) || CH_56_MORPH.up(cur, prev) || CH_67_MORPH.up(cur, prev),
+      CH_34_MORPH.up(cur, prev) || CH_56_MORPH.up(cur, prev) ||
+      CH_67_MORPH.up(cur, prev) || CH_78_MORPH.up(cur, prev),
     busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy() || CH_34_MORPH.busy() ||
-      CH_45_MORPH.busy() || CH_56_MORPH.busy() || CH_67_MORPH.busy()
+      CH_45_MORPH.busy() || CH_56_MORPH.busy() || CH_67_MORPH.busy() ||
+      CH_78_MORPH.busy()
   };
 
   /* ---------- 分页 ---------- */
