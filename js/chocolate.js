@@ -92,7 +92,15 @@
       it.addEventListener("click", (e) => {
         e.preventDefault();
         const el = document.getElementById(it.dataset.id);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (!el) return;
+        /* ★ 用精确坐标滚，不用 scrollIntoView：全站 section[id]{scroll-margin-top:92px}
+           会把它顶在「板块顶 −92px」，顶部露出上一块；分页器 indexAt() 用
+           scrollY + navH + 4 判定，就会判成上一板块，再下滑误播一次
+           「上一板块 → 本板块」的转场（用户 2026-11-08 报的 bug，9 个板块全中）。
+           仍然是普通平滑位移，不放转场、不瞬移；也不改 URL/hash。 */
+        const target = el.getBoundingClientRect().top + window.scrollY;
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        window.scrollTo({ top: Math.max(0, Math.min(target, max)), behavior: "smooth" });
       });
     });
   }
