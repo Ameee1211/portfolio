@@ -239,6 +239,17 @@ function playFinale() {
   setTimeout(() => el.remove(), 950 + hold + 520);
 }
 
+/* 桌面端连对后不再放 WELCOME：直接自动播完首页时间轴 splitA~splitB 的
+   「上下两半裂开」，停在 TL.splitB（裂开完成），About 内容仍由用户自己往下滚。
+   ★ 不能用 scrollIntoView(#about)：hs-on 下 #about 是 position:fixed、
+     offsetTop=0，实测那句话在电脑端根本不产生滚动。
+   ★ 改走 initHomeScenes 暴露的 __homePlaySplit，复用站内同一条播放曲线、
+     1.0s 时长、以及播放期间的输入屏蔽（playing 标志）。
+   ★ 只给电脑端用；手机端仍走 playFinale（用户 2026-11-08 明确不动手机端）。 */
+function wsGoAbout() {
+  if (typeof window.__homePlaySplit === "function") window.__homePlaySplit();
+}
+
 function renderWordSearch() {
   const host = $("wordSearch");
   if (!host) return;
@@ -439,7 +450,12 @@ function initWordSearchGame(host, letters, words, rows, cols, g) {
     });
 
     wsRememberDone();
-    setTimeout(playFinale, 420);
+    /* ★ 2026-11-08：电脑端去掉整层 WELCOME 庆祝浮层（白底 / 大字 / 星星 / 小猫），
+       五词全亮后约 400ms 直接上下裂开切到 About。
+       手机端保持原样。玩过一次（wsPlayerDone）根本不会走到这里，
+       仍是静态全亮、不自动跳页 —— 用户确认保持现状。 */
+    if (WS_MQ.matches) setTimeout(playFinale, 420);
+    else setTimeout(wsGoAbout, 400);
   }
 
   function tryCommit(cells) {
@@ -1905,8 +1921,8 @@ function initHomeScenes() {
   // 现在 1-(1-k)^1.6，第一个 100ms 就能走掉全程的 6%，手指和画面是连着的
   const easePlay = (k) => 1 - Math.pow(1 - k, 1.6);
 
-  // 从当前位置缓动滚到 toY
-  const playTo = (toY, rewind) => {
+  // 从当前位置缓动滚到 toY（forceDur 只给「连对后自动裂开」用，其余沿用原曲线）
+  const playTo = (toY, rewind, forceDur) => {
     if (window.__hsNoAuto) return;   // 调试用：关掉自动播放，便于逐点检查
     const root = document.documentElement;
     const prevBehavior = root.style.scrollBehavior;
@@ -1921,7 +1937,7 @@ function initHomeScenes() {
     }
     const full = (TL.titleB - TL.morphA) * (window.innerHeight || 1);
     // 比原来短一点：整段动画不留"空转"的尾巴
-    const dur = 760 + 1650 * Math.min(1, dist / (full || 1));
+    const dur = forceDur || 760 + 1650 * Math.min(1, dist / (full || 1));
 
     playing = true;
     const t0 = performance.now();
@@ -1942,6 +1958,14 @@ function initHomeScenes() {
       }
     };
     playRaf = requestAnimationFrame(tick);
+  };
+
+  /* 字母迷宫连对后（仅电脑端）：从 y=0 自动播完「上下两半裂开」，
+     停在 TL.splitB（裂开完成、About 底色露出），1.0s。
+     About 的标题 / 四块内容仍由用户自己往下滚一站一站看到（用户 2026-11-08 选）。
+     复用 playTo 的曲线与 playing 输入屏蔽，时间轴本身一行不改。 */
+  window.__homePlaySplit = () => {
+    playTo(TL.splitB * (window.innerHeight || 1), false, 1000);
   };
 
   // 前进：About 完整 → Projects（停留区静止，先对齐到动画起点，看不出跳）
