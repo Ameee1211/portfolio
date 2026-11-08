@@ -1075,15 +1075,189 @@
     };
   })();
 
-  /* 四个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 → 04→05（单向） */
+  /* ---------- 05 ↔ 06：同一条 1160 栅格上「框内换画」（用户 2026-11-08 选方案 B） ----------
+     ★ 正向 05→06：05 段底几乎满屏是真空成型视频；真实 <video> 淡出，
+       真实 #making 平移进当前视口、提层、自带淡紫底淡入 —— 框里画面从
+       真空成型换成 06 的两朵成品花，随后标题与 4 张步骤卡归位。
+     ★ 全程不 clone：05 的 video 一直是同一个实时节点，06 用真实 section 平移，
+       既没有「变 poster 静态图」的断层，也没有图片懒加载问题。
+     ★ 反向 06→05 按用户要求「根据逻辑倒放，不要纯倒放」：
+       单独写 frameBack，按「回到 05」的逻辑重排
+       ① 06 的文字 / 4 卡先退 → ② 对比图淡出、真实视频淡入 → ③ 落到 05 段底，
+       绝不是 frame(1-k) 那种时间反演（会让文字倒着长、框往回缩）。
+     ★ 定时 1.5s；遵守铁律；导航点击中断时还原真实 DOM。
+  */
+  const CH_56_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const KEYS = ["transform", "position", "zIndex", "backgroundColor", "opacity"];
+    const save = (el) => KEYS.map((k) => el.style[k]);
+    const restore = (el, a) => KEYS.forEach((k, i) => { el.style[k] = a[i]; });
+
+    const clear = () => {
+      const c = ctx;
+      if (!c) return;
+      ctx = null;
+      busy = false;
+      window.removeEventListener("scroll", c.onScroll);
+      if (c.fly.parentNode) c.fly.remove();
+      restore(c.s5, c.saved5);
+      restore(c.s6, c.saved6);
+      c.parts.forEach((p) => { p.el.style.opacity = p.saved; });
+      c.video.style.opacity = c.savedVideo;
+    };
+
+    const morph = (dir) => {
+      if (busy || ctx) return true;
+      const s5 = document.getElementById("mould");
+      const s6 = document.getElementById("making");
+      if (!s5 || !s6) return false;
+      const video = s5.querySelector("video");
+      const compareFig = s6.querySelector(".ch-compare figure");
+      const copy = s6.querySelector(".ch-compare__copy");
+      const steps = s6.querySelector(".ch-steps");
+      const head = [...s6.querySelectorAll(".ch-eyebrow, .ch-h2")];
+      if (!video || !compareFig || !copy || !steps) return false;
+
+      const fwd = dir > 0;
+      const nowY = window.scrollY;
+      const top5 = Math.ceil(s5.getBoundingClientRect().top + window.scrollY);
+      const top6 = Math.ceil(s6.getBoundingClientRect().top + window.scrollY);
+      const vh = window.innerHeight;
+      const end5 = Math.max(top5, top5 + s5.offsetHeight - vh);
+      const toY = fwd ? top6 : end5;
+
+      const saved5 = save(s5), saved6 = save(s6);
+      const savedVideo = video.style.opacity;
+      const parts = [compareFig, copy, steps, ...head].map((el) =>
+        ({ el, saved: el.style.opacity }));
+
+      /* 视频框在「触发当下视口」；06 对比图换算成「落位视口」坐标。
+         正向先把 06 对齐到视频框顶，动画里再把这段对齐收掉 → 落位零跳变。 */
+      const vTop = video.getBoundingClientRect().top;
+      const cTopIn6 = compareFig.getBoundingClientRect().top + nowY - top6;
+      const align = vTop - cTopIn6;
+      const shift6 = nowY - top6;
+      const shift5 = nowY - toY;
+
+      if (fwd) {
+        s6.style.transform = "translateY(" + (shift6 + align).toFixed(1) + "px)";
+        s6.style.position = "relative";
+        s6.style.zIndex = "2";
+        s6.style.backgroundColor = "#f1eefb";
+        s6.style.opacity = "0";
+        video.style.opacity = "1";
+        parts.forEach((p) => { p.el.style.opacity = "0"; });
+      } else {
+        s5.style.transform = "translateY(" + shift5.toFixed(1) + "px)";
+        s5.style.position = "relative";
+        s5.style.zIndex = "3";
+        s5.style.backgroundColor = "#faf5ee";
+        s5.style.opacity = "0";
+        s6.style.position = "relative";
+        s6.style.zIndex = "2";
+      }
+
+      /* 透明标记层：只用于状态判定，z=1 低于两页，不遮挡任何内容 */
+      const fly = document.createElement("div");
+      fly.className = "ch-fly ch-fly--56";
+      fly.style.cssText = "position:fixed;inset:0;z-index:1;pointer-events:none;background:transparent;";
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+
+      /* 正向：① 框内换画（视频 → 两朵花）② 对齐收掉、标题与 4 卡归位 */
+      const frame = (p) => {
+        const g1 = es(cl(p / 0.62));
+        const g2 = es(cl((p - 0.62) / 0.38));
+        s6.style.transform = "translateY(" + (shift6 + align * (1 - g2)).toFixed(1) + "px)";
+        s6.style.opacity = String(g1);
+        video.style.opacity = String(1 - g1);
+        compareFig.style.opacity = "1";
+        /* 右侧文字比换画稍晚才长出来，让前段专注「视频 → 两朵花」 */
+        copy.style.opacity = String(es(cl((p - 0.36) / 0.30)));
+        steps.style.opacity = String(g2);
+        head.forEach((el) => { el.style.opacity = String(g2); });
+        fly.dataset.p = p.toFixed(3);
+      };
+
+      /* ★ 反向：按「回到 05」的逻辑重排步骤，不是把正向倒着播。
+         起手是 06 段底（4 张卡完整可见），所以先让 06 的内容退场，
+         再换回视频，最后落到 05 段底 —— 每一步都是正向演的动作。 */
+      const frameBack = (k) => {
+        const out = 1 - es(cl(k / 0.32));
+        const g = es(cl((k - 0.28) / 0.52));
+        steps.style.opacity = String(out);
+        copy.style.opacity = String(out);
+        head.forEach((el) => { el.style.opacity = String(out); });
+        compareFig.style.opacity = String(1 - g);
+        s5.style.opacity = String(g);
+        fly.dataset.p = k.toFixed(3);
+      };
+
+      let finishing = false;
+      const finish = () => {
+        if (!ctx || finishing) return;
+        finishing = true;
+        if (fwd) frame(1); else frameBack(1);
+        chJump(toY);
+        clear();
+      };
+      const onScroll = () => {
+        if (!ctx || finishing) return;
+        if (Math.abs(window.scrollY - nowY) > 4) clear();
+      };
+      const T = 1500;
+      const t0 = performance.now();
+      const tick = (now) => {
+        if (!ctx || finishing) return;
+        const p = Math.min(1, (now - t0) / T);
+        if (fwd) frame(p); else frameBack(p);
+        if (p >= 1) { finish(); return; }
+        requestAnimationFrame(tick);
+      };
+
+      window.addEventListener("scroll", onScroll);
+      busy = true;
+      ctx = { fly, s5, s6, saved5, saved6, parts, video, savedVideo, onScroll };
+      if (fwd) frame(0); else frameBack(0);
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!cur || cur.id !== "mould" || !next || next.id !== "making") return false;
+        return morph(1);
+      },
+      up: (cur, prev) => {
+        if (!cur || cur.id !== "making" || !prev || prev.id !== "mould") return false;
+        return morph(-1);
+      },
+      busy: () => busy
+    };
+  })();
+
+  /* 五个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 → 04→05（单向） → 05↔06 */
   const CH_TRANSITIONS = {
     down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next) ||
-      CH_34_MORPH.down(cur, next) || CH_45_MORPH.down(cur, next),
+      CH_34_MORPH.down(cur, next) || CH_45_MORPH.down(cur, next) ||
+      CH_56_MORPH.down(cur, next),
     /* 05 → 04 刻意不接 CH_45_MORPH：用户要普通上移 */
     up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev) ||
-      CH_34_MORPH.up(cur, prev),
+      CH_34_MORPH.up(cur, prev) || CH_56_MORPH.up(cur, prev),
     busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy() || CH_34_MORPH.busy() ||
-      CH_45_MORPH.busy()
+      CH_45_MORPH.busy() || CH_56_MORPH.busy()
   };
 
   /* ---------- 分页 ---------- */
