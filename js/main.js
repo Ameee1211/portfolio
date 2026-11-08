@@ -121,6 +121,14 @@ function initNav() {
 const WS_MQ = window.matchMedia("(max-width: 900px)");
 const wsCfg = () => (WS_MQ.matches ? SITE.wordsearch.mobile : SITE.wordsearch.desktop);
 
+/* 首页的整段动画由滚动位置当时间轴驱动。刷新时浏览器默认会把上次滚到的位置
+   恢复回来（玩完一次往往停在 About 段），用户就看不到可以重玩的字母迷宫了。
+   ★ 只在首页关掉滚动恢复：每次加载（含普通刷新 / 强制刷新）都从 t=0 开始。
+     其它页面没有 #wordSearch，不设这个，行为完全不变。 */
+if (document.getElementById("wordSearch") && "scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
 // g = { cw, ch, band }：格宽、格高、高亮条厚度
 const wsGrid = (cfg) => ({ cw: cfg.cell[0], ch: cfg.cell[1], band: cfg.band });
 
@@ -158,23 +166,27 @@ function wsBand(g, cells) {
   return { x: mx - len / 2, y: my - g.band / 2, w: len, h: g.band, rx: r, rot, cx: mx, cy: my };
 }
 
-/* ---- 完成状态本地记忆 ----
-   玩过之后写一个标记，之后不管去 About 还是别的页面再回来，
-   首屏都直接是「全部连好」的样子，不会再放一次 WELCOME、也不会自动跳页。 */
+/* ---- 完成状态记忆 ----
+   ★ 电脑端（用户 2026-11-08）：只在**本次页面加载**内记住。
+     刷新（含强制刷新）= 重新加载 = 标记清空 = 可以再玩一次；
+     但同一次加载里玩过一次之后，不管滚到哪、窗口跨断点触发重渲染，
+     都保持「全部连好」的样子，不让人玩第二遍。
+     原来用 localStorage 跨刷新持久，导致用户刷了也玩不了 —— 已改掉。
+   ★ 手机端保持原来的 localStorage 持久记忆，一行不动
+     （用户长期要求：默认只改电脑端，不许动手机端）。 */
 const WS_DONE_KEY = "portfolio:wordsearch-done";
+let wsDoneDesktop = false;
 
-const wsPlayerDone = () => {
-  try {
-    return localStorage.getItem(WS_DONE_KEY) === "1";
-  } catch (e) {
-    return false;
-  }
+const lsDone = () => {
+  try { return localStorage.getItem(WS_DONE_KEY) === "1"; } catch (e) { return false; }
 };
-
+const lsRemember = () => {
+  try { localStorage.setItem(WS_DONE_KEY, "1"); } catch (e) {}
+};
+const wsPlayerDone = () => (WS_MQ.matches ? lsDone() : wsDoneDesktop);
 const wsRememberDone = () => {
-  try {
-    localStorage.setItem(WS_DONE_KEY, "1");
-  } catch (e) {}
+  if (WS_MQ.matches) lsRemember();
+  else wsDoneDesktop = true;
 };
 
 /* ---- 完成特效用的图形 ---- */
