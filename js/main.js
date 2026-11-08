@@ -129,6 +129,27 @@ if (document.getElementById("wordSearch") && "scrollRestoration" in history) {
   history.scrollRestoration = "manual";
 }
 
+/* ---- 区分「刷新」与「站内来回跳」（用户 2026-11-08 确认的口径）----
+   浏览器每次加载页面都会给出导航类型：
+     reload        = 按 F5 / Ctrl+Shift+R → 清掉「玩过」标记，回去可以重玩
+     navigate      = 点站内链接去别的页面 / 从别的页面回首页 → 保留标记
+     back_forward  = 浏览器后退 / 前进 → 保留标记
+   ★ 这段在所有页面共用的 main.js 顶层**无条件执行**：
+     用户明确说「在别的页面（About me / 项目页）按刷新也算刷新这个网站」。
+   ★ 只清 sessionStorage 的会话键，不碰 localStorage —— 手机端行为完全不变。 */
+const WS_SESSION_KEY = "portfolio:wordsearch-session";
+const WS_NAV_TYPE = (() => {
+  try {
+    const e = performance.getEntriesByType("navigation")[0];
+    return e && e.type ? e.type : "navigate";
+  } catch (e) {
+    return "navigate";
+  }
+})();
+if (WS_NAV_TYPE === "reload") {
+  try { sessionStorage.removeItem(WS_SESSION_KEY); } catch (e) {}
+}
+
 // g = { cw, ch, band }：格宽、格高、高亮条厚度
 const wsGrid = (cfg) => ({ cw: cfg.cell[0], ch: cfg.cell[1], band: cfg.band });
 
@@ -167,26 +188,31 @@ function wsBand(g, cells) {
 }
 
 /* ---- 完成状态记忆 ----
-   ★ 电脑端（用户 2026-11-08）：只在**本次页面加载**内记住。
-     刷新（含强制刷新）= 重新加载 = 标记清空 = 可以再玩一次；
-     但同一次加载里玩过一次之后，不管滚到哪、窗口跨断点触发重渲染，
-     都保持「全部连好」的样子，不让人玩第二遍。
-     原来用 localStorage 跨刷新持久，导致用户刷了也玩不了 —— 已改掉。
+   ★ 电脑端（用户 2026-11-08）：用「当前标签页会话」记住玩过。
+     · 刷新（在任何页面，含强制刷新）→ 清标记 → 可以再玩一次
+     · 站内来回跳 / 后退前进 → 不算刷新 → 仍是全部连好、不能玩第二遍
+     · 关掉标签页重新打开 = 新会话 → 可以再玩
+     最早用 localStorage（刷了也玩不了）、后来用纯内存变量（跳走再回来就重置），
+     都不能同时满足这两条 —— 现在靠上面的导航类型区分。
    ★ 手机端保持原来的 localStorage 持久记忆，一行不动
      （用户长期要求：默认只改电脑端，不许动手机端）。 */
 const WS_DONE_KEY = "portfolio:wordsearch-done";
-let wsDoneDesktop = false;
-
 const lsDone = () => {
   try { return localStorage.getItem(WS_DONE_KEY) === "1"; } catch (e) { return false; }
 };
 const lsRemember = () => {
   try { localStorage.setItem(WS_DONE_KEY, "1"); } catch (e) {}
 };
-const wsPlayerDone = () => (WS_MQ.matches ? lsDone() : wsDoneDesktop);
+const ssDone = () => {
+  try { return sessionStorage.getItem(WS_SESSION_KEY) === "1"; } catch (e) { return false; }
+};
+const ssRemember = () => {
+  try { sessionStorage.setItem(WS_SESSION_KEY, "1"); } catch (e) {}
+};
+const wsPlayerDone = () => (WS_MQ.matches ? lsDone() : ssDone());
 const wsRememberDone = () => {
   if (WS_MQ.matches) lsRemember();
-  else wsDoneDesktop = true;
+  else ssRemember();
 };
 
 /* ---- 完成特效用的图形 ---- */
