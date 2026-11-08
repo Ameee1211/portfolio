@@ -1248,16 +1248,240 @@
     };
   })();
 
-  /* 五个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 → 04→05（单向） → 05↔06 */
+  /* ---------- 06 ↔ 07：圆筒曲面连续转（用户 2026-11-08 选方案 C） ----------
+     ★ 不是 4 个平面拼的 90° 立方体，也不是单张翻牌：
+       4 张卡弯贴成一段圆柱弧面（中间正对、两侧斜着缩小），整个 drum
+       绕竖轴连续转 180°；转到背面露出的就是 07 的四色花，最后展平落位。
+       front 恒为 06 的 01–04 步骤卡，back 恒为 07 口味卡（逆序贴，
+       用来抵消 rotateY(180°) 的左右镜像，落位后顺序仍是棕/粉/蓝绿/紫）。
+     ★ 两页都用真实 section 平移 + 提层 + 自带底色淡入，不克隆 section
+       （07 有 #colours 专属 padding 规则，克隆会丢样式）；真实卡片区
+       临时 visibility:hidden，由飞行层的 3D 卡代替，结束恢复。
+     ★ 反向按「同一套动作换主角」：phi 从 180° 连续转回 0°，
+       front/back 与落位坐标整体对调，不是 frame(1-k) 时间反演。
+  */
+  const CH_67_MORPH = (() => {
+    let ctx = null;
+    let busy = false;
+
+    const chJump = (v) => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const max = root.scrollHeight - window.innerHeight;
+      window.scrollTo(0, Math.max(0, Math.min(v, max)));
+      root.style.scrollBehavior = prev;
+    };
+    const KEYS = ["transform", "position", "zIndex", "backgroundColor", "opacity"];
+    const save = (el) => KEYS.map((k) => el.style[k]);
+    const restore = (el, a) => KEYS.forEach((k, i) => { el.style[k] = a[i]; });
+
+    const clear = () => {
+      const c = ctx;
+      if (!c) return;
+      ctx = null;
+      busy = false;
+      window.removeEventListener("scroll", c.onScroll);
+      if (c.fly.parentNode) c.fly.remove();
+      restore(c.s6, c.saved6);
+      restore(c.s7, c.saved7);
+      c.stepsEl.style.visibility = c.savedStepsVis;
+      c.swEl.style.visibility = c.savedSwVis;
+      c.srcWrap.style.opacity = c.savedSrcWrap;
+      c.dstWrap.style.opacity = c.savedDstWrap;
+    };
+
+    const morph = (dir) => {
+      if (busy || ctx) return true;
+      const s6 = document.getElementById("making");
+      const s7 = document.getElementById("colours");
+      if (!s6 || !s7) return false;
+      const stepsEl = s6.querySelector(".ch-steps");
+      const swEl = s7.querySelector(".ch-swatches");
+      const stepFigs = [...s6.querySelectorAll(".ch-steps figure")];
+      const swFigs = [...s7.querySelectorAll(".ch-swatches figure")];
+      if (!stepsEl || !swEl || stepFigs.length < 4 || swFigs.length < 4) return false;
+
+      const fwd = dir > 0;
+      const nowY = window.scrollY;
+      const top6 = Math.ceil(s6.getBoundingClientRect().top + window.scrollY);
+      const top7 = Math.ceil(s7.getBoundingClientRect().top + window.scrollY);
+      const vh = window.innerHeight;
+      const end6 = Math.max(top6, top6 + s6.offsetHeight - vh);
+      const toY = fwd ? top7 : end6;
+      const shift = nowY - toY;
+
+      /* 起手卡片 rect（当前视口）／落位卡片 rect（换算到落位视口） */
+      const srcRaw = (fwd ? stepFigs[0] : swFigs[0]).getBoundingClientRect();
+      const dstRaw = (fwd ? swFigs[0] : stepFigs[0]).getBoundingClientRect();
+      const src = { l: srcRaw.left, t: srcRaw.top, w: srcRaw.width, h: srcRaw.height };
+      const dst = { l: dstRaw.left, t: dstRaw.top + shift, w: dstRaw.width, h: dstRaw.height };
+      const gapStep = stepFigs[1].getBoundingClientRect().left - stepFigs[0].getBoundingClientRect().left;
+      const gapSw = swFigs[1].getBoundingClientRect().left - swFigs[0].getBoundingClientRect().left;
+      const srcGap = fwd ? gapStep : gapSw;
+      const dstGap = fwd ? gapSw : gapStep;
+
+      const saved6 = save(s6), saved7 = save(s7);
+      const savedStepsVis = stepsEl.style.visibility;
+      const savedSwVis = swEl.style.visibility;
+
+      const dstSec = fwd ? s7 : s6;
+      const srcSec0 = fwd ? s6 : s7;
+      const srcWrap = srcSec0.querySelector(".ch-wrap");
+      const dstWrap = dstSec.querySelector(".ch-wrap");
+      const savedSrcWrap = srcWrap.style.opacity;
+      const savedDstWrap = dstWrap.style.opacity;
+      dstSec.style.transform = "translateY(" + shift.toFixed(1) + "px)";
+      dstSec.style.position = "relative";
+      dstSec.style.zIndex = "2";
+      dstSec.style.backgroundColor = fwd ? "#2a1811" : "#f1eefb";
+      dstSec.style.opacity = "0";
+      const srcSec = fwd ? s6 : s7;
+      srcSec.style.position = "relative";
+      srcSec.style.zIndex = "1";
+      stepsEl.style.visibility = "hidden";
+      swEl.style.visibility = "hidden";
+
+      const fly = document.createElement("div");
+      fly.className = "ch-fly ch-fly--67";
+      fly.style.cssText =
+        "position:fixed;inset:0;z-index:15;pointer-events:none;background:transparent;" +
+        "perspective:1600px;perspective-origin:50% 50%;";
+      const drum = document.createElement("div");
+      drum.style.cssText =
+        "position:absolute;inset:0;transform-style:preserve-3d;" +
+        "transform-origin:50% 50%;will-change:transform;";
+      fly.appendChild(drum);
+
+      /* 预取全部 8 张图，避免飞行层里 lazy 图来不及加载 */
+      [...stepFigs, ...swFigs].forEach((fig) => {
+        const im = fig.querySelector("img");
+        if (im) { const pre = new Image(); pre.src = im.currentSrc || im.getAttribute("src"); }
+      });
+
+      const mkFace = (fig, dark) => {
+        const face = document.createElement("div");
+        face.style.cssText =
+          "position:absolute;inset:0;backface-visibility:hidden;overflow:hidden;";
+        /* 包一层同名祖先 class，后代选择器 .ch-steps img / .ch-swatches img 才生效 */
+        const wrap = document.createElement("div");
+        wrap.className = dark ? "ch-swatches" : "ch-steps";
+        wrap.style.cssText =
+          "display:grid;grid-template-columns:1fr;gap:0;margin:0;height:100%;";
+        const clone = fig.cloneNode(true);
+        clone.style.cssText = "margin:0;height:100%;";
+        clone.querySelectorAll("img").forEach((im) => {
+          im.loading = "eager";
+          im.style.cssText += "width:100%;height:auto;";
+        });
+        wrap.appendChild(clone);
+        face.appendChild(wrap);
+        return face;
+      };
+
+      const cards = [0, 1, 2, 3].map((i) => {
+        const box = document.createElement("div");
+        box.style.cssText =
+          "position:absolute;transform-style:preserve-3d;will-change:left,top,width,height,transform;";
+        const front = mkFace(stepFigs[i], false);
+        /* ★ back 逆序：drum 转 180° 后左右镜像，逆序贴图才能让
+           落位画面从左到右仍是 棕 / 粉 / 蓝绿 / 紫 */
+        const back = mkFace(swFigs[3 - i], true);
+        back.style.transform = "rotateY(180deg)";
+        box.appendChild(front);
+        box.appendChild(back);
+        drum.appendChild(box);
+        return box;
+      });
+      document.body.appendChild(fly);
+
+      const cl = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const es = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      const frame = (p) => {
+        /* 三段：① 0–28% 只弯成曲面（不转，让观众看清中间正对 / 两侧斜缩）
+           ② 28–78% 曲面连续转 180°  ③ 78–100% 展平落位 */
+        const curve = es(cl(p / 0.28)) * (1 - es(cl((p - 0.78) / 0.22)));
+        const turn = cl((p - 0.28) / 0.50);
+        const phi = fwd ? 180 * turn : 180 * (1 - turn);
+        drum.style.transform = "rotateY(" + phi.toFixed(2) + "deg)";
+        const g = es(p);
+        cards.forEach((box, i) => {
+          const a = (i - 1.5) * 24 * curve;
+          /* Z 位移只保留一小部分：过大时透视会把 4 张卡向屏幕中心收缩、互相挤叠。
+             曲面感主要由 rotateY 的倾斜提供，Z 只做轻微的前后层次。 */
+          const z = 420 * (Math.cos(a * Math.PI / 180) - 1) * 0.32 * curve;
+          box.style.left = lerp(src.l + i * srcGap, dst.l + i * dstGap, g).toFixed(1) + "px";
+          box.style.top = lerp(src.t, dst.t, g).toFixed(1) + "px";
+          box.style.width = lerp(src.w, dst.w, g).toFixed(1) + "px";
+          box.style.height = lerp(src.h, dst.h, g).toFixed(1) + "px";
+          box.style.transform = "rotateY(" + a.toFixed(2) + "deg) translateZ(" + z.toFixed(1) + "px)";
+        });
+        dstSec.style.opacity = String(es(cl((p - 0.20) / 0.60)));
+        /* ★ 两页文字严格排队，避免 07 的白色标题提前透出来和 06 文字叠成重影：
+           06 内容先退干净，07 内容等底色铺过半才淡入，中间一段由 3D 曲面撑住。 */
+        srcWrap.style.opacity = String(1 - es(cl(p / 0.34)));
+        dstWrap.style.opacity = String(es(cl((p - 0.56) / 0.34)));
+        fly.dataset.p = p.toFixed(3);
+        fly.dataset.phi = phi.toFixed(1);
+        fly.dataset.curve = curve.toFixed(3);
+      };
+
+      let finishing = false;
+      const finish = () => {
+        if (!ctx || finishing) return;
+        finishing = true;
+        frame(1);
+        chJump(toY);
+        clear();
+      };
+      const onScroll = () => {
+        if (!ctx || finishing) return;
+        if (Math.abs(window.scrollY - nowY) > 4) clear();
+      };
+      const T = 1500;
+      const t0 = performance.now();
+      const tick = (now) => {
+        if (!ctx || finishing) return;
+        const p = Math.min(1, (now - t0) / T);
+        frame(p);
+        if (p >= 1) { finish(); return; }
+        requestAnimationFrame(tick);
+      };
+
+      window.addEventListener("scroll", onScroll);
+      busy = true;
+      ctx = { fly, s6, s7, saved6, saved7, stepsEl, swEl, savedStepsVis, savedSwVis,
+        srcWrap, dstWrap, savedSrcWrap, savedDstWrap, onScroll };
+      frame(0);
+      requestAnimationFrame(tick);
+      return true;
+    };
+
+    return {
+      down: (cur, next) => {
+        if (!cur || cur.id !== "making" || !next || next.id !== "colours") return false;
+        return morph(1);
+      },
+      up: (cur, prev) => {
+        if (!cur || cur.id !== "colours" || !prev || prev.id !== "making") return false;
+        return morph(-1);
+      },
+      busy: () => busy
+    };
+  })();
+
+  /* 六个专属转场共用一个钩子：首屏↔01 → 01↔02 → 03↔04 → 04→05（单向） → 05↔06 → 06↔07 */
   const CH_TRANSITIONS = {
     down: (cur, next) => CH_HERO_MORPH.down(cur, next) || CH_12_MORPH.down(cur, next) ||
       CH_34_MORPH.down(cur, next) || CH_45_MORPH.down(cur, next) ||
-      CH_56_MORPH.down(cur, next),
+      CH_56_MORPH.down(cur, next) || CH_67_MORPH.down(cur, next),
     /* 05 → 04 刻意不接 CH_45_MORPH：用户要普通上移 */
     up: (cur, prev) => CH_HERO_MORPH.up(cur, prev) || CH_12_MORPH.up(cur, prev) ||
-      CH_34_MORPH.up(cur, prev) || CH_56_MORPH.up(cur, prev),
+      CH_34_MORPH.up(cur, prev) || CH_56_MORPH.up(cur, prev) || CH_67_MORPH.up(cur, prev),
     busy: () => CH_HERO_MORPH.busy() || CH_12_MORPH.busy() || CH_34_MORPH.busy() ||
-      CH_45_MORPH.busy() || CH_56_MORPH.busy()
+      CH_45_MORPH.busy() || CH_56_MORPH.busy() || CH_67_MORPH.busy()
   };
 
   /* ---------- 分页 ---------- */
